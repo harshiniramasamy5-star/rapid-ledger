@@ -1,0 +1,125 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         String
+  department   String?
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  createdDocuments  RapidDocument[]       @relation("CreatedBy")
+  roleAssignments   RapidRoleAssignment[]
+  uploadedEvidence  Evidence[]
+  approvals         Approval[]
+  auditLogs         AuditLog[]
+  decideOnLedger    LedgerEntry[]         @relation("DecideOwner")
+  performOnLedger   LedgerEntry[]         @relation("PerformOwner")
+}
+
+model RapidDocument {
+  id                     String    @id @default(cuid())
+  documentCode           String
+  title                  String
+  decisionSummary        String
+  businessContext        String?
+  problemStatement       String?
+  proposedDecision       String?
+  alternativesConsidered String?
+  riskLevel              String    @default("low")
+  complianceImpact       Boolean   @default(false)
+  department             String
+  deadline               DateTime
+  status                 String    @default("draft")
+  version                Int       @default(1)
+  parentDocumentId       String?
+  createdBy              String
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+  submittedAt            DateTime?
+  finalizedAt            DateTime?
+  @@unique([documentCode, version])
+  creator        User                  @relation("CreatedBy", fields: [createdBy], references: [id])
+  parentDocument RapidDocument?        @relation("Versions", fields: [parentDocumentId], references: [id])
+  childVersions  RapidDocument[]       @relation("Versions")
+  roleAssignments RapidRoleAssignment[]
+  evidence       Evidence[]
+  approvals      Approval[]
+  ledgerEntry    LedgerEntry?
+  auditLogs      AuditLog[]
+}
+
+model RapidRoleAssignment {
+  id         String   @id @default(cuid())
+  documentId String
+  roleType   String
+  userId     String
+  createdAt  DateTime @default(now())
+  document RapidDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  user     User          @relation(fields: [userId], references: [id])
+}
+
+model Evidence {
+  id          String   @id @default(cuid())
+  documentId  String
+  type        String
+  title       String
+  urlOrPath   String?
+  description String?
+  uploadedBy  String
+  createdAt   DateTime @default(now())
+  document RapidDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  uploader User          @relation(fields: [uploadedBy], references: [id])
+}
+
+model Approval {
+  id         String   @id @default(cuid())
+  documentId String
+  approverId String
+  status     String   @default("pending")
+  notes      String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  document RapidDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  approver User          @relation(fields: [approverId], references: [id])
+}
+
+model LedgerEntry {
+  id               String   @id @default(cuid())
+  documentId       String   @unique
+  documentCode     String
+  title            String
+  finalDecision    String
+  decideOwnerId    String
+  performOwnerId   String
+  riskLevel        String
+  complianceImpact Boolean
+  version          Int
+  finalizedAt      DateTime
+  createdAt        DateTime @default(now())
+  document     RapidDocument @relation(fields: [documentId], references: [id])
+  decideOwner  User          @relation("DecideOwner", fields: [decideOwnerId], references: [id])
+  performOwner User          @relation("PerformOwner", fields: [performOwnerId], references: [id])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorId    String
+  action     String
+  objectType String
+  objectId   String
+  details    String?
+  documentId String?
+  createdAt  DateTime @default(now())
+  actor    User           @relation(fields: [actorId], references: [id])
+  document RapidDocument? @relation(fields: [documentId], references: [id])
+}
