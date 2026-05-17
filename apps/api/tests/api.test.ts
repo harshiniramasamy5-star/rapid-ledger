@@ -140,9 +140,6 @@ describe("API Endpoints", () => {
       console.log("POST /documents response:", JSON.stringify(data, null, 2));
       console.log("Status:", res.status);
       
-      if (res.status !== 200) {
-        console.error("Document creation failed:", data);
-      }
       
       expect(res.status).toBe(201);
       expect(data.id).toBeDefined();
