@@ -27,6 +27,7 @@ function handleApproval(params: any, body: any, headers: any, set: any, approval
 
 import { Elysia } from "elysia";
 import { node } from "@elysiajs/node";
+import { cors } from "@elysiajs/cors";
 import { execSync } from "child_process";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
@@ -44,19 +45,7 @@ function query(sql: string): any[] {
 }
 
 const app = new Elysia({ adapter: node() })
-
-  .onBeforeHandle(({ set }: any) => {
-    set.headers["Access-Control-Allow-Origin"] = "http://localhost:3000";
-    set.headers["Access-Control-Allow-Methods"] = "GET, POST, PATCH, DELETE, OPTIONS";
-    set.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization";
-  })
-
-  .options("/*", ({ set }: any) => {
-    set.headers["Access-Control-Allow-Origin"] = "http://localhost:3000";
-    set.headers["Access-Control-Allow-Methods"] = "GET, POST, PATCH, DELETE, OPTIONS";
-    set.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization";
-    return "";
-  })
+  .use(cors({ origin: true, allowedHeaders: ["Content-Type", "Authorization"], methods: ["GET","POST","PUT","DELETE","OPTIONS"], credentials: true }))
 
   .get("/health", () => ({ status: "ok", service: "rapid-ledger-api", version: "1.0.0", timestamp: new Date().toISOString() }))
 
@@ -173,6 +162,10 @@ const app = new Elysia({ adapter: node() })
       const nextStatus = agreeRoles.length > 0 ? "awaiting_agreement" : "approved";
       const now = new Date().toISOString();
       run(`UPDATE RapidDocument SET status='${nextStatus}', submittedAt='${now}', updatedAt='${now}' WHERE id='${params.id}'`);
+      for (const ar of agreeRoles) {
+        const apId = `apr${Math.random().toString(36).slice(2,14)}`;
+        run(`INSERT OR IGNORE INTO Approval (id,documentId,approverId,status,createdAt,updatedAt) VALUES ('${apId}','${params.id}','${ar.userId}','pending','${now}','${now}')`);
+      }
       const updated = q(`SELECT * FROM RapidDocument WHERE id='${params.id}' LIMIT 1`);
       if (!updated.length) return { error: { message: "Not found" } };
       const result = updated[0];
@@ -473,6 +466,16 @@ const app = new Elysia({ adapter: node() })
         const raId = `cmp${Math.random().toString(36).slice(2, 14)}`;
         run(`INSERT INTO RapidRoleAssignment (id,documentId,roleType,userId,createdAt) VALUES ('${raId}','${newId}','${r.roleType}','${r.userId}','${now}')`);
       }
+
+      // Copy evidence to new version
+      const evidences = q(`SELECT type,title,urlOrPath,description,uploadedBy FROM Evidence WHERE documentId='${params.id}'`);
+      for (const ev of evidences) {
+        const evId = `cmp${Math.random().toString(36).slice(2, 14)}`;
+        run(`INSERT INTO Evidence (id,documentId,type,title,urlOrPath,description,uploadedBy,createdAt) VALUES ('${evId}','${newId}','${ev.type}','${esc(ev.title)}','${esc(ev.urlOrPath ?? "")}','${esc(ev.description ?? "")}','${ev.uploadedBy}','${now}')`);
+      }
+
+      // Fix createdBy — should be original document creator, not the decider
+      run(`UPDATE RapidDocument SET createdBy='${doc.createdBy}' WHERE id='${newId}'`);
 
       // Audit
       const auditId = `cmp${Math.random().toString(36).slice(2, 14)}`;

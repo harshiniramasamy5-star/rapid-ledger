@@ -10,6 +10,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@elysiajs/cors": "^1.4.2",
     "@elysiajs/node": "^1.1.1",
     "@prisma/client": "^5.22.0",
     "bcryptjs": "^2.4.3",
