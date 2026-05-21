@@ -21,7 +21,7 @@ async function main() {
     await prisma.user.upsert({
       where: { email: u.email },
       update: { passwordHash: password, isActive: true, updatedAt: now },
-      create: { ...u, passwordHash: password, isActive: true, createdAt: now, updatedAt: now },
+      create: { ...u, passwordHash: password, isActive: true, createdAt: now, updatedAt: now } as any,
     });
     console.log(`✓ ${u.email}`);
   }

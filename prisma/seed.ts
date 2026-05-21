@@ -1,4 +1,4 @@
-import { PrismaClient } from "../apps/api/node_modules/@prisma/client";
+import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient({
@@ -16,7 +16,7 @@ async function main() {
     create: {
       name: "Admin User",
       email: "admin@rapid.com",
-      passwordHash: await hash("Admin@1234"),
+      passwordHash: await hash("password123"),
       role: "admin",
       department: "Management",
     },
@@ -28,7 +28,7 @@ async function main() {
     create: {
       name: "Document Creator",
       email: "creator@rapid.com",
-      passwordHash: await hash("Creator@1234"),
+      passwordHash: await hash("password123"),
       role: "creator",
       department: "Operations",
     },
@@ -40,7 +40,7 @@ async function main() {
     create: {
       name: "Risk Recommender",
       email: "recommender@rapid.com",
-      passwordHash: await hash("Recommender@1234"),
+      passwordHash: await hash("password123"),
       role: "recommender",
       department: "Risk",
     },
@@ -52,7 +52,7 @@ async function main() {
     create: {
       name: "Senior Approver",
       email: "approver@rapid.com",
-      passwordHash: await hash("Approver@1234"),
+      passwordHash: await hash("password123"),
       role: "approver",
       department: "Finance",
     },
@@ -64,7 +64,7 @@ async function main() {
     create: {
       name: "Decision Owner",
       email: "decision@rapid.com",
-      passwordHash: await hash("Decision@1234"),
+      passwordHash: await hash("password123"),
       role: "decision_owner",
       department: "Leadership",
     },
@@ -76,7 +76,7 @@ async function main() {
     create: {
       name: "Task Performer",
       email: "performer@rapid.com",
-      passwordHash: await hash("Performer@1234"),
+      passwordHash: await hash("password123"),
       role: "performer",
       department: "Operations",
     },
@@ -88,7 +88,7 @@ async function main() {
     create: {
       name: "Audit Officer",
       email: "auditor@rapid.com",
-      passwordHash: await hash("Auditor@1234"),
+      passwordHash: await hash("password123"),
       role: "auditor",
       department: "Compliance",
     },
