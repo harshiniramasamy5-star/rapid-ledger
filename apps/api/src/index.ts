@@ -1,545 +1,481 @@
-
-function handleApproval(params: any, body: any, headers: any, set: any, approvalStatus: string, docStatus: string) {
-  const auth = headers["authorization"];
-  if (!auth) { set.status = 401; return { error: { message: "Auth required" } }; }
-  try {
-    const { execSync } = require("child_process");
-    const pathLib = require("path");
-    const DB = pathLib.join(process.env.HOME, "rapid-ledger", "apps", "api", "dev.db");
-    function q(sql: string) {
-      try { const r = execSync(`sqlite3 -json "${DB}" ${JSON.stringify(sql)}`,{stdio:"pipe"}).toString().trim(); return r?JSON.parse(r):[]; } catch { return []; }
-    }
-    function run(sql: string) { try { execSync(`sqlite3 "${DB}" ${JSON.stringify(sql)}`,{stdio:"pipe"}); } catch(e:any){console.error(e.message);} }
-    const now = new Date().toISOString();
-    const notes = body?.notes ?? "";
-    run(`UPDATE Approval SET status='${approvalStatus}', notes='${notes}', updatedAt='${now}' WHERE id='${params.approvalId}'`);
-    if (approvalStatus === "approved") {
-      const pending = q(`SELECT * FROM Approval WHERE documentId='${params.id}' AND status='pending'`);
-      if (pending.length === 0) {
-        run(`UPDATE RapidDocument SET status='approved', updatedAt='${now}' WHERE id='${params.id}'`);
-      }
-    } else {
-      run(`UPDATE RapidDocument SET status='${docStatus}', updatedAt='${now}' WHERE id='${params.id}'`);
-    }
-    return { ok: true, status: approvalStatus };
-  } catch(e: any) { set.status = 500; return { error: { message: e.message } }; }
-}
-
 import { Elysia } from "elysia";
 import { node } from "@elysiajs/node";
 import { cors } from "@elysiajs/cors";
-import { execSync } from "child_process";
+import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import path from "path";
 
-const DB = path.join(process.env.HOME!, "rapid-ledger", "apps", "api", "dev.db");
+const prisma = new PrismaClient();
 const JWT_SECRET = process.env.JWT_SECRET ?? "rapid-ledger-dev-secret";
 const PORT = parseInt(process.env.PORT ?? "3001");
 
-function query(sql: string): any[] {
+function getPayload(auth: string) {
+  return jwt.verify(auth.slice(7), JWT_SECRET) as any;
+}
+
+function requireAuth(headers: any, set: any) {
+  if (!headers["authorization"]) {
+    set.status = 401;
+    throw new Error("Auth required");
+  }
   try {
-    const result = execSync(`sqlite3 -json "${DB}" ${JSON.stringify(sql)}`, { stdio: "pipe" }).toString().trim();
-    return result ? JSON.parse(result) : [];
-  } catch { return []; }
+    return getPayload(headers["authorization"]);
+  } catch {
+    set.status = 401;
+    throw new Error("Invalid token");
+  }
 }
 
 const app = new Elysia({ adapter: node() })
-  .use(cors({ origin: true, allowedHeaders: ["Content-Type", "Authorization"], methods: ["GET","POST","PUT","DELETE","OPTIONS"], credentials: true }))
+  .use(cors({
+    origin: true,
+    allowedHeaders: ["Content-Type", "Authorization"],
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    credentials: true,
+  }))
 
-  .get("/health", () => ({ status: "ok", service: "rapid-ledger-api", version: "1.0.0", timestamp: new Date().toISOString() }))
+  // ── Health ──
+  
+async function logAudit(actorId: string, action: string, objectType: string, objectId: string, details?: string, documentId?: string) {
+  try {
+    await prisma.auditLog.create({
+      data: { actorId, action, objectType, objectId, details: details ?? null, documentId: documentId ?? null }
+    });
+  } catch (e) { console.error("Audit log error:", e); }
+}
 
+
+app
+.get("/health", () => ({
+    status: "ok", service: "rapid-ledger-api",
+    version: "2.0.0", db: "postgresql",
+    timestamp: new Date().toISOString(),
+  }))
+
+  // ── Auth ──
   .post("/auth/login", async ({ body, set }: any) => {
     const { email, password } = body;
-    const users = query(`SELECT * FROM User WHERE email='${email}' AND isActive=1 LIMIT 1`);
-    if (!users.length) { set.status = 401; return { error: { message: "Invalid email or password" } }; }
-    const user = users[0];
+    const user = await prisma.user.findUnique({ where: { email } });
+    if (!user || !user.isActive) {
+      set.status = 401;
+      return { error: { message: "Invalid email or password" } };
+    }
     const valid = await bcrypt.compare(password, user.passwordHash);
-    if (!valid) { set.status = 401; return { error: { message: "Invalid email or password" } }; }
-    const token = jwt.sign({ userId: user.id, email: user.email, role: user.role }, JWT_SECRET, { expiresIn: "7d" });
+    if (!valid) {
+      set.status = 401;
+      return { error: { message: "Invalid email or password" } };
+    }
+    const token = jwt.sign(
+      { userId: user.id, email: user.email, role: user.role },
+      JWT_SECRET, { expiresIn: "7d" }
+    );
     const { passwordHash, ...safe } = user;
     return { token, user: safe };
   })
 
-  .get("/auth/me", ({ headers, set }: any) => {
-    const auth = headers["authorization"];
-    if (!auth) { set.status = 401; return { error: { message: "Auth required" } }; }
+  .get("/auth/me", async ({ headers, set }: any) => {
     try {
-      const payload = jwt.verify(auth.slice(7), JWT_SECRET) as any;
-      const users = query(`SELECT id,name,email,role,department,isActive,createdAt,updatedAt FROM User WHERE id='${payload.userId}' LIMIT 1`);
-      if (!users.length) { set.status = 401; return { error: { message: "User not found" } }; }
-      return users[0];
-    } catch { set.status = 401; return { error: { message: "Invalid token" } }; }
-  })
-
-  .get("/users", ({ headers, set }: any) => {
-    const auth = headers["authorization"];
-    if (!auth) { set.status = 401; return { error: { message: "Auth required" } }; }
-    try {
-      jwt.verify(auth.slice(7), JWT_SECRET);
-      return query(`SELECT id,name,email,role,department,isActive,createdAt,updatedAt FROM User ORDER BY name`);
-    } catch { set.status = 401; return { error: { message: "Invalid token" } }; }
-  })
-
-  .get("/documents", ({ headers, set }: any) => {
-    const auth = headers["authorization"];
-    if (!auth) { set.status = 401; return { error: { message: "Auth required" } }; }
-    try {
-      jwt.verify(auth.slice(7), JWT_SECRET);
-      const docs = query(`SELECT * FROM RapidDocument ORDER BY updatedAt DESC`);
-      return docs.map((doc: any) => ({
-        ...doc,
-        complianceImpact: doc.complianceImpact === 1,
-        roleAssignments: query(`SELECT r.*,u.name,u.email FROM RapidRoleAssignment r JOIN User u ON r.userId=u.id WHERE r.documentId='${doc.id}'`),
-        evidence: query(`SELECT * FROM Evidence WHERE documentId='${doc.id}'`),
-      }));
-    } catch { set.status = 401; return { error: { message: "Invalid token" } }; }
-  })
-
-
-  .get("/documents/:id", ({ params, headers, set }: any) => {
-    const auth = headers["authorization"];
-    if (!auth) { set.status = 401; return { error: { message: "Auth required" } }; }
-    try {
-      const { execSync } = require("child_process");
-      const path = require("path");
-      const DB = path.join(process.env.HOME, "rapid-ledger", "apps", "api", "dev.db");
-      function q(sql: string) {
-        try {
-          const r = execSync(`sqlite3 -json "${DB}" ${JSON.stringify(sql)}`, {stdio:"pipe"}).toString().trim();
-          return r ? JSON.parse(r) : [];
-        } catch { return []; }
-      }
-      const docs = q(`SELECT * FROM RapidDocument WHERE id='${params.id}' LIMIT 1`);
-      if (!docs.length) { set.status = 404; return { error: { message: "Not found" } }; }
-      const doc = docs[0];
-      doc.complianceImpact = doc.complianceImpact === 1;
-      doc.roleAssignments = q(`SELECT r.*,u.name,u.email FROM RapidRoleAssignment r JOIN User u ON r.userId=u.id WHERE r.documentId='${params.id}'`);
-      doc.evidence = q(`SELECT * FROM Evidence WHERE documentId='${params.id}'`);
-      return doc;
-    } catch { set.status = 401; return { error: { message: "Invalid token" } }; }
-  })
-
-  .post("/documents/:id/submit", ({ params, headers, set }: any) => {
-    const auth = headers["authorization"];
-    if (!auth) { set.status = 401; return { error: { message: "Auth required" } }; }
-    try {
-      const { execSync } = require("child_process");
-      const path = require("path");
-      const DB = path.join(process.env.HOME, "rapid-ledger", "apps", "api", "dev.db");
-      function q(sql: string) {
-        try {
-          const r = execSync(`sqlite3 -json "${DB}" ${JSON.stringify(sql)}`, {stdio:"pipe"}).toString().trim();
-          return r ? JSON.parse(r) : [];
-        } catch { return []; }
-      }
-      function run(sql: string) {
-        try { execSync(`sqlite3 "${DB}" ${JSON.stringify(sql)}`, {stdio:"pipe"}); } catch(e: any) { console.error(e.message); }
-      }
-      const docs = q(`SELECT * FROM RapidDocument WHERE id='${params.id}' LIMIT 1`);
-      if (!docs.length) { set.status = 404; return { error: { message: "Not found" } }; }
-      const doc = docs[0];
-      if (doc.status !== "draft") { set.status = 422; return { error: { message: "Only draft documents can be submitted" } }; }
-      const roles = q(`SELECT * FROM RapidRoleAssignment WHERE documentId='${params.id}'`);
-      const errors = [];
-      if (!roles.find((r: any) => r.roleType === "recommend")) errors.push({ message: "Recommend owner is required" });
-      if (!roles.find((r: any) => r.roleType === "perform"))   errors.push({ message: "Perform owner is required" });
-      const deciders = roles.filter((r: any) => r.roleType === "decide");
-      if (deciders.length === 0) errors.push({ message: "Exactly one Decide owner is required" });
-      if (deciders.length > 1)   errors.push({ message: "Only one Decide owner is allowed" });
-      if ((doc.riskLevel === "high" || doc.riskLevel === "critical") && !roles.find((r: any) => r.roleType === "agree")) {
-        errors.push({ message: "High risk decisions require at least one Agree approver" });
-      }
-      const evidence = q(`SELECT * FROM Evidence WHERE documentId='${params.id}'`);
-      if (doc.complianceImpact === 1 && evidence.length === 0) {
-        errors.push({ message: "Compliance-impacting decisions require at least one evidence item" });
-      }
-      if (errors.length > 0) {
-        set.status = 422;
-        return { error: { code: "VALIDATION_ERROR", message: "Document failed validation", details: errors } };
-      }
-      const agreeRoles = roles.filter((r: any) => r.roleType === "agree");
-      const nextStatus = agreeRoles.length > 0 ? "awaiting_agreement" : "approved";
-      const now = new Date().toISOString();
-      run(`UPDATE RapidDocument SET status='${nextStatus}', submittedAt='${now}', updatedAt='${now}' WHERE id='${params.id}'`);
-      for (const ar of agreeRoles) {
-        const apId = `apr${Math.random().toString(36).slice(2,14)}`;
-        run(`INSERT OR IGNORE INTO Approval (id,documentId,approverId,status,createdAt,updatedAt) VALUES ('${apId}','${params.id}','${ar.userId}','pending','${now}','${now}')`);
-      }
-      const updated = q(`SELECT * FROM RapidDocument WHERE id='${params.id}' LIMIT 1`);
-      if (!updated.length) return { error: { message: "Not found" } };
-      const result = updated[0];
-      result.complianceImpact = result.complianceImpact === 1;
-      result.roleAssignments = q(`SELECT r.*,u.name,u.email FROM RapidRoleAssignment r JOIN User u ON r.userId=u.id WHERE r.documentId='${params.id}'`);
-      result.evidence = q(`SELECT * FROM Evidence WHERE documentId='${params.id}'`);
-      return result;
-    } catch(e: any) { set.status = 500; return { error: { message: e.message } }; }
-  })
-
-
-  .get("/approvals/my", ({ headers, set }: any) => {
-    const auth = headers["authorization"];
-    if (!auth) { set.status = 401; return { error: { message: "Auth required" } }; }
-    try {
-      const jwtLib = require("jsonwebtoken");
-      const payload = jwtLib.verify(auth.slice(7), JWT_SECRET) as any;
-      const { execSync } = require("child_process");
-      const pathLib = require("path");
-      const DB = pathLib.join(process.env.HOME, "rapid-ledger", "apps", "api", "dev.db");
-      function q(sql: string) {
-        try { const r = execSync(`sqlite3 -json "${DB}" ${JSON.stringify(sql)}`,{stdio:"pipe"}).toString().trim(); return r?JSON.parse(r):[]; } catch { return []; }
-      }
-      const approvals = q(`SELECT * FROM Approval WHERE approverId='${payload.userId}' AND status='pending'`);
-      return approvals.map((a: any) => {
-        const docs = q(`SELECT * FROM RapidDocument WHERE id='${a.documentId}' LIMIT 1`);
-        a.document = docs[0] ?? null;
-        return a;
+      const p = requireAuth(headers, set);
+      const user = await prisma.user.findUnique({
+        where: { id: p.userId },
+        select: { id:true, name:true, email:true, role:true, department:true, isActive:true, createdAt:true, updatedAt:true },
       });
-    } catch(e: any) { set.status = 401; return { error: { message: "Invalid token" } }; }
+      if (!user) { set.status = 401; return { error: { message: "User not found" } }; }
+      return user;
+    } catch (e: any) { set.status = 401; return { error: { message: e.message } }; }
+  })
+
+  // ── Admin: Users ──
+  .get("/admin/users", async ({ headers, set }: any) => {
+    try {
+      const p = requireAuth(headers, set);
+      if (p.role !== "admin") { set.status = 403; return { error: { message: "Admin only" } }; }
+      return await prisma.user.findMany({
+        orderBy: { createdAt: "asc" },
+        select: { id:true, name:true, email:true, role:true, department:true, isActive:true, createdAt:true, updatedAt:true },
+      });
+    } catch (e: any) { return { error: { message: e.message } }; }
+  })
+
+  .post("/admin/users", async ({ body, headers, set }: any) => {
+    try {
+      const p = requireAuth(headers, set);
+      if (p.role !== "admin") { set.status = 403; return { error: { message: "Admin only" } }; }
+      const { name, email, password, role, department } = body;
+      const exists = await prisma.user.findUnique({ where: { email } });
+      if (exists) { set.status = 409; return { error: { message: "Email already exists" } }; }
+      const passwordHash = await bcrypt.hash(password, 10);
+      const user = await prisma.user.create({
+        data: { name, email, passwordHash, role, department: department || null },
+        select: { id:true, name:true, email:true, role:true, department:true, isActive:true, createdAt:true },
+      });
+      set.status = 201;
+      return user;
+    } catch (e: any) { set.status = 500; return { error: { message: e.message } }; }
+  })
+
+  .post("/admin/users/:id/deactivate", async ({ params, headers, set }: any) => {
+    try {
+      const p = requireAuth(headers, set);
+      if (p.role !== "admin") { set.status = 403; return { error: { message: "Admin only" } }; }
+      if (p.userId === params.id) { set.status = 400; return { error: { message: "Cannot deactivate yourself" } }; }
+      const user = await prisma.user.update({
+        where: { id: params.id },
+        data: { isActive: false },
+        select: { id:true, name:true, isActive:true },
+      });
+      return { ok: true, user };
+    } catch (e: any) { set.status = 500; return { error: { message: e.message } }; }
+  })
+
+  .post("/admin/users/:id/activate", async ({ params, headers, set }: any) => {
+    try {
+      const p = requireAuth(headers, set);
+      if (p.role !== "admin") { set.status = 403; return { error: { message: "Admin only" } }; }
+      const user = await prisma.user.update({
+        where: { id: params.id },
+        data: { isActive: true },
+        select: { id:true, name:true, isActive:true },
+      });
+      return { ok: true, user };
+    } catch (e: any) { set.status = 500; return { error: { message: e.message } }; }
+  })
+
+  // ── Users ──
+  .get("/users", async ({ headers, set }: any) => {
+    try {
+      requireAuth(headers, set);
+      return await prisma.user.findMany({
+        where: { isActive: true },
+        orderBy: { name: "asc" },
+        select: { id:true, name:true, email:true, role:true, department:true },
+      });
+    } catch (e: any) { set.status = 500; return { error: { message: e.message } }; }
+  })
+
+  // ── Documents ──
+  .get("/documents", async ({ headers, set }: any) => {
+    try {
+      requireAuth(headers, set);
+      const docs = await prisma.rapidDocument.findMany({
+        orderBy: { updatedAt: "desc" },
+        include: { RapidRoleAssignment: { include: { User: { select: { id:true, name:true, email:true } } } }, Evidence: true },
+      });
+      return docs;
+    } catch (e: any) { set.status = 500; return { error: { message: e.message } }; }
+  })
+
+  .get("/documents/:id", async ({ params, headers, set }: any) => {
+    try {
+      requireAuth(headers, set);
+      const doc = await prisma.rapidDocument.findUnique({
+        where: { id: params.id },
+        include: { RapidRoleAssignment: { include: { User: { select: { id:true, name:true, email:true } } } }, Evidence: true },
+      });
+      if (!doc) { set.status = 404; return { error: { message: "Not found" } }; }
+      return doc;
+    } catch (e: any) { set.status = 500; return { error: { message: e.message } }; }
+  })
+
+  .post("/documents", async ({ body, headers, set }: any) => {
+    try {
+      const p = requireAuth(headers, set);
+      const count = await prisma.rapidDocument.count();
+      const code  = "RAPID-" + String(count + 1).padStart(3, "0");
+      const { randomBytes } = await import("crypto");
+      const newId = "doc_" + randomBytes(8).toString("hex");
+      const doc   = await prisma.rapidDocument.create({
+        data: {
+          id: newId,
+          documentCode: code,
+          title: body.title,
+          decisionSummary: body.decisionSummary ?? "",
+          businessContext: body.businessContext ?? "",
+          problemStatement: body.problemStatement ?? "",
+          proposedDecision: body.proposedDecision ?? "",
+          alternativesConsidered: body.alternativesConsidered ?? "",
+          riskLevel: body.riskLevel,
+          complianceImpact: !!body.complianceImpact,
+          department: body.department ?? "",
+          deadline: body.deadline ? new Date(body.deadline) : null,
+          status: "draft",
+          version: 1,
+          createdBy: p.userId,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      });
+      set.status = 201;
+      return doc;
+    } catch (e: any) { set.status = 500; return { error: { message: e.message } }; }
+  })
+
+  .post("/documents/:id/roles", async ({ params, body, headers, set }: any) => {
+    try {
+      requireAuth(headers, set);
+      const role = await prisma.rapidRoleAssignment.create({
+        data: { documentId: params.id, roleType: body.roleType, userId: body.userId },
+      });
+      set.status = 201;
+      return { ok: true, id: role.id };
+    } catch (e: any) { set.status = 500; return { error: { message: e.message } }; }
+  })
+
+  .post("/documents/:id/evidence", async ({ params, body, headers, set }: any) => {
+    try {
+      const p = requireAuth(headers, set);
+      const ev = await prisma.evidence.create({
+        data: {
+          documentId: params.id,
+          type: body.type,
+          title: body.title ?? "",
+          urlOrPath: body.urlOrPath ?? "",
+          description: body.description ?? "",
+          uploadedBy: p.userId,
+        },
+      });
+      set.status = 201;
+      return { ok: true, id: ev.id };
+    } catch (e: any) { set.status = 500; return { error: { message: e.message } }; }
+  })
+
+  .post("/documents/:id/submit", async ({ params, headers, set }: any) => {
+    try {
+      const p = requireAuth(headers, set);
+      const doc = await prisma.rapidDocument.findUnique({
+        where: { id: params.id },
+        include: { RapidRoleAssignment: true, Evidence: true },
+      });
+      if (!doc) { set.status = 404; return { error: { message: "Not found" } }; }
+      if (doc.status !== "draft") { set.status = 422; return { error: { message: "Only draft documents can be submitted" } }; }
+
+      const roles   = doc.RapidRoleAssignment;
+      const errors: string[] = [];
+      if (!roles.find(r => r.roleType === "recommend")) errors.push("Recommend owner is required");
+      if (!roles.find(r => r.roleType === "perform"))   errors.push("Perform owner is required");
+      const deciders = roles.filter(r => r.roleType === "decide");
+      if (deciders.length === 0) errors.push("Exactly one Decide owner is required");
+      if (deciders.length > 1)   errors.push("Only one Decide owner is allowed");
+      if (["high","critical"].includes(doc.riskLevel) && !roles.find(r => r.roleType === "agree")) {
+        errors.push("High risk decisions require at least one Agree approver");
+      }
+      if (doc.complianceImpact && doc.Evidence.length === 0) {
+        errors.push("Compliance-impacting decisions require at least one evidence item");
+      }
+      if (errors.length > 0) { set.status = 422; return { error: { message: errors[0], details: errors } }; }
+
+      const agreeRoles = roles.filter(r => r.roleType === "agree");
+      const nextStatus = agreeRoles.length > 0 ? "awaiting_agreement" : "approved";
+
+      await prisma.rapidDocument.update({
+        where: { id: params.id },
+        data: { status: nextStatus, submittedAt: new Date() },
+      });
+
+      for (const ar of agreeRoles) {
+        await prisma.approval.create({
+          data: { documentId: params.id, approverId: ar.userId, status: "pending" },
+        });
+      }
+      await logAudit(p.userId, "document_submitted", "RapidDocument", params.id, `status:${nextStatus}`, params.id);
+      await logAudit(p.userId, "document_submitted", "RapidDocument", params.id, `Submitted as ${nextStatus}`, params.id);
+
+      return await prisma.rapidDocument.findUnique({
+        where: { id: params.id },
+        include: { RapidRoleAssignment: { include: { User: true } }, Evidence: true },
+      });
+    } catch (e: any) { set.status = 500; return { error: { message: e.message } }; }
+  })
+
+  // ── Approvals ──
+  .get("/approvals/my", async ({ headers, set }: any) => {
+    try {
+      const p = requireAuth(headers, set);
+      const approvals = await prisma.approval.findMany({
+        where: { approverId: p.userId, status: "pending" },
+        include: { document: { include: { RapidRoleAssignment: true, Evidence: true } } },
+      });
+      return approvals;
+    } catch (e: any) { set.status = 401; return { error: { message: e.message } }; }
   })
 
   .post("/documents/:id/approvals/:approvalId/approve", async ({ params, body, headers, set }: any) => {
-    return handleApproval(params, body, headers, set, "approved", "approved");
-  })
-  .post("/documents/:id/approvals/:approvalId/reject", async ({ params, body, headers, set }: any) => {
-    return handleApproval(params, body, headers, set, "rejected", "rejected");
-  })
-  .post("/documents/:id/approvals/:approvalId/request-changes", async ({ params, body, headers, set }: any) => {
-    return handleApproval(params, body, headers, set, "changes_requested", "needs_changes");
-  })
-
-
-  .post("/documents/:id/finalize", ({ params, headers, set }: any) => {
-    const auth = headers["authorization"];
-    if (!auth) { set.status = 401; return { error: { message: "Auth required" } }; }
     try {
-      const jwtLib = require("jsonwebtoken");
-      const payload = jwtLib.verify(auth.slice(7), JWT_SECRET) as any;
-      const { execSync } = require("child_process");
-      const pathLib = require("path");
-      const DB = pathLib.join(process.env.HOME, "rapid-ledger", "apps", "api", "dev.db");
-      function q(sql: string) {
-        try { const r = execSync(`sqlite3 -json "${DB}" ${JSON.stringify(sql)}`,{stdio:"pipe"}).toString().trim(); return r?JSON.parse(r):[]; } catch { return []; }
-      }
-      function run(sql: string) { try { execSync(`sqlite3 "${DB}" ${JSON.stringify(sql)}`,{stdio:"pipe"}); } catch(e:any){console.error(e.message);} }
-
-      const docs = q(`SELECT * FROM RapidDocument WHERE id='${params.id}' LIMIT 1`);
-      if (!docs.length) { set.status = 404; return { error: { message: "Document not found" } }; }
-      const doc = docs[0];
-
-      if (doc.status !== "approved") {
-        set.status = 422;
-        return { error: { message: `Document must be approved before finalizing. Current status: ${doc.status}` } };
-      }
-
-      const roles = q(`SELECT * FROM RapidRoleAssignment WHERE documentId='${params.id}'`);
-      const decideRole = roles.find((r: any) => r.roleType === "decide");
-      const performRole = roles.find((r: any) => r.roleType === "perform");
-
-      if (!decideRole) { set.status = 422; return { error: { message: "No Decide owner assigned" } }; }
-      if (decideRole.userId !== payload.userId && payload.role !== "admin") {
-        set.status = 403;
-        return { error: { message: "Only the Decide owner can finalize this document" } };
-      }
-
-      const now = new Date().toISOString();
-      run(`UPDATE RapidDocument SET status='finalized', finalizedAt='${now}', updatedAt='${now}' WHERE id='${params.id}'`);
-
-      const ledgerId = 'c' + Date.now().toString(36) + Math.random().toString(36).slice(2,8);
-      run(`INSERT OR REPLACE INTO LedgerEntry (id,documentId,documentCode,title,finalDecision,decideOwnerId,performOwnerId,riskLevel,complianceImpact,version,finalizedAt,createdAt) VALUES ('${ledgerId}','${params.id}','${doc.documentCode}','${doc.title}','${doc.proposedDecision ?? doc.decisionSummary}','${decideRole.userId}','${performRole?.userId ?? decideRole.userId}','${doc.riskLevel}',${doc.complianceImpact},${doc.version},'${now}','${now}')`);
-
-      const updated = q(`SELECT * FROM RapidDocument WHERE id='${params.id}' LIMIT 1`);
-      const result = updated[0];
-      result.roleAssignments = q(`SELECT r.*,u.name,u.email FROM RapidRoleAssignment r JOIN User u ON r.userId=u.id WHERE r.documentId='${params.id}'`);
-      result.evidence = q(`SELECT * FROM Evidence WHERE documentId='${params.id}'`);
-      return result;
-    } catch(e: any) { set.status = 500; return { error: { message: e.message } }; }
-  })
-
-  .get("/ledger", ({ headers, set }: any) => {
-    const auth = headers["authorization"];
-    if (!auth) { set.status = 401; return { error: { message: "Auth required" } }; }
-    try {
-      const { execSync } = require("child_process");
-      const pathLib = require("path");
-      const DB = pathLib.join(process.env.HOME, "rapid-ledger", "apps", "api", "dev.db");
-      function q(sql: string) {
-        try { const r = execSync(`sqlite3 -json "${DB}" ${JSON.stringify(sql)}`,{stdio:"pipe"}).toString().trim(); return r?JSON.parse(r):[]; } catch { return []; }
-      }
-      const entries = q(`SELECT * FROM LedgerEntry ORDER BY finalizedAt DESC`);
-      return entries.map((e: any) => {
-        const decider = q(`SELECT id,name,email FROM User WHERE id='${e.decideOwnerId}' LIMIT 1`);
-        const performer = q(`SELECT id,name,email FROM User WHERE id='${e.performOwnerId}' LIMIT 1`);
-        e.decideOwner = decider[0] ?? null;
-        e.performOwner = performer[0] ?? null;
-        return e;
+      requireAuth(headers, set);
+      await prisma.approval.update({
+        where: { id: params.approvalId },
+        data: { status: "approved", notes: body?.notes ?? "" },
       });
-    } catch(e: any) { set.status = 500; return { error: { message: e.message } }; }
-  })
-
-
-  .post("/documents", async ({ body, headers, set }: any) => {
-    const auth = headers["authorization"];
-    if (!auth) { set.status = 401; return { error: { message: "Auth required" } }; }
-    try {
-      const jwtLib = require("jsonwebtoken");
-      const payload = jwtLib.verify(auth.slice(7), JWT_SECRET) as any;
-      const { execSync } = require("child_process");
-      const pathLib = require("path");
-      const DB = pathLib.join(process.env.HOME, "rapid-ledger", "apps", "api", "dev.db");
-      function q(sql: string) {
-        try { const r = execSync(`sqlite3 -json "${DB}" ${JSON.stringify(sql)}`,{stdio:"pipe"}).toString().trim(); return r?JSON.parse(r):[]; } catch { return []; }
+      const pending = await prisma.approval.count({ where: { documentId: params.id, status: "pending" } });
+      if (pending === 0) {
+        await prisma.rapidDocument.update({ where: { id: params.id }, data: { status: "approved" } });
       }
-      function run(sql: string) { try { execSync(`sqlite3 "${DB}" ${JSON.stringify(sql)}`,{stdio:"pipe"}); } catch(e:any){console.error(e.message);} }
-
-      const count = q(`SELECT COUNT(*) as c FROM RapidDocument`);
-      const num = (count[0]?.c ?? 0) + 1;
-      const code = "RAPID-" + String(num).padStart(3,"0");
-      const id = "c" + Date.now().toString(36) + Math.random().toString(36).slice(2,8);
-      const now = new Date().toISOString();
-      const deadline = new Date(body.deadline).toISOString();
-      const compliance = body.complianceImpact ? 1 : 0;
-
-      run(`INSERT INTO RapidDocument (id,documentCode,title,decisionSummary,businessContext,problemStatement,proposedDecision,alternativesConsidered,riskLevel,complianceImpact,department,deadline,status,version,createdBy,createdAt,updatedAt) VALUES ('${id}','${code}','${body.title.replace(/'/g,"''")}','${(body.decisionSummary??"").replace(/'/g,"''")}','${(body.businessContext??"").replace(/'/g,"''")}','${(body.problemStatement??"").replace(/'/g,"''")}','${(body.proposedDecision??"").replace(/'/g,"''")}','${(body.alternativesConsidered??"").replace(/'/g,"''")}','${body.riskLevel}',${compliance},'${body.department}','${deadline}','draft',1,'${payload.userId}','${now}','${now}')`);
-
-      const docs = q(`SELECT * FROM RapidDocument WHERE id='${id}' LIMIT 1`);
-      set.status = 201;
-      return docs[0];
-    } catch(e: any) { set.status = 500; return { error: { message: e.message } }; }
+      await logAudit(p.userId, "approval_added", "RapidDocument", params.id, "Approved", params.id);
+      await logAudit(p.userId, "approval_added", "RapidDocument", params.id, "approved", params.id);
+      return { ok: true, status: "approved" };
+    } catch (e: any) { set.status = 500; return { error: { message: e.message } }; }
   })
 
-  .post("/documents/:id/roles", ({ params, body, headers, set }: any) => {
-    const auth = headers["authorization"];
-    if (!auth) { set.status = 401; return { error: { message: "Auth required" } }; }
+  .post("/documents/:id/approvals/:approvalId/reject", async ({ params, body, headers, set }: any) => {
     try {
-      const { execSync } = require("child_process");
-      const pathLib = require("path");
-      const DB = pathLib.join(process.env.HOME, "rapid-ledger", "apps", "api", "dev.db");
-      function run(sql: string) { try { execSync(`sqlite3 "${DB}" ${JSON.stringify(sql)}`,{stdio:"pipe"}); } catch(e:any){console.error(e.message);} }
-      const id = "c" + Date.now().toString(36) + Math.random().toString(36).slice(2,8);
-      const now = new Date().toISOString();
-      run(`INSERT OR REPLACE INTO RapidRoleAssignment (id,documentId,roleType,userId,createdAt) VALUES ('${id}','${params.id}','${body.roleType}','${body.userId}','${now}')`);
-      set.status = 201;
-      return { ok: true, id };
-    } catch(e: any) { set.status = 500; return { error: { message: e.message } }; }
+      requireAuth(headers, set);
+      await prisma.approval.update({ where: { id: params.approvalId }, data: { status: "rejected", notes: body?.notes ?? "" } });
+      await prisma.rapidDocument.update({ where: { id: params.id }, data: { status: "rejected" } });
+      await logAudit(p.userId, "document_rejected", "RapidDocument", params.id, "Rejected", params.id);
+      await logAudit(p.userId, "document_rejected", "RapidDocument", params.id, "rejected", params.id);
+      return { ok: true, status: "rejected" };
+    } catch (e: any) { set.status = 500; return { error: { message: e.message } }; }
   })
 
-  .post("/documents/:id/evidence", ({ params, body, headers, set }: any) => {
-    const auth = headers["authorization"];
-    if (!auth) { set.status = 401; return { error: { message: "Auth required" } }; }
+  .post("/documents/:id/approvals/:approvalId/request-changes", async ({ params, body, headers, set }: any) => {
     try {
-      const jwtLib = require("jsonwebtoken");
-      const payload = jwtLib.verify(auth.slice(7), JWT_SECRET) as any;
-      const { execSync } = require("child_process");
-      const pathLib = require("path");
-      const DB = pathLib.join(process.env.HOME, "rapid-ledger", "apps", "api", "dev.db");
-      function run(sql: string) { try { execSync(`sqlite3 "${DB}" ${JSON.stringify(sql)}`,{stdio:"pipe"}); } catch(e:any){console.error(e.message);} }
-      const id = "c" + Date.now().toString(36) + Math.random().toString(36).slice(2,8);
-      const now = new Date().toISOString();
-      run(`INSERT INTO Evidence (id,documentId,type,title,urlOrPath,description,uploadedBy,createdAt) VALUES ('${id}','${params.id}','${body.type}','${(body.title??"").replace(/'/g,"''")}','${(body.urlOrPath??"").replace(/'/g,"''")}','${(body.description??"").replace(/'/g,"''")}','${payload.userId}','${now}')`);
-      set.status = 201;
-      return { ok: true, id };
-    } catch(e: any) { set.status = 500; return { error: { message: e.message } }; }
+      requireAuth(headers, set);
+      await prisma.approval.update({ where: { id: params.approvalId }, data: { status: "changes_requested", notes: body?.notes ?? "" } });
+      await prisma.rapidDocument.update({ where: { id: params.id }, data: { status: "needs_changes" } });
+      await logAudit(p.userId, "changes_requested", "RapidDocument", params.id, "changes_requested", params.id);
+      await logAudit(p.userId, "changes_requested", "RapidDocument", params.id, "Changes requested", params.id);
+      return { ok: true, status: "changes_requested" };
+    } catch (e: any) { set.status = 500; return { error: { message: e.message } }; }
   })
 
-
-  .get("/ledger/export", ({ headers, set }: any) => {
-    const auth = headers["authorization"];
-    if (!auth) { set.status = 401; return { error: { message: "Auth required" } }; }
+  // ── Finalize ──
+  .post("/documents/:id/finalize", async ({ params, headers, set }: any) => {
     try {
-      const { execSync } = require("child_process");
-      const pathLib = require("path");
-      const DB = pathLib.join(process.env.HOME, "rapid-ledger", "apps", "api", "dev.db");
-      function q(sql: string) {
-        try { const r = execSync(`sqlite3 -json "${DB}" ${JSON.stringify(sql)}`,{stdio:"pipe"}).toString().trim(); return r?JSON.parse(r):[]; } catch { return []; }
+      const p = requireAuth(headers, set);
+      const doc = await prisma.rapidDocument.findUnique({
+        where: { id: params.id },
+        include: { RapidRoleAssignment: true },
+      });
+      if (!doc) { set.status = 404; return { error: { message: "Not found" } }; }
+      if (doc.status !== "approved") { set.status = 422; return { error: { message: "Document must be approved first" } }; }
+
+      const decideRole   = doc.RapidRoleAssignment.find(r => r.roleType === "decide");
+      const performRole  = doc.RapidRoleAssignment.find(r => r.roleType === "perform");
+      if (!decideRole) { set.status = 422; return { error: { message: "No Decide owner assigned" } }; }
+      if (decideRole.userId !== p.userId && p.role !== "admin") {
+        set.status = 403; return { error: { message: "Only the Decide owner can finalize" } };
       }
-      const entries = q(`SELECT * FROM LedgerEntry ORDER BY finalizedAt DESC`);
-      const rows = entries.map((e: any) => {
-        const decider = q(`SELECT name,email FROM User WHERE id='${e.decideOwnerId}' LIMIT 1`);
-        const performer = q(`SELECT name,email FROM User WHERE id='${e.performOwnerId}' LIMIT 1`);
+
+      const now = new Date();
+      await prisma.rapidDocument.update({ where: { id: params.id }, data: { status: "finalized", finalizedAt: now } });
+      await logAudit(p.userId, "document_finalized", "RapidDocument", params.id, "finalized", params.id);
+      await logAudit(p.userId, "document_finalized", "RapidDocument", params.id, "Finalized", params.id);
+      await prisma.ledgerEntry.create({
+        data: {
+          documentId: params.id,
+          documentCode: doc.documentCode,
+          title: doc.title,
+          finalDecision: doc.proposedDecision ?? doc.decisionSummary ?? "",
+          decideOwnerId: decideRole.userId,
+          performOwnerId: performRole?.userId ?? decideRole.userId,
+          riskLevel: doc.riskLevel,
+          complianceImpact: doc.complianceImpact,
+          version: doc.version,
+          finalizedAt: now,
+        },
+      });
+
+      return await prisma.rapidDocument.findUnique({
+        where: { id: params.id },
+        include: { RapidRoleAssignment: { include: { User: true } }, Evidence: true },
+      });
+    } catch (e: any) { set.status = 500; return { error: { message: e.message } }; }
+  })
+
+  // ── Ledger ──
+  .get("/ledger", async ({ headers, set }: any) => {
+    try {
+      requireAuth(headers, set);
+      const entries = await prisma.ledgerEntry.findMany({
+        orderBy: { finalizedAt: "desc" },
+      });
+      const withOwners = await Promise.all(entries.map(async e => ({
+        ...e,
+        decideOwner:  await prisma.user.findUnique({ where: { id: e.decideOwnerId }, select: { id:true, name:true, email:true } }),
+        performOwner: e.performOwnerId ? await prisma.user.findUnique({ where: { id: e.performOwnerId }, select: { id:true, name:true, email:true } }) : null,
+      })));
+      return withOwners;
+    } catch (e: any) { set.status = 500; return { error: { message: e.message } }; }
+  })
+
+  .get("/ledger/export", async ({ headers, set }: any) => {
+    try {
+      requireAuth(headers, set);
+      const entries = await prisma.ledgerEntry.findMany({ orderBy: { finalizedAt: "desc" } });
+      const rows = await Promise.all(entries.map(async e => {
+        const decider   = await prisma.user.findUnique({ where: { id: e.decideOwnerId } });
+        const performer = e.performOwnerId ? await prisma.user.findUnique({ where: { id: e.performOwnerId } }) : null;
         return [
-          e.documentCode,
-          e.title.replace(/,/g,""),
-          e.finalDecision.replace(/,/g,""),
-          e.riskLevel,
-          e.complianceImpact?"Yes":"No",
-          e.version,
-          decider[0]?.name??"",
-          decider[0]?.email??"",
-          performer[0]?.name??"",
-          performer[0]?.email??"",
+          e.documentCode, e.title.replace(/,/g,""), (e.finalDecision ?? "").replace(/,/g,""),
+          e.riskLevel, e.complianceImpact ? "Yes" : "No", e.version,
+          decider?.name ?? "", decider?.email ?? "",
+          performer?.name ?? "", performer?.email ?? "",
           new Date(e.finalizedAt).toLocaleDateString(),
         ].join(",");
-      });
+      }));
       const csv = ["Code,Title,Final Decision,Risk,Compliance,Version,Decide Owner,Decide Email,Perform Owner,Perform Email,Finalized On", ...rows].join("\n");
       set.headers["Content-Type"] = "text/csv";
       set.headers["Content-Disposition"] = "attachment; filename=rapid-ledger-export.csv";
       return csv;
-    } catch(e: any) { set.status = 500; return { error: { message: e.message } }; }
+    } catch (e: any) { set.status = 500; return { error: { message: e.message } }; }
   })
 
-
-  .get("/audit-log", ({ query, headers, set }: any) => {
-    const auth = headers["authorization"];
-    if (!auth) { set.status = 401; return { error: { message: "Auth required" } }; }
+  // ── Audit Log ──
+  .get("/audit-log", async ({ query, headers, set }: any) => {
     try {
-      const jwtLib = require("jsonwebtoken");
-      jwtLib.verify(auth.slice(7), JWT_SECRET);
-      const { execSync } = require("child_process");
-      const pathLib = require("path");
-      const DB = pathLib.join(process.env.HOME, "rapid-ledger", "apps", "api", "dev.db");
-
-      // Optional filter by action type
-      const actionFilter = query?.action ? `WHERE a.action='${String(query.action).replace(/'/g, "")}'` : "";
-
-      const sql = `
-        SELECT
-          a.id, a.action, a.objectType, a.objectId, a.details, a.createdAt,
-          u.name as actorName, u.email as actorEmail, u.role as actorRole,
-          d.documentCode as documentCode, d.title as documentTitle
-        FROM AuditLog a
-        LEFT JOIN User u ON u.id = a.actorId
-        LEFT JOIN RapidDocument d ON d.id = a.objectId
-        ${actionFilter}
-        ORDER BY a.createdAt DESC
-        LIMIT 200
-      `.replace(/\s+/g, " ");
-
-      const r = execSync(`sqlite3 -json "${DB}" ${JSON.stringify(sql)}`, { stdio: "pipe" }).toString().trim();
-      const entries = r ? JSON.parse(r) : [];
-      return entries;
-    } catch (e: any) {
-      console.error("audit-log error:", e.message);
-      set.status = 500;
-      return { error: { message: "Failed to fetch audit log" } };
-    }
+      requireAuth(headers, set);
+      const entries = await prisma.auditLog.findMany({
+        where: undefined,
+        orderBy: { createdAt: "desc" },
+        take: 200,
+        include: {
+          User: { select: { name:true, email:true, role:true } },
+        },
+      });
+      const withDocs = await Promise.all(entries.map(async (e: any) => {
+        let docCode = null;
+        let docTitle = null;
+        if (e.objectType === "RapidDocument" && e.objectId) {
+          try {
+            const doc = await prisma.rapidDocument.findUnique({
+              where: { id: e.objectId },
+              select: { documentCode: true, title: true },
+            });
+            docCode = doc?.documentCode ?? null;
+            docTitle = doc?.title ?? null;
+          } catch {}
+        }
+        return {
+          ...e,
+          actorName: e.User?.name,
+          actorEmail: e.User?.email,
+          actorRole: e.User?.role,
+          documentCode: docCode,
+          documentTitle: docTitle,
+        };
+      }));
+      return withDocs;
+    } catch (e: any) { set.status = 500; return { error: { message: e.message } }; }
   })
 
-
-.post("/documents/:id/version", ({ params, headers, set }: any) => {
-    const auth = headers["authorization"];
-    if (!auth) { set.status = 401; return { error: { message: "Auth required" } }; }
+  .post("/documents/:id/execution-complete", async ({ params, body, headers, set }: any) => {
     try {
-      const jwtLib = require("jsonwebtoken");
-      const payload = jwtLib.verify(auth.slice(7), JWT_SECRET) as any;
-      const { execSync } = require("child_process");
-      const pathLib = require("path");
-      const DB = pathLib.join(process.env.HOME, "rapid-ledger", "apps", "api", "dev.db");
-      function q(sql: string) {
-        try { const r = execSync(`sqlite3 -json "${DB}" ${JSON.stringify(sql)}`,{stdio:"pipe"}).toString().trim(); return r?JSON.parse(r):[]; } catch { return []; }
-      }
-      function run(sql: string) { try { execSync(`sqlite3 "${DB}" ${JSON.stringify(sql)}`,{stdio:"pipe"}); } catch(e:any){console.error(e.message);} }
-
-      const docs = q(`SELECT * FROM RapidDocument WHERE id='${params.id}' LIMIT 1`);
-      if (!docs.length) { set.status = 404; return { error: { message: "Document not found" } }; }
-      const doc = docs[0];
-
-      if (doc.status !== "finalized" && doc.status !== "execution_complete") {
-        set.status = 422;
-        return { error: { message: `Only finalized documents can be versioned. Current status: ${doc.status}` } };
-      }
-
-      // Check user is the Decide owner of this document or an admin
-      const decideRole = q(`SELECT userId FROM RapidRoleAssignment WHERE documentId='${params.id}' AND roleType='decide' LIMIT 1`);
-      const me = q(`SELECT role FROM User WHERE id='${payload.userId}' LIMIT 1`)[0];
-      const isDecider = decideRole.length && decideRole[0].userId === payload.userId;
-      const isAdmin = me && me.role === "admin";
-      if (!isDecider && !isAdmin) {
-        set.status = 403;
-        return { error: { message: "Only the Decide owner or Admin can create a new version" } };
-      }
-
-      // Count existing versions of this documentCode to determine next version number
-      const versions = q(`SELECT MAX(version) as maxV FROM RapidDocument WHERE documentCode='${doc.documentCode}'`);
-      const nextVersion = (versions[0]?.maxV ?? doc.version) + 1;
-
-      // Create new draft doc as v2 (or v3, etc.), linked to original via parentDocumentId
-      const newId = `cmp${Math.random().toString(36).slice(2, 14)}`;
-      const now = new Date().toISOString();
-      const esc = (s: string) => String(s ?? "").replace(/'/g, "''");
-
-      run(`INSERT INTO RapidDocument (id,documentCode,title,decisionSummary,businessContext,problemStatement,proposedDecision,alternativesConsidered,riskLevel,complianceImpact,department,deadline,status,version,parentDocumentId,createdBy,createdAt,updatedAt) VALUES ('${newId}','${doc.documentCode}','${esc(doc.title)}','${esc(doc.decisionSummary)}','${esc(doc.businessContext)}','${esc(doc.problemStatement)}','${esc(doc.proposedDecision)}','${esc(doc.alternativesConsidered)}','${doc.riskLevel}',${doc.complianceImpact},'${doc.department}','${doc.deadline}','draft',${nextVersion},'${params.id}','${payload.userId}','${now}','${now}')`);
-
-      // Copy role assignments to the new version
-      const roles = q(`SELECT roleType, userId FROM RapidRoleAssignment WHERE documentId='${params.id}'`);
-      for (const r of roles) {
-        const raId = `cmp${Math.random().toString(36).slice(2, 14)}`;
-        run(`INSERT INTO RapidRoleAssignment (id,documentId,roleType,userId,createdAt) VALUES ('${raId}','${newId}','${r.roleType}','${r.userId}','${now}')`);
-      }
-
-      // Copy evidence to new version
-      const evidences = q(`SELECT type,title,urlOrPath,description,uploadedBy FROM Evidence WHERE documentId='${params.id}'`);
-      for (const ev of evidences) {
-        const evId = `cmp${Math.random().toString(36).slice(2, 14)}`;
-        run(`INSERT INTO Evidence (id,documentId,type,title,urlOrPath,description,uploadedBy,createdAt) VALUES ('${evId}','${newId}','${ev.type}','${esc(ev.title)}','${esc(ev.urlOrPath ?? "")}','${esc(ev.description ?? "")}','${ev.uploadedBy}','${now}')`);
-      }
-
-      // Fix createdBy — should be original document creator, not the decider
-      run(`UPDATE RapidDocument SET createdBy='${doc.createdBy}' WHERE id='${newId}'`);
-
-      // Audit
-      const auditId = `cmp${Math.random().toString(36).slice(2, 14)}`;
-      run(`INSERT INTO AuditLog (id,actorId,action,objectType,objectId,details,createdAt) VALUES ('${auditId}','${payload.userId}','version_created','RapidDocument','${newId}','{"documentCode":"${doc.documentCode}","fromVersion":${doc.version},"toVersion":${nextVersion}}','${now}')`);
-
-      return { id: newId, documentCode: doc.documentCode, version: nextVersion, status: "draft", parentDocumentId: params.id };
-    } catch (e: any) {
-      console.error("version error:", e.message);
-      set.status = 500;
-      return { error: { message: "Failed to create version" } };
-    }
-  })
-.post("/documents/:id/execution-complete", async ({ params, body, headers, set }: any) => {
-    const auth = headers["authorization"];
-    if (!auth) { set.status = 401; return { error: { message: "Auth required" } }; }
-    try {
-      const jwtLib = require("jsonwebtoken");
-      const payload = jwtLib.verify(auth.slice(7), JWT_SECRET) as any;
-      const { execSync } = require("child_process");
-      const pathLib = require("path");
-      const DB = pathLib.join(process.env.HOME, "rapid-ledger", "apps", "api", "dev.db");
-      function q(sql: string) {
-        try { const r = execSync(`sqlite3 -json "${DB}" ${JSON.stringify(sql)}`,{stdio:"pipe"}).toString().trim(); return r?JSON.parse(r):[]; } catch { return []; }
-      }
-      function run(sql: string) { try { execSync(`sqlite3 "${DB}" ${JSON.stringify(sql)}`,{stdio:"pipe"}); } catch(e:any){console.error(e.message);} }
-
+      const p = requireAuth(headers, set);
       const notes = (body?.notes ?? "").trim();
       if (!notes) { set.status = 400; return { error: { message: "Execution notes are required" } }; }
-
-      const docs = q(`SELECT * FROM RapidDocument WHERE id='${params.id}' LIMIT 1`);
-      if (!docs.length) { set.status = 404; return { error: { message: "Document not found" } }; }
-      const doc = docs[0];
-
-      if (doc.status !== "finalized") {
-        set.status = 422;
-        return { error: { message: `Document must be finalized to mark execution complete. Current status: ${doc.status}` } };
+      const doc = await prisma.rapidDocument.findUnique({ where: { id: params.id }, include: { RapidRoleAssignment: true } });
+      if (!doc) { set.status = 404; return { error: { message: "Not found" } }; }
+      if (doc.status !== "finalized") { set.status = 422; return { error: { message: "Document must be finalized first" } }; }
+      const performRole = doc.RapidRoleAssignment.find(r => r.roleType === "perform");
+      if (performRole?.userId !== p.userId && p.role !== "admin") {
+        set.status = 403; return { error: { message: "Only the Perform owner can mark execution complete" } };
       }
-
-      // Must be Perform owner or admin
-      const performRole = q(`SELECT userId FROM RapidRoleAssignment WHERE documentId='${params.id}' AND roleType='perform' LIMIT 1`);
-      const me = q(`SELECT role FROM User WHERE id='${payload.userId}' LIMIT 1`)[0];
-      const isPerformer = performRole.length && performRole[0].userId === payload.userId;
-      const isAdmin = me && me.role === "admin";
-      if (!isPerformer && !isAdmin) {
-        set.status = 403;
-        return { error: { message: "Only the Perform owner or Admin can mark execution complete" } };
-      }
-
-      const now = new Date().toISOString();
-      const escNotes = notes.replace(/'/g, "''");
-
-      run(`UPDATE RapidDocument SET status='execution_complete', updatedAt='${now}' WHERE id='${params.id}'`);
-
-      // Audit
-      const auditId = `cmp${Math.random().toString(36).slice(2, 14)}`;
-      run(`INSERT INTO AuditLog (id,actorId,action,objectType,objectId,details,createdAt) VALUES ('${auditId}','${payload.userId}','execution_completed','RapidDocument','${params.id}','{"documentCode":"${doc.documentCode}","notes":"${escNotes}"}','${now}')`);
-
+      await logAudit(p.userId, "execution_completed", "RapidDocument", params.id, "Execution completed", params.id);
+      await prisma.rapidDocument.update({ where: { id: params.id }, data: { status: "execution_complete" } });
       return { id: params.id, status: "execution_complete", notes };
-    } catch (e: any) {
-      console.error("execution-complete error:", e.message);
-      set.status = 500;
-      return { error: { message: "Failed to mark execution complete" } };
-    }
+    } catch (e: any) { set.status = 500; return { error: { message: e.message } }; }
   })
+
   .listen(PORT);
 
-console.log(`RAPID Ledger API running at http://localhost:${PORT}`);
+console.log(`RAPID Ledger API running on http://localhost:${PORT} (PostgreSQL + Prisma)`);

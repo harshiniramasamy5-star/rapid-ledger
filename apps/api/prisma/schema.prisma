@@ -1,0 +1,196 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Approval {
+  id            String         @id
+  documentId    String
+  approverId    String
+  status        ApprovalStatus @default(pending)
+  notes         String?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime
+  User          User           @relation(fields: [approverId], references: [id])
+  RapidDocument RapidDocument  @relation(fields: [documentId], references: [id], onDelete: Cascade)
+}
+
+model AuditLog {
+  id            String         @id
+  actorId       String
+  action        AuditAction
+  objectType    String
+  objectId      String
+  details       String?
+  documentId    String?
+  createdAt     DateTime       @default(now())
+  User          User           @relation(fields: [actorId], references: [id])
+  RapidDocument RapidDocument? @relation(fields: [documentId], references: [id])
+}
+
+model Evidence {
+  id            String        @id
+  documentId    String
+  type          EvidenceType
+  title         String
+  urlOrPath     String?
+  description   String?
+  uploadedBy    String
+  createdAt     DateTime      @default(now())
+  RapidDocument RapidDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  User          User          @relation(fields: [uploadedBy], references: [id])
+}
+
+model LedgerEntry {
+  id                                    String        @id
+  documentId                            String        @unique
+  documentCode                          String
+  title                                 String
+  finalDecision                         String
+  decideOwnerId                         String
+  performOwnerId                        String
+  riskLevel                             RiskLevel
+  complianceImpact                      Boolean
+  version                               Int
+  finalizedAt                           DateTime
+  createdAt                             DateTime      @default(now())
+  User_LedgerEntry_decideOwnerIdToUser  User          @relation("LedgerEntry_decideOwnerIdToUser", fields: [decideOwnerId], references: [id])
+  RapidDocument                         RapidDocument @relation(fields: [documentId], references: [id])
+  User_LedgerEntry_performOwnerIdToUser User          @relation("LedgerEntry_performOwnerIdToUser", fields: [performOwnerId], references: [id])
+}
+
+model RapidDocument {
+  id                     String                @id
+  documentCode           String
+  title                  String
+  decisionSummary        String
+  businessContext        String?
+  problemStatement       String?
+  proposedDecision       String?
+  alternativesConsidered String?
+  riskLevel              RiskLevel             @default(low)
+  complianceImpact       Boolean               @default(false)
+  department             String
+  deadline               DateTime
+  status                 DocumentStatus        @default(draft)
+  version                Int                   @default(1)
+  parentDocumentId       String?
+  createdBy              String
+  createdAt              DateTime              @default(now())
+  updatedAt              DateTime
+  submittedAt            DateTime?
+  finalizedAt            DateTime?
+  Approval               Approval[]
+  AuditLog               AuditLog[]
+  Evidence               Evidence[]
+  LedgerEntry            LedgerEntry?
+  User                   User                  @relation(fields: [createdBy], references: [id])
+  RapidDocument          RapidDocument?        @relation("RapidDocumentToRapidDocument", fields: [parentDocumentId], references: [id])
+  other_RapidDocument    RapidDocument[]       @relation("RapidDocumentToRapidDocument")
+  RapidRoleAssignment    RapidRoleAssignment[]
+
+  @@unique([documentCode, version])
+}
+
+model RapidRoleAssignment {
+  id            String        @id
+  documentId    String
+  roleType      RapidRoleType
+  userId        String
+  createdAt     DateTime      @default(now())
+  RapidDocument RapidDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  User          User          @relation(fields: [userId], references: [id])
+}
+
+model User {
+  id                                           String                @id
+  name                                         String
+  email                                        String                @unique
+  passwordHash                                 String
+  role                                         UserRole
+  department                                   String?
+  isActive                                     Boolean               @default(true)
+  createdAt                                    DateTime              @default(now())
+  updatedAt                                    DateTime
+  Approval                                     Approval[]
+  AuditLog                                     AuditLog[]
+  Evidence                                     Evidence[]
+  LedgerEntry_LedgerEntry_decideOwnerIdToUser  LedgerEntry[]         @relation("LedgerEntry_decideOwnerIdToUser")
+  LedgerEntry_LedgerEntry_performOwnerIdToUser LedgerEntry[]         @relation("LedgerEntry_performOwnerIdToUser")
+  RapidDocument                                RapidDocument[]
+  RapidRoleAssignment                          RapidRoleAssignment[]
+}
+
+enum ApprovalStatus {
+  pending
+  approved
+  rejected
+  changes_requested
+}
+
+enum AuditAction {
+  document_created
+  document_updated
+  role_assigned
+  evidence_added
+  document_submitted
+  approval_added
+  document_rejected
+  changes_requested
+  document_finalized
+  ledger_entry_created
+  version_created
+  execution_completed
+  report_generated
+}
+
+enum DocumentStatus {
+  draft
+  validation_failed
+  submitted
+  awaiting_agreement
+  needs_changes
+  approved
+  rejected
+  finalized
+  execution_complete
+  archived
+}
+
+enum EvidenceType {
+  file
+  link
+  note
+  policy_reference
+  meeting_note
+  approval_screenshot
+}
+
+enum RapidRoleType {
+  recommend
+  agree
+  perform
+  input
+  decide
+}
+
+enum RiskLevel {
+  low
+  medium
+  high
+  critical
+}
+
+enum UserRole {
+  admin
+  creator
+  recommender
+  approver
+  decision_owner
+  performer
+  auditor
+}
