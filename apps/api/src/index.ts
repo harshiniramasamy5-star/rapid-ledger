@@ -143,8 +143,8 @@ const app = new Elysia({ adapter: node() })
       return await prisma.rapidDocument.findMany({
         orderBy: { updatedAt: "desc" },
         include: {
-          RapidRoleAssignment: { include: { User: { select: { id:true, name:true, email:true } } } },
-          Evidence: true,
+          roleAssignments: { include: { user: { select: { id:true, name:true, email:true } } } },
+          evidence: true,
         },
       });
     } catch (e: any) { return { error: { message: e.message } }; }
@@ -156,10 +156,10 @@ const app = new Elysia({ adapter: node() })
       const doc = await prisma.rapidDocument.findUnique({
         where: { id: params.id },
         include: {
-          RapidRoleAssignment: { include: { User: { select: { id:true, name:true, email:true } } } },
-          Evidence: true,
-          Approval: { include: { User: { select: { id:true, name:true, email:true } } } },
-          AuditLog: { include: { User: { select: { id:true, name:true } } }, orderBy: { createdAt: "desc" } },
+          roleAssignments: { include: { user: { select: { id:true, name:true, email:true } } } },
+          evidence: true,
+          approvals: { include: { approver: { select: { id:true, name:true, email:true } } } },
+          auditLogs: { include: { actor: { select: { id:true, name:true } } }, orderBy: { createdAt: "desc" } },
         },
       });
       if (!doc) { set.status = 404; return { error: { message: "Not found" } }; }
@@ -170,8 +170,7 @@ const app = new Elysia({ adapter: node() })
   .post("/documents", async ({ body, headers, set }: any) => {
     try {
       const p = requireRole(headers, set, "document:create");
-      const count = await prisma.rapidDocument.count();
-      const code = "RAPID-" + String(count + 1).padStart(3, "0");
+      const code = "RAPID-" + Date.now().toString().slice(-6);
       const doc = await prisma.rapidDocument.create({
         data: {
           id: crypto.randomUUID(),
@@ -285,7 +284,7 @@ const app = new Elysia({ adapter: node() })
       const p = requireRole(headers, set, "document:submit");
       const doc = await prisma.rapidDocument.findUnique({
         where: { id: params.id },
-        include: { RapidRoleAssignment: true, Evidence: true },
+        include: { roleAssignments: true, evidence: true },
       });
       if (!doc) { set.status = 404; return { error: { message: "Not found" } }; }
       if (!["draft","needs_changes"].includes(doc.status)) {
@@ -294,7 +293,7 @@ const app = new Elysia({ adapter: node() })
       if (doc.createdBy !== p.userId && p.role !== "admin") {
         set.status = 403; return { error: { message: "Only the creator can submit this document" } };
       }
-      const roles = doc.RapidRoleAssignment;
+      const roles = doc.roleAssignments;
       const errors: string[] = [];
       if (!roles.find((r: any) => r.roleType === "recommend")) errors.push("Recommend owner is required");
       if (!roles.find((r: any) => r.roleType === "perform"))   errors.push("Perform owner is required");
@@ -304,7 +303,7 @@ const app = new Elysia({ adapter: node() })
       if (["high","critical"].includes(doc.riskLevel) && !roles.find((r: any) => r.roleType === "agree")) {
         errors.push("High/critical risk decisions require at least one Agree approver");
       }
-      if (doc.complianceImpact && doc.Evidence.length === 0) {
+      if (doc.complianceImpact && doc.evidence.length === 0) {
         errors.push("Compliance-impacting decisions require at least one evidence item");
       }
       if (errors.length > 0) { set.status = 422; return { error: { message: errors[0], details: errors } }; }
@@ -320,7 +319,7 @@ const app = new Elysia({ adapter: node() })
       await logAudit(p.userId, "document_submitted", "RapidDocument", params.id, `Submitted → ${nextStatus}`, params.id);
       return await prisma.rapidDocument.findUnique({
         where: { id: params.id },
-        include: { RapidRoleAssignment: { include: { User: true } }, Evidence: true },
+        include: { roleAssignments: { include: { user: true } }, evidence: true },
       });
     } catch (e: any) { set.status = 500; return { error: { message: e.message } }; }
   })
@@ -331,7 +330,7 @@ const app = new Elysia({ adapter: node() })
       const p = requireRole(headers, set, "document:approve");
       return await prisma.approval.findMany({
         where: { approverId: p.userId, status: "pending" },
-        include: { RapidDocument: { include: { RapidRoleAssignment: true, Evidence: true } } },
+        include: { document: { include: { roleAssignments: true, evidence: true } } },
       });
     } catch (e: any) { set.status = 401; return { error: { message: e.message } }; }
   })
@@ -390,12 +389,12 @@ const app = new Elysia({ adapter: node() })
       const p = requireRole(headers, set, "document:finalize");
       const doc = await prisma.rapidDocument.findUnique({
         where: { id: params.id },
-        include: { RapidRoleAssignment: true },
+        include: { roleAssignments: true },
       });
       if (!doc) { set.status = 404; return { error: { message: "Not found" } }; }
       if (doc.status !== "approved") { set.status = 422; return { error: { message: "Document must be approved before finalizing" } }; }
-      const decideRole  = doc.RapidRoleAssignment.find((r: any) => r.roleType === "decide");
-      const performRole = doc.RapidRoleAssignment.find((r: any) => r.roleType === "perform");
+      const decideRole  = doc.roleAssignments.find((r: any) => r.roleType === "decide");
+      const performRole = doc.roleAssignments.find((r: any) => r.roleType === "perform");
       if (!decideRole) { set.status = 422; return { error: { message: "No Decide owner assigned" } }; }
       if (decideRole.userId !== p.userId && p.role !== "admin") {
         set.status = 403; return { error: { message: "Only the Decide owner can finalize" } };
@@ -420,7 +419,7 @@ const app = new Elysia({ adapter: node() })
       await logAudit(p.userId, "document_finalized", "RapidDocument", params.id, "Finalized → ledger entry created", params.id);
       return await prisma.rapidDocument.findUnique({
         where: { id: params.id },
-        include: { RapidRoleAssignment: { include: { User: true } }, Evidence: true },
+        include: { roleAssignments: { include: { user: true } }, evidence: true },
       });
     } catch (e: any) { set.status = 500; return { error: { message: e.message } }; }
   })
@@ -466,10 +465,10 @@ const app = new Elysia({ adapter: node() })
       const p = requireRole(headers, set, "document:execute");
       const notes = (body?.notes ?? "").trim();
       if (!notes) { set.status = 400; return { error: { message: "Execution notes are required" } }; }
-      const doc = await prisma.rapidDocument.findUnique({ where: { id: params.id }, include: { RapidRoleAssignment: true } });
+      const doc = await prisma.rapidDocument.findUnique({ where: { id: params.id }, include: { roleAssignments: true } });
       if (!doc) { set.status = 404; return { error: { message: "Not found" } }; }
       if (doc.status !== "finalized") { set.status = 422; return { error: { message: "Document must be finalized first" } }; }
-      const performRole = doc.RapidRoleAssignment.find((r: any) => r.roleType === "perform");
+      const performRole = doc.roleAssignments.find((r: any) => r.roleType === "perform");
       if (performRole?.userId !== p.userId && p.role !== "admin") {
         set.status = 403; return { error: { message: "Only the Perform owner can mark execution complete" } };
       }
@@ -486,9 +485,9 @@ const app = new Elysia({ adapter: node() })
       return await prisma.ledgerEntry.findMany({
         orderBy: { finalizedAt: "desc" },
         include: {
-          User_LedgerEntry_decideOwnerIdToUser:  { select: { id:true, name:true, email:true } },
-          User_LedgerEntry_performOwnerIdToUser: { select: { id:true, name:true, email:true } },
-          RapidDocument: { select: { documentCode:true, title:true, status:true } },
+          decideOwner:  { select: { id:true, name:true, email:true } },
+          performOwner: { select: { id:true, name:true, email:true } },
+          document: { select: { documentCode:true, title:true, status:true } },
         },
       });
     } catch (e: any) { return { error: { message: e.message } }; }
@@ -500,8 +499,8 @@ const app = new Elysia({ adapter: node() })
       const entries = await prisma.ledgerEntry.findMany({
         orderBy: { finalizedAt: "desc" },
         include: {
-          User_LedgerEntry_decideOwnerIdToUser:  { select: { name:true, email:true } },
-          User_LedgerEntry_performOwnerIdToUser: { select: { name:true, email:true } },
+          decideOwner:  { select: { name:true, email:true } },
+          performOwner: { select: { name:true, email:true } },
         },
       });
       const rows = entries.map((e: any) => [
@@ -518,12 +517,15 @@ const app = new Elysia({ adapter: node() })
   })
 
   // ── Audit Log ──
-  .get("/audit-log", async ({ headers, set }: any) => {
+  .get("/audit-log", async ({ headers, query, set }: any) => {
     try {
       requireRole(headers, set, "auditlog:read");
+      const where: any = {};
+      if (query?.action) where.action = query.action;
       const entries = await prisma.auditLog.findMany({
+        where,
         orderBy: { createdAt: "desc" }, take: 200,
-        include: { User: { select: { name:true, email:true, role:true } } },
+        include: { actor: { select: { name:true, email:true, role:true } } },
       });
       return entries.map((e: any) => ({
         ...e, actorName: e.actor?.name, actorEmail: e.actor?.email, actorRole: e.actor?.role,
