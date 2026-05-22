@@ -1,9 +1,7 @@
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 
-const prisma = new PrismaClient({
-  datasourceUrl: "postgresql://harshiniramasamy@localhost:5432/rapid_ledger",
-});
+const prisma = new PrismaClient();
 
 async function main() {
   console.log("Seeding users...");
