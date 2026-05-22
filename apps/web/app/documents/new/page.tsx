@@ -261,7 +261,7 @@ export default function NewDocumentPage() {
                       <Badge variant="outline" className="text-[10px] border-slate-300 text-slate-500">Required</Badge>
                     )}
                   </div>
-                  <Select value={roles[roleType]} onValueChange={v => setRoles(r => ({ ...r, [roleType]: v }))}>
+                  <Select value={roles[roleType]} onValueChange={v => setRoles((r: any) => ({ ...r, [roleType]: v }))}>
                     <SelectTrigger className="bg-white border-slate-200 text-sm h-9">
                       <SelectValue placeholder="-- Not assigned --" />
                     </SelectTrigger>
@@ -302,7 +302,7 @@ export default function NewDocumentPage() {
               </div>
               <div className="space-y-1.5">
                 <Label className="text-slate-700 font-semibold text-sm">Type</Label>
-                <Select value={evidence.type} onValueChange={v => setEvidence(ev => ({ ...ev, type: v }))}>
+                <Select value={evidence.type} onValueChange={v => setEvidence((ev: any) => ({ ...ev, type: v }))}>
                   <SelectTrigger className="border-slate-200"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="link">Link</SelectItem>

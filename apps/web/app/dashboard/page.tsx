@@ -110,7 +110,7 @@ export default function DashboardPage() {
             ))}
             <Separator orientation="vertical" className="h-5 mx-2" />
             <DropdownMenu>
-              <DropdownMenuTrigger asChild={false}>
+              <DropdownMenuTrigger >
                 <div role="button" tabIndex={0}
                   className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-slate-100 cursor-pointer transition-colors select-none"
                   onKeyDown={e => e.key === "Enter" && (e.currentTarget as HTMLElement).click()}>
@@ -173,7 +173,7 @@ export default function DashboardPage() {
             <div className="flex gap-3 flex-wrap pt-2">
               <Input placeholder="Search by title or code..." value={search}
                 onChange={e => setSearch(e.target.value)} className="flex-1 min-w-[200px] border-slate-200" />
-              <Select value={status} onValueChange={setStatus}>
+              <Select value={status} onValueChange={(v: string | null) => setStatus(v ?? "all")}>
                 <SelectTrigger className="w-[190px] border-slate-200"><SelectValue placeholder="All statuses" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All statuses</SelectItem>
@@ -186,7 +186,7 @@ export default function DashboardPage() {
                   <SelectItem value="rejected">Rejected</SelectItem>
                 </SelectContent>
               </Select>
-              <Select value={risk} onValueChange={setRisk}>
+              <Select value={risk} onValueChange={(v: string | null) => setRisk(v ?? "all")}>
                 <SelectTrigger className="w-[160px] border-slate-200"><SelectValue placeholder="All risk levels" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All risk levels</SelectItem>

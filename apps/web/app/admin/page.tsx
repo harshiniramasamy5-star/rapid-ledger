@@ -246,7 +246,7 @@ export default function AdminPage() {
             </div>
             <div className="space-y-1.5">
               <Label className="text-slate-700 text-sm font-semibold">Role</Label>
-              <Select value={form.role} onValueChange={v => setForm(f => ({ ...f, role: v }))}>
+              <Select value={form.role} onValueChange={v => setForm((f: any) => ({ ...f, role: v }))}>
                 <SelectTrigger className="border-slate-200">
                   <SelectValue />
                 </SelectTrigger>

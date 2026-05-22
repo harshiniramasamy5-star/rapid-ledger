@@ -169,7 +169,11 @@ export default function ApprovalsPage() {
                       Request Changes
                     </Button>
                     <Button
-                      onClick={() => act(approval.document?.id, approval.id, "reject")}
+                      onClick={() => {
+                        if (window.confirm("Reject this approval request? This action will notify the document creator.")) {
+                          act(approval.document?.id, approval.id, "reject")
+                        }
+                      }}
                       disabled={acting === approval.id}
                       variant="destructive"
                       className="font-semibold">
