@@ -10,6 +10,7 @@ describe("API Endpoints", () => {
   let creatorToken: string;
   let approverToken: string;
   let deciderToken: string;
+  let auditorToken: string;
   let testDocId: string;
 
   beforeAll(async () => {
@@ -17,7 +18,7 @@ describe("API Endpoints", () => {
     const adminRes = await fetch(`${API_URL}/auth/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: "admin@rapid.dev", password: "password123" })
+      body: JSON.stringify({ email: "admin@rapid.com", password: "password123" })
     });
     const adminData = await adminRes.json();
     adminToken = adminData.token;
@@ -25,7 +26,7 @@ describe("API Endpoints", () => {
     const creatorRes = await fetch(`${API_URL}/auth/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: "creator@rapid.dev", password: "password123" })
+      body: JSON.stringify({ email: "creator@rapid.com", password: "password123" })
     });
     const creatorData = await creatorRes.json();
     creatorToken = creatorData.token;
@@ -33,7 +34,7 @@ describe("API Endpoints", () => {
     const approverRes = await fetch(`${API_URL}/auth/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: "approver@rapid.dev", password: "password123" })
+      body: JSON.stringify({ email: "approver@rapid.com", password: "password123" })
     });
     const approverData = await approverRes.json();
     approverToken = approverData.token;
@@ -41,10 +42,18 @@ describe("API Endpoints", () => {
     const deciderRes = await fetch(`${API_URL}/auth/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: "decider@rapid.dev", password: "password123" })
+      body: JSON.stringify({ email: "decider@rapid.com", password: "password123" })
     });
     const deciderData = await deciderRes.json();
     deciderToken = deciderData.token;
+
+    const auditorRes = await fetch(`${API_URL}/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: "auditor@rapid.com", password: "password123" })
+    });
+    const auditorData = await auditorRes.json();
+    auditorToken = auditorData.token;
   });
 
   describe("GET /health", () => {
@@ -63,7 +72,7 @@ describe("API Endpoints", () => {
       const res = await fetch(`${API_URL}/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: "creator@rapid.dev", password: "password123" })
+        body: JSON.stringify({ email: "creator@rapid.com", password: "password123" })
       });
       const data = await res.json();
       
@@ -76,7 +85,7 @@ describe("API Endpoints", () => {
       const res = await fetch(`${API_URL}/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: "creator@rapid.dev", password: "wrongpassword" })
+        body: JSON.stringify({ email: "creator@rapid.com", password: "wrongpassword" })
       });
       const data = await res.json();
       
@@ -93,7 +102,7 @@ describe("API Endpoints", () => {
       const data = await res.json();
       
       expect(res.status).toBe(200);
-      expect(data.email).toBe("creator@rapid.dev");
+      expect(data.email).toBe("creator@rapid.com");
       expect(data.role).toBe("creator");
     });
 
@@ -208,7 +217,7 @@ describe("API Endpoints", () => {
   describe("GET /ledger", () => {
     it("should return ledger entries", async () => {
       const res = await fetch(`${API_URL}/ledger`, {
-        headers: { Authorization: `Bearer ${creatorToken}` }
+        headers: { Authorization: `Bearer ${auditorToken}` }
       });
       const data = await res.json();
       
@@ -220,7 +229,7 @@ describe("API Endpoints", () => {
   describe("GET /ledger/export", () => {
     it("should export ledger as CSV", async () => {
       const res = await fetch(`${API_URL}/ledger/export`, {
-        headers: { Authorization: `Bearer ${creatorToken}` }
+        headers: { Authorization: `Bearer ${auditorToken}` }
       });
       const text = await res.text();
       
