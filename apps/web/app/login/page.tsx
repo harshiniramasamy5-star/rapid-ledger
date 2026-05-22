@@ -38,14 +38,14 @@ export default function LoginPage() {
 
       // Store in localStorage
       localStorage.setItem("rapid_token", data.token);
-      localStorage.setItem("rapid_user", JSON.stringify(data.user));
+      localStorage.setItem("rapid_user", JSON.stringify(data.User));
 
       // Also set cookies for middleware route protection
       document.cookie = `rapid_token=${data.token}; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax`;
-      document.cookie = `rapid_role=${data.user.role}; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax`;
+      document.cookie = `rapid_role=${data.User.role}; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax`;
 
-      toast.success("Welcome back, " + data.user.name + "!");
-      router.push(ROLE_ROUTES[data.user.role] ?? "/dashboard");
+      toast.success("Welcome back, " + data.User.name + "!");
+      router.push(ROLE_ROUTES[data.User.role] ?? "/dashboard");
     } catch (err: any) {
       toast.error(err?.error?.message ?? "Invalid credentials. Please try again.");
     } finally {
