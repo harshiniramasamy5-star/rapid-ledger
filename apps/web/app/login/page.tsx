@@ -7,12 +7,14 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 
 const ROLE_ROUTES: Record<string, string> = {
-  approver:  "/approvals",
-  auditor:   "/audit-log",
-  admin:     "/dashboard",
-  creator:   "/dashboard",
-  decider:   "/dashboard",
-  performer: "/dashboard",
+  admin:        "/dashboard",
+  creator:      "/dashboard",
+  recommender:  "/dashboard",
+  approver:     "/approvals",
+  decision_owner: "/dashboard",
+  decider:      "/dashboard",
+  performer:    "/dashboard",
+  auditor:      "/audit-log",
 };
 
 export default function LoginPage() {
@@ -40,9 +42,12 @@ export default function LoginPage() {
       localStorage.setItem("rapid_token", data.token);
       localStorage.setItem("rapid_user", JSON.stringify(data.User));
 
-      // Also set cookies for middleware route protection
-      document.cookie = `rapid_token=${data.token}; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax`;
-      document.cookie = `rapid_role=${data.User.role}; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax`;
+      // Set cookies for middleware — add Secure flag on HTTPS (production/Vercel)
+      const isSecure = window.location.protocol === "https:";
+      const secureFlag = isSecure ? "; Secure" : "";
+      const maxAge = 60 * 60 * 24 * 7; // 7 days
+      document.cookie = `rapid_token=${data.token}; path=/; max-age=${maxAge}; SameSite=Lax${secureFlag}`;
+      document.cookie = `rapid_role=${data.User.role}; path=/; max-age=${maxAge}; SameSite=Lax${secureFlag}`;
 
       toast.success("Welcome back, " + data.User.name + "!");
       router.push(ROLE_ROUTES[data.User.role] ?? "/dashboard");
@@ -98,7 +103,6 @@ export default function LoginPage() {
               </div>
             ))}
           </div>
-
         </div>
         <div className="relative flex items-center justify-between">
           <p className="text-slate-600 text-xs">© 2026 Complyance Inc. All rights reserved.</p>
