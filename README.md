@@ -1,5 +1,11 @@
 # RAPID Ledger
 
+
+> 🚀 **Live Demo:** https://rapid-ledger.vercel.app
+
+
+> 🚀 **Live Demo:** https://rapid-ledger.vercel.app
+
 A decision governance application that helps teams create, validate, approve, version, and audit RAPID decision documents. Finalized decisions become permanent, read-only ledger entries for accountability and compliance review.
 
 ---

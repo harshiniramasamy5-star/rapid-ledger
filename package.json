@@ -1,15 +1,14 @@
 {
   "name": "rapid-ledger",
   "version": "1.0.0",
-  "description": "",
+  "description": "Decision governance platform with RAPID framework — role-based approvals, audit logs, and immutable ledger entries",
+  "author": "Harshini Ramasamy",
+  "license": "MIT",
+  "keywords": ["governance", "compliance", "nextjs", "elysia", "prisma", "postgresql"],
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
     "seed": "tsx prisma/seed.ts"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
   "type": "commonjs",
   "prisma": {
     "seed": "tsx prisma/seed.ts"
