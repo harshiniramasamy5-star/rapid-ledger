@@ -324,6 +324,33 @@ const app = new Elysia({ adapter: node() })
     } catch (e: any) { set.status = 500; return { error: { message: e.message } }; }
   })
 
+  // ── Recommend ──
+  .post("/documents/:id/recommend", async ({ params, body, headers, set }: any) => {
+    try {
+      const p = requireRole(headers, set, "document:recommend");
+      const doc = await prisma.rapidDocument.findUnique({
+        where: { id: params.id },
+        include: { roleAssignments: true },
+      });
+      if (!doc) { set.status = 404; return { error: { message: "Not found" } }; }
+      if (!["draft", "needs_changes"].includes(doc.status)) {
+        set.status = 422;
+        return { error: { message: "Recommendations can only be given on draft documents" } };
+      }
+      const assigned = doc.roleAssignments.find(
+        (r: any) => r.roleType === "recommend" && r.userId === p.userId
+      );
+      if (!assigned && p.role !== "admin") {
+        set.status = 403;
+        return { error: { message: "You are not the assigned recommender for this document" } };
+      }
+      const notes = (body?.notes ?? "").trim();
+      if (!notes) { set.status = 400; return { error: { message: "Recommendation notes are required" } }; }
+      await logAudit(p.userId, "document_recommended", "RapidDocument", params.id, `Recommendation: ${notes}`, params.id);
+      return { ok: true, message: "Recommendation recorded", notes };
+    } catch (e: any) { set.status = 500; return { error: { message: e.message } }; }
+  })
+
   // ── Approvals ──
   .get("/approvals/my", async ({ headers, set }: any) => {
     try {

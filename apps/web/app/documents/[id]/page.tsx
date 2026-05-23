@@ -34,8 +34,9 @@ export default function DocumentDetailPage() {
   const [doc, setDoc]               = useState<any>(null);
   const [me, setMe]                 = useState<any>(null);
   const [myApproval, setMyApproval] = useState<any>(null);
-  const [approvalNotes, setApprovalNotes] = useState("");
-  const [execNotes, setExecNotes]   = useState("");
+  const [approvalNotes, setApprovalNotes]     = useState("");
+  const [execNotes, setExecNotes]             = useState("");
+  const [recommendNotes, setRecommendNotes]   = useState("");
   const [loading, setLoading]       = useState(true);
   const [acting, setActing]         = useState(false);
 
@@ -87,6 +88,8 @@ export default function DocumentDetailPage() {
   const canFinalize = myRole?.roleType === "decide" && status === "approved";
   const canComplete = myRole?.roleType === "perform" && status === "finalized";
   const canVersion  = myRole?.roleType === "decide" && ["finalized","execution_complete"].includes(status);
+  const canRecommend = myRole?.roleType === "recommend" && ["draft","needs_changes"].includes(status);
+  const isRecommenderWaiting = myRole?.roleType === "recommend" && status === "awaiting_agreement";
 
   const sc = STATUS_CONFIG[status] ?? { variant: "outline" as const, label: status, color: "text-slate-600" };
 
@@ -206,6 +209,33 @@ export default function DocumentDetailPage() {
               </div>
             )}
 
+            {canRecommend && (
+              <div className="space-y-3">
+                <p className="text-xs text-slate-500 font-medium">
+                  Add your recommendation before this document is submitted.
+                </p>
+                <textarea rows={3} placeholder="Enter your recommendation notes (required)..."
+                  value={recommendNotes} onChange={e => setRecommendNotes(e.target.value)}
+                  className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary bg-white text-slate-900 placeholder:text-slate-400" />
+                <Button className="w-full h-11 bg-purple-600 hover:bg-purple-700 text-white font-semibold" disabled={acting}
+                  onClick={() => handle(async () => {
+                    if (!recommendNotes.trim()) { toast.error("Recommendation notes are required"); return; }
+                    const { res, data } = await apiPost(`/documents/${params.id}/recommend`, { notes: recommendNotes });
+                    if (res.ok) { toast.success("Recommendation submitted!"); setRecommendNotes(""); await load(); }
+                    else toast.error(data?.error?.message ?? "Failed to submit recommendation");
+                  })}>
+                  {acting ? "Submitting..." : "Submit Recommendation"}
+                </Button>
+              </div>
+            )}
+
+            {isRecommenderWaiting && (
+              <div className="rounded-lg bg-amber-50 border border-amber-200 px-4 py-3">
+                <p className="text-sm text-amber-700 font-medium">✅ Your recommendation has been recorded.</p>
+                <p className="text-xs text-amber-600 mt-1">This document is now awaiting agreement from the assigned approvers.</p>
+              </div>
+            )}
+
             {canFinalize && (
               <Button className="w-full h-11 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold" disabled={acting}
                 onClick={() => handle(async () => {
@@ -245,7 +275,7 @@ export default function DocumentDetailPage() {
               </Button>
             )}
 
-            {!canSubmit && !canAgree && !canFinalize && !canComplete && !canVersion && (
+            {!canSubmit && !canAgree && !canFinalize && !canComplete && !canVersion && !canRecommend && !isRecommenderWaiting && (
               <p className="text-sm text-slate-400 text-center py-2">
                 No actions available for your role at this stage.
               </p>
