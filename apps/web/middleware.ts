@@ -2,17 +2,16 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 const ROLE_ACCESS: Record<string, string[]> = {
-  "/dashboard":  ["admin", "creator", "recommender", "decider", "performer", "auditor", "approver"],
+  "/dashboard":  ["admin", "creator", "recommender", "decision_owner", "performer", "auditor", "approver"],
   "/approvals":  ["admin", "approver"],
-  "/ledger":     ["admin", "auditor", "recommender", "decider", "creator", "approver", "performer"],
+  "/ledger":     ["admin", "auditor", "recommender", "decision_owner", "creator", "approver", "performer"],
   "/audit-log":  ["admin", "auditor"],
-  "/documents":  ["admin", "creator", "recommender", "decider", "performer", "auditor", "approver"],
+  "/documents":  ["admin", "creator", "recommender", "decision_owner", "performer", "auditor", "approver"],
 };
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Get token from cookie (we'll set this on login)
   const token = request.cookies.get("rapid_token")?.value;
   const role  = request.cookies.get("rapid_role")?.value;
 
@@ -34,8 +33,8 @@ export function middleware(request: NextRequest) {
   if (matchedRoute && role) {
     const allowed = ROLE_ACCESS[matchedRoute];
     if (!allowed.includes(role)) {
-      // Redirect to dashboard with unauthorized flag
-      return NextResponse.redirect(new URL("/dashboard?unauthorized=1", request.url));
+      // Redirect to LOGIN not dashboard — prevents redirect loop
+      return NextResponse.redirect(new URL("/login?error=unauthorized", request.url));
     }
   }
 
