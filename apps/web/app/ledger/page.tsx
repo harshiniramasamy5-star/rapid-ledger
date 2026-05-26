@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import type { LedgerEntry } from "@/lib/types";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -9,7 +10,7 @@ import { toast } from "sonner";
 
 export default function LedgerPage() {
   const router  = useRouter();
-  const [entries, setEntries] = useState<any[]>([]);
+  const [entries, setEntries] = useState<LedgerEntry[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -143,10 +144,10 @@ export default function LedgerPage() {
                       <h3 className="text-lg font-bold text-slate-900">{entry.title}</h3>
                     </div>
                     <div className="flex gap-2 flex-shrink-0">
-                      <span className={`text-sm font-semibold capitalize ${RISK_COLORS[entry.riskLevel] ?? "text-slate-600"}`}>
+                      <span className={`text-sm font-semibold capitalize ${RISK_COLORS[entry.riskLevel ?? "low"] ?? "text-slate-600"}`}>
                         {entry.riskLevel} risk
                       </span>
-                      {entry.complianceImpact === 1 && (
+                      {entry.complianceImpact === true && (
                         <Badge variant="secondary">Compliance</Badge>
                       )}
                     </div>

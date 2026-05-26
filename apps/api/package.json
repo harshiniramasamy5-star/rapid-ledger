@@ -4,29 +4,32 @@
   "private": true,
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "build": "tsc",
+    "build": "tsc --noEmit && tsc",
     "start": "node dist/index.js",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "lint": "eslint",
+    "typecheck": "tsc --noEmit"
+  },
+  "prisma": {
+    "schema": "../../prisma/schema.prisma"
   },
   "dependencies": {
-    "@elysiajs/cors": "^1.4.2",
     "@elysiajs/node": "^1.1.1",
-    "@prisma/client": "^5.22.0",
     "bcryptjs": "^2.4.3",
     "elysia": "^1.1.25",
-    "jsonwebtoken": "^9.0.3",
+    "jsonwebtoken": "^9.0.2",
     "zod": "^3.22.4"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
     "@types/jsonwebtoken": "^9.0.5",
-    "@types/node": "^20.19.41",
-    "@types/supertest": "^7.2.0",
-    "prisma": "^5.22.0",
-    "supertest": "^7.2.2",
+    "@types/node": "^20.11.5",
+    "@vitest/coverage-v8": "^1.2.2",
+    "globals": "^14.0.0",
     "tsx": "^4.7.0",
     "typescript": "^5.3.3",
-    "vitest": "^1.6.1"
-  }
+    "vitest": "^1.2.2"
+  },
+  "type": "module"
 }

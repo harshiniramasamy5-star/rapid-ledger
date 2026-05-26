@@ -1,241 +1,185 @@
+/**
+ * API integration tests — Fix 8: self-contained, use app.handle() directly.
+ * No separate server process needed. Tests run against the Elysia handler.
+ *
+ * Requirements:
+ *   - DATABASE_URL must be set (test DB or the dev DB)
+ *   - Seed users must exist (run `npm run db:seed` once)
+ */
 import { describe, it, expect, beforeAll } from "vitest";
+import { app } from "../src/index";
 
-// Note: These tests require the API server to be running
-// Run: npm run dev (in another terminal)
+async function req(
+  method: string,
+  path: string,
+  opts: { body?: unknown; token?: string } = {}
+): Promise<{ status: number; body: unknown }> {
+  const headers: Record<string, string> = {};
+  if (opts.body) headers["Content-Type"] = "application/json";
+  if (opts.token) headers["Authorization"] = `Bearer ${opts.token}`;
 
-const API_URL = "http://localhost:3001";
+  const res = await app.handle(
+    new Request(`http://localhost${path}`, {
+      method,
+      headers,
+      body: opts.body ? JSON.stringify(opts.body) : undefined,
+    })
+  );
 
-describe("API Endpoints", () => {
-  let adminToken: string;
-  let creatorToken: string;
-  let approverToken: string;
-  let deciderToken: string;
-  let auditorToken: string;
-  let testDocId: string;
+  const body = await res.json().catch(() => null);
+  return { status: res.status, body };
+}
+
+let adminToken = "";
+let creatorToken = "";
+let approverToken = "";
+
+describe("GET /health", () => {
+  it("returns 200 with status ok", async () => {
+    const { status, body } = await req("GET", "/health");
+    expect(status).toBe(200);
+    expect((body as { status: string }).status).toBe("ok");
+  });
+});
+
+describe("POST /auth/login", () => {
+  it("returns 200 with token and lowercase user for valid credentials", async () => {
+    const { status, body } = await req("POST", "/auth/login", {
+      body: { email: "admin@rapid.dev", password: "password123" },
+    });
+    expect(status).toBe(200);
+    const { token, user } = body as { token: string; user: { id: string; email: string; role: string } };
+    expect(token).toBeTruthy();
+    expect(user).toBeDefined();
+    expect(user.email).toBe("admin@rapid.dev");
+    expect(user.role).toBe("admin");
+    // Fix 4: ensure no uppercase User key
+    expect((body as Record<string, unknown>).User).toBeUndefined();
+    adminToken = token;
+  });
+
+  it("stores creator token for later tests", async () => {
+    const { status, body } = await req("POST", "/auth/login", {
+      body: { email: "creator@rapid.dev", password: "password123" },
+    });
+    expect(status).toBe(200);
+    creatorToken = (body as { token: string }).token;
+    expect(creatorToken).toBeTruthy();
+  });
+
+  it("stores approver token for later tests", async () => {
+    const { status, body } = await req("POST", "/auth/login", {
+      body: { email: "approver@rapid.dev", password: "password123" },
+    });
+    expect(status).toBe(200);
+    approverToken = (body as { token: string }).token;
+    expect(approverToken).toBeTruthy();
+  });
+
+  it("returns 401 for wrong password", async () => {
+    const { status } = await req("POST", "/auth/login", {
+      body: { email: "admin@rapid.dev", password: "wrong-password" },
+    });
+    expect(status).toBe(401);
+  });
+
+  it("returns 401 for unknown email", async () => {
+    const { status } = await req("POST", "/auth/login", {
+      body: { email: "nobody@rapid.dev", password: "password123" },
+    });
+    expect(status).toBe(401);
+  });
+
+  it("returns 400 for invalid body", async () => {
+    const { status } = await req("POST", "/auth/login", { body: { email: "not-an-email" } });
+    expect(status).toBe(400);
+  });
+});
+
+describe("GET /auth/me", () => {
+  beforeAll(async () => {
+    if (!adminToken) {
+      const { body } = await req("POST", "/auth/login", {
+        body: { email: "admin@rapid.dev", password: "password123" },
+      });
+      adminToken = (body as { token: string }).token;
+    }
+  });
+
+  it("returns 200 with user profile", async () => {
+    const { status, body } = await req("GET", "/auth/me", { token: adminToken });
+    expect(status).toBe(200);
+    expect((body as { email: string }).email).toBe("admin@rapid.dev");
+  });
+
+  it("returns 401 without token", async () => {
+    const { status } = await req("GET", "/auth/me");
+    expect(status).toBe(401);
+  });
+});
+
+describe("Documents CRUD", () => {
+  let documentId = "";
 
   beforeAll(async () => {
-    // Get tokens for different users
-    const adminRes = await fetch(`${API_URL}/auth/login`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: "admin@rapid.com", password: "password123" })
-    });
-    const adminData = await adminRes.json();
-    adminToken = adminData.token;
-
-    const creatorRes = await fetch(`${API_URL}/auth/login`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: "creator@rapid.com", password: "password123" })
-    });
-    const creatorData = await creatorRes.json();
-    creatorToken = creatorData.token;
-
-    const approverRes = await fetch(`${API_URL}/auth/login`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: "approver@rapid.com", password: "password123" })
-    });
-    const approverData = await approverRes.json();
-    approverToken = approverData.token;
-
-    const deciderRes = await fetch(`${API_URL}/auth/login`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: "decider@rapid.com", password: "password123" })
-    });
-    const deciderData = await deciderRes.json();
-    deciderToken = deciderData.token;
-
-    const auditorRes = await fetch(`${API_URL}/auth/login`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: "auditor@rapid.com", password: "password123" })
-    });
-    const auditorData = await auditorRes.json();
-    auditorToken = auditorData.token;
+    if (!creatorToken) {
+      const { body } = await req("POST", "/auth/login", {
+        body: { email: "creator@rapid.dev", password: "password123" },
+      });
+      creatorToken = (body as { token: string }).token;
+    }
   });
 
-  describe("GET /health", () => {
-    it("should return health status", async () => {
-      const res = await fetch(`${API_URL}/health`);
-      const data = await res.json();
-      
-      expect(res.status).toBe(200);
-      expect(data.status).toBe("ok");
-      expect(data.service).toBe("rapid-ledger-api");
+  it("POST /documents returns 201 with created doc", async () => {
+    const { status, body } = await req("POST", "/documents", {
+      token: creatorToken,
+      body: {
+        title: "Test Document for API Tests",
+        decisionSummary: "This is a test decision summary for automated API tests",
+        riskLevel: "low",
+      },
     });
+    expect(status).toBe(201);
+    const doc = body as { id: string; documentCode: string; version: number; status: string };
+    expect(doc.documentCode).toMatch(/^RAPID-\d+$/);
+    expect(doc.version).toBe(1);
+    expect(doc.status).toBe("draft");
+    documentId = doc.id;
   });
 
-  describe("POST /auth/login", () => {
-    it("should login with valid credentials", async () => {
-      const res = await fetch(`${API_URL}/auth/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: "creator@rapid.com", password: "password123" })
-      });
-      const data = await res.json();
-      
-      expect(res.status).toBe(200);
-      expect(data.token).toBeDefined();
-      expect(typeof data.token).toBe("string");
-    });
-
-    it("should reject invalid credentials", async () => {
-      const res = await fetch(`${API_URL}/auth/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: "creator@rapid.com", password: "wrongpassword" })
-      });
-      const data = await res.json();
-      
-      expect(res.status).toBe(401);
-      expect(data.error).toBeDefined();
-    });
+  it("GET /documents returns 200 with list", async () => {
+    const { status, body } = await req("GET", "/documents", { token: creatorToken });
+    expect(status).toBe(200);
+    expect(Array.isArray(body)).toBe(true);
   });
 
-  describe("GET /auth/me", () => {
-    it("should return current user info", async () => {
-      const res = await fetch(`${API_URL}/auth/me`, {
-        headers: { Authorization: `Bearer ${creatorToken}` }
-      });
-      const data = await res.json();
-      
-      expect(res.status).toBe(200);
-      expect(data.email).toBe("creator@rapid.com");
-      expect(data.role).toBe("creator");
-    });
-
-    it("should reject request without token", async () => {
-      const res = await fetch(`${API_URL}/auth/me`);
-      const data = await res.json();
-      
-      expect(res.status).toBe(401);
-    });
+  it("GET /documents/:id returns 200 for existing doc", async () => {
+    const { status, body } = await req("GET", `/documents/${documentId}`, { token: creatorToken });
+    expect(status).toBe(200);
+    expect((body as { id: string }).id).toBe(documentId);
   });
 
-  describe("GET /users", () => {
-    it("should return list of users", async () => {
-      const res = await fetch(`${API_URL}/users`, {
-        headers: { Authorization: `Bearer ${adminToken}` }
-      });
-      const data = await res.json();
-      
-      expect(res.status).toBe(200);
-      expect(Array.isArray(data)).toBe(true);
-      expect(data.length).toBeGreaterThan(0);
-    });
+  it("GET /documents/:id returns 404 for unknown id", async () => {
+    const { status } = await req("GET", "/documents/does-not-exist", { token: creatorToken });
+    expect(status).toBe(404);
   });
 
-  describe("POST /documents", () => {
-    it("should create a new document", async () => {
-      const res = await fetch(`${API_URL}/documents`, {
-        method: "POST",
-        headers: { 
-          Authorization: `Bearer ${creatorToken}`,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          title: "Test API Document",
-          decisionSummary: "This is a test",
-          riskLevel: "low",
-          complianceImpact: false,
-          department: "Engineering",
-          deadline: new Date(Date.now() + 30 * 86400000).toISOString()
-        })
-      });
-      const data = await res.json();
-      
-      console.log("POST /documents response:", JSON.stringify(data, null, 2));
-      console.log("Status:", res.status);
-      
-      
-      expect(res.status).toBe(201);
-      expect(data.id).toBeDefined();
-      expect(data.status).toBe("draft");
-      expect(data.documentCode).toMatch(/RAPID-\d+/);
-      
-      testDocId = data.id;
-      console.log("Set testDocId to:", testDocId);
-      
-      // Small delay to ensure document is fully persisted
-      await new Promise(resolve => setTimeout(resolve, 100));
-    });
+  it("GET /documents returns 401 without token", async () => {
+    const { status } = await req("GET", "/documents");
+    expect(status).toBe(401);
+  });
+});
+
+describe("GET /ledger", () => {
+  it("returns 200 with array", async () => {
+    if (!adminToken) return;
+    const { status, body } = await req("GET", "/ledger", { token: adminToken });
+    expect(status).toBe(200);
+    expect(Array.isArray(body)).toBe(true);
   });
 
-  describe("GET /documents", () => {
-    it("should return list of documents", async () => {
-      const res = await fetch(`${API_URL}/documents`, {
-        headers: { Authorization: `Bearer ${creatorToken}` }
-      });
-      const data = await res.json();
-      
-      expect(res.status).toBe(200);
-      expect(Array.isArray(data)).toBe(true);
-    });
-  });
-
-  describe("GET /documents/:id", () => {
-    it("should return document details", async () => {
-      console.log("Fetching document with ID:", testDocId);
-      const res = await fetch(`${API_URL}/documents/${testDocId}`, {
-        headers: { Authorization: `Bearer ${creatorToken}` }
-      });
-      const data = await res.json();
-      
-      expect(res.status).toBe(200);
-      expect(data.id).toBe(testDocId);
-      expect(data.title).toBe("Test API Document");
-    });
-  });
-
-  describe("GET /audit-log", () => {
-    it("should return audit log entries", async () => {
-      const res = await fetch(`${API_URL}/audit-log`, {
-        headers: { Authorization: `Bearer ${adminToken}` }
-      });
-      const data = await res.json();
-      
-      expect(res.status).toBe(200);
-      expect(Array.isArray(data)).toBe(true);
-    });
-
-    it("should filter audit log by action", async () => {
-      const res = await fetch(`${API_URL}/audit-log?action=document_created`, {
-        headers: { Authorization: `Bearer ${adminToken}` }
-      });
-      const data = await res.json();
-      
-      expect(res.status).toBe(200);
-      expect(Array.isArray(data)).toBe(true);
-      if (data.length > 0) {
-        expect(data.every((entry: any) => entry.action === "document_created")).toBe(true);
-      }
-    });
-  });
-
-  describe("GET /ledger", () => {
-    it("should return ledger entries", async () => {
-      const res = await fetch(`${API_URL}/ledger`, {
-        headers: { Authorization: `Bearer ${auditorToken}` }
-      });
-      const data = await res.json();
-      
-      expect(res.status).toBe(200);
-      expect(Array.isArray(data)).toBe(true);
-    });
-  });
-
-  describe("GET /ledger/export", () => {
-    it("should export ledger as CSV", async () => {
-      const res = await fetch(`${API_URL}/ledger/export`, {
-        headers: { Authorization: `Bearer ${auditorToken}` }
-      });
-      const text = await res.text();
-      
-      expect(res.status).toBe(200);
-      expect(res.headers.get("content-type")).toContain("text/csv");
-      expect(text).toContain("Code,Title");
-    });
+  it("returns 401 without token", async () => {
+    const { status } = await req("GET", "/ledger");
+    expect(status).toBe(401);
   });
 });

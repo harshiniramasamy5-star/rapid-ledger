@@ -1,5 +1,6 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
+import type { ApiDocument, ApiUser } from "@/lib/types";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -35,9 +36,9 @@ function formatDate(iso: string) {
 
 export default function DashboardPage() {
   const router = useRouter();
-  const [allDocs, setAllDocs] = useState<any[]>([]);
-  const [docs, setDocs]       = useState<any[]>([]);
-  const [me, setMe]           = useState<any>(null);
+  const [allDocs, setAllDocs] = useState<ApiDocument[]>([]);
+  
+  const [me, setMe]           = useState<ApiUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [search, setSearch]   = useState("");
   const [status, setStatus]   = useState("all");
@@ -51,11 +52,11 @@ export default function DashboardPage() {
       fetch(`${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001"}/auth/me`,    { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()),
     ]).then(([docsData, meData]) => {
       const list = Array.isArray(docsData) ? docsData : [];
-      setAllDocs(list); setDocs(list); setMe(meData); setLoading(false);
+      setAllDocs(list); setMe(meData); setLoading(false);
     }).catch(() => router.replace("/login"));
   }, [router]);
 
-  useEffect(() => {
+  const docs = useMemo(() => {
     let f = [...allDocs];
     if (search.trim()) {
       const q = search.toLowerCase();
@@ -63,7 +64,7 @@ export default function DashboardPage() {
     }
     if (status !== "all") f = f.filter(d => d.status === status);
     if (risk   !== "all") f = f.filter(d => d.riskLevel === risk);
-    setDocs(f);
+    return f;
   }, [search, status, risk, allDocs]);
 
   function logout() {
@@ -119,7 +120,7 @@ export default function DashboardPage() {
                   </div>
                   <div className="hidden sm:block text-left">
                     <p className="text-xs font-semibold text-slate-800 leading-none">{me?.name}</p>
-                    <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded mt-1 inline-block ${ROLE_BADGE[me?.role] ?? ""}`}>
+                    <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded mt-1 inline-block ${ROLE_BADGE[me?.role ?? ""] ?? ""}`}>
                       {me?.role}
                     </span>
                   </div>
@@ -173,7 +174,7 @@ export default function DashboardPage() {
             <div className="flex gap-3 flex-wrap pt-2">
               <Input placeholder="Search by title or code..." value={search}
                 onChange={e => setSearch(e.target.value)} className="flex-1 min-w-[200px] border-slate-200" />
-              <Select value={status} onValueChange={(v: string | null) => setStatus(v ?? "all")}>
+              <Select value={status} onValueChange={(v) => setStatus(v ?? "")}>
                 <SelectTrigger className="w-[190px] border-slate-200"><SelectValue placeholder="All statuses" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All statuses</SelectItem>
@@ -186,7 +187,7 @@ export default function DashboardPage() {
                   <SelectItem value="rejected">Rejected</SelectItem>
                 </SelectContent>
               </Select>
-              <Select value={risk} onValueChange={(v: string | null) => setRisk(v ?? "all")}>
+              <Select value={risk} onValueChange={(v) => setRisk(v ?? "")}>
                 <SelectTrigger className="w-[160px] border-slate-200"><SelectValue placeholder="All risk levels" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All risk levels</SelectItem>
@@ -242,7 +243,7 @@ export default function DashboardPage() {
                           ? <span className="text-xs font-medium text-purple-600 bg-purple-50 px-2 py-1 rounded-md">Yes</span>
                           : <span className="text-slate-300">—</span>}
                       </TableCell>
-                      <TableCell className="text-slate-500 text-sm">{formatDate(doc.deadline)}</TableCell>
+                      <TableCell className="text-slate-500 text-sm">{doc.deadline ? formatDate(doc.deadline) : "—"}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>

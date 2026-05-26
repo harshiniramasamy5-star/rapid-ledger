@@ -1,9 +1,9 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
 
 const BASE = 'http://localhost:3000';
 const NEEDS_BACKEND = !process.env.CI;
 
-async function login(page: any, email: string, password = 'password123') {
+async function login(page: Page, email: string, password = 'password123') {
   await page.goto(`${BASE}/login`);
   await page.getByLabel(/work email/i).fill(email);
   await page.getByLabel(/password/i).fill(password);

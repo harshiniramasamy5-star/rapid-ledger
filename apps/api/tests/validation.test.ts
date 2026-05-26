@@ -1,280 +1,173 @@
 import { describe, it, expect } from "vitest";
-import { validateDocument, isDocumentValid } from "../src/lib/validation";
+import { validateDocument } from "../src/services/validation.service";
+import type { Evidence, RapidDocument, RoleAssignment } from "@prisma/client";
 
-describe("RAPID Validation Engine", () => {
-  
-  describe("Rule: Title required", () => {
-    it("should reject document without title", () => {
-      const doc = { decisionSummary: "Summary" };
-      const roles = [
-        { roleType: "recommend", userId: "user1" },
-        { roleType: "decide", userId: "user2" },
-        { roleType: "perform", userId: "user3" }
-      ];
-      const errors = validateDocument(doc, roles, []);
-      
-      expect(errors.some(e => e.field === "title")).toBe(true);
-      expect(errors.some(e => e.rule === "required")).toBe(true);
-    });
+function makeDoc(
+  overrides: Partial<
+    Pick<
+      RapidDocument,
+      "title" | "decisionSummary" | "riskLevel" | "complianceImpact" | "businessContext" | "problemStatement" | "proposedDecision"
+    >
+  > = {}
+) {
+  return {
+    title: "Migrate to S3",
+    decisionSummary: "Move all file storage from local disk to AWS S3",
+    riskLevel: "low" as const,
+    complianceImpact: false,
+    businessContext: null,
+    problemStatement: null,
+    proposedDecision: null,
+    ...overrides,
+  };
+}
 
-    it("should accept document with valid title", () => {
-      const doc = { 
-        title: "Valid title",
-        decisionSummary: "Summary"
-      };
-      const roles = [
-        { roleType: "recommend", userId: "user1" },
-        { roleType: "decide", userId: "user2" },
-        { roleType: "perform", userId: "user3" }
-      ];
-      const errors = validateDocument(doc, roles, []);
-      
-      expect(errors.some(e => e.field === "title")).toBe(false);
-    });
+function makeRole(roleType: RoleAssignment["roleType"], userId = "user-1") {
+  return { id: "role-1", documentId: "doc-1", roleType, userId, createdAt: new Date() } as RoleAssignment;
+}
+
+function makeEvidence(overrides: Partial<Evidence> = {}): Evidence {
+  return {
+    id: "ev-1",
+    documentId: "doc-1",
+    type: "link",
+    title: "Policy",
+    urlOrPath: "https://example.com",
+    description: null,
+    uploadedBy: "user-1",
+    createdAt: new Date(),
+    ...overrides,
+  } as Evidence;
+}
+
+const BASE_ROLES = [
+  makeRole("recommend"),
+  makeRole("perform", "user-2"),
+  makeRole("decide", "user-3"),
+];
+
+describe("validateDocument", () => {
+  it("passes for a fully valid low-risk document", () => {
+    const result = validateDocument({ document: makeDoc(), roles: BASE_ROLES, evidence: [] });
+    expect(result.valid).toBe(true);
+    expect(result.errors).toHaveLength(0);
   });
 
-  describe("Rule: Exactly one Decide owner", () => {
-    it("should reject document with zero Decide owners", () => {
-      const doc = { title: "Test", decisionSummary: "Summary" };
-      const roles = [
-        { roleType: "recommend", userId: "user1" },
-        { roleType: "perform", userId: "user2" }
-      ];
-      const errors = validateDocument(doc, roles, []);
-      
-      expect(errors.some(e => e.rule === "exactly_one_decide_required")).toBe(true);
-      expect(errors.find(e => e.rule === "exactly_one_decide_required")?.message)
-        .toContain("Exactly one Decide owner is required");
-    });
-
-    it("should reject document with multiple Decide owners", () => {
-      const doc = { title: "Test", decisionSummary: "Summary" };
-      const roles = [
-        { roleType: "recommend", userId: "user1" },
-        { roleType: "decide", userId: "user2" },
-        { roleType: "decide", userId: "user3" },
-        { roleType: "perform", userId: "user4" }
-      ];
-      const errors = validateDocument(doc, roles, []);
-      
-      expect(errors.some(e => e.rule === "exactly_one_decide_required")).toBe(true);
-      expect(errors.find(e => e.rule === "exactly_one_decide_required")?.message)
-        .toContain("Only one Decide owner is allowed");
-    });
-
-    it("should accept document with exactly one Decide owner", () => {
-      const doc = { title: "Test", decisionSummary: "Summary" };
-      const roles = [
-        { roleType: "recommend", userId: "user1" },
-        { roleType: "decide", userId: "user2" },
-        { roleType: "perform", userId: "user3" }
-      ];
-      const errors = validateDocument(doc, roles, []);
-      
-      expect(errors.some(e => e.rule === "exactly_one_decide_required")).toBe(false);
-    });
+  it("fails when title is missing", () => {
+    const result = validateDocument({ document: makeDoc({ title: "" }), roles: BASE_ROLES, evidence: [] });
+    expect(result.valid).toBe(false);
+    expect(result.errors.some((e: { rule: string }) => e.rule === "title_required")).toBe(true);
   });
 
-  describe("Rule: Recommend owner required", () => {
-    it("should reject document without Recommend owner", () => {
-      const doc = { title: "Test", decisionSummary: "Summary" };
-      const roles = [
-        { roleType: "decide", userId: "user1" },
-        { roleType: "perform", userId: "user2" }
-      ];
-      const errors = validateDocument(doc, roles, []);
-      
-      expect(errors.some(e => e.rule === "recommend_required")).toBe(true);
-    });
-
-    it("should accept document with Recommend owner", () => {
-      const doc = { title: "Test", decisionSummary: "Summary" };
-      const roles = [
-        { roleType: "recommend", userId: "user1" },
-        { roleType: "decide", userId: "user2" },
-        { roleType: "perform", userId: "user3" }
-      ];
-      const errors = validateDocument(doc, roles, []);
-      
-      expect(errors.some(e => e.rule === "recommend_required")).toBe(false);
-    });
+  it("fails when decisionSummary is missing", () => {
+    const result = validateDocument({ document: makeDoc({ decisionSummary: "" }), roles: BASE_ROLES, evidence: [] });
+    expect(result.valid).toBe(false);
+    expect(result.errors.some((e: { rule: string }) => e.rule === "decision_summary_required")).toBe(true);
   });
 
-  describe("Rule: Perform owner required", () => {
-    it("should reject document without Perform owner", () => {
-      const doc = { title: "Test", decisionSummary: "Summary" };
-      const roles = [
-        { roleType: "recommend", userId: "user1" },
-        { roleType: "decide", userId: "user2" }
-      ];
-      const errors = validateDocument(doc, roles, []);
-      
-      expect(errors.some(e => e.rule === "perform_required")).toBe(true);
-    });
+  it("fails when there is no Decide owner", () => {
+    const roles = [makeRole("recommend"), makeRole("perform", "user-2")];
+    const result = validateDocument({ document: makeDoc(), roles, evidence: [] });
+    expect(result.valid).toBe(false);
+    expect(result.errors.some((e: { rule: string }) => e.rule === "decide_required")).toBe(true);
   });
 
-  describe("Rule: High-risk decisions require Agree approver", () => {
-    it("should reject high-risk document without Agree approver", () => {
-      const doc = { 
-        title: "Test", 
-        decisionSummary: "Summary",
-        riskLevel: "high"
-      };
-      const roles = [
-        { roleType: "recommend", userId: "user1" },
-        { roleType: "decide", userId: "user2" },
-        { roleType: "perform", userId: "user3" }
-      ];
-      const errors = validateDocument(doc, roles, []);
-      
-      expect(errors.some(e => e.rule === "agree_required_for_high_risk")).toBe(true);
-    });
-
-    it("should reject critical-risk document without Agree approver", () => {
-      const doc = { 
-        title: "Test", 
-        decisionSummary: "Summary",
-        riskLevel: "critical"
-      };
-      const roles = [
-        { roleType: "recommend", userId: "user1" },
-        { roleType: "decide", userId: "user2" },
-        { roleType: "perform", userId: "user3" }
-      ];
-      const errors = validateDocument(doc, roles, []);
-      
-      expect(errors.some(e => e.rule === "agree_required_for_high_risk")).toBe(true);
-    });
-
-    it("should accept high-risk document with Agree approver", () => {
-      const doc = { 
-        title: "Test", 
-        decisionSummary: "Summary",
-        riskLevel: "high"
-      };
-      const roles = [
-        { roleType: "recommend", userId: "user1" },
-        { roleType: "agree", userId: "user2" },
-        { roleType: "decide", userId: "user3" },
-        { roleType: "perform", userId: "user4" }
-      ];
-      const errors = validateDocument(doc, roles, []);
-      
-      expect(errors.some(e => e.rule === "agree_required_for_high_risk")).toBe(false);
-    });
-
-    it("should accept low-risk document without Agree approver", () => {
-      const doc = { 
-        title: "Test", 
-        decisionSummary: "Summary",
-        riskLevel: "low"
-      };
-      const roles = [
-        { roleType: "recommend", userId: "user1" },
-        { roleType: "decide", userId: "user2" },
-        { roleType: "perform", userId: "user3" }
-      ];
-      const errors = validateDocument(doc, roles, []);
-      
-      expect(errors.some(e => e.rule === "agree_required_for_high_risk")).toBe(false);
-    });
+  it("fails when there is no Recommend owner", () => {
+    const roles = [makeRole("perform", "user-2"), makeRole("decide", "user-3")];
+    const result = validateDocument({ document: makeDoc(), roles, evidence: [] });
+    expect(result.valid).toBe(false);
+    expect(result.errors.some((e: { rule: string }) => e.rule === "recommend_required")).toBe(true);
   });
 
-  describe("Rule: Compliance-impacting decisions require evidence", () => {
-    it("should reject compliance document without evidence", () => {
-      const doc = { 
-        title: "Test", 
-        decisionSummary: "Summary",
-        complianceImpact: true
-      };
-      const roles = [
-        { roleType: "recommend", userId: "user1" },
-        { roleType: "decide", userId: "user2" },
-        { roleType: "perform", userId: "user3" }
-      ];
-      const errors = validateDocument(doc, roles, []);
-      
-      expect(errors.some(e => e.rule === "evidence_required_for_compliance")).toBe(true);
-    });
-
-    it("should accept compliance document with evidence", () => {
-      const doc = { 
-        title: "Test", 
-        decisionSummary: "Summary",
-        complianceImpact: true
-      };
-      const roles = [
-        { roleType: "recommend", userId: "user1" },
-        { roleType: "decide", userId: "user2" },
-        { roleType: "perform", userId: "user3" }
-      ];
-      const evidence = [
-        { id: "ev1", title: "Policy doc", type: "link" }
-      ];
-      const errors = validateDocument(doc, roles, evidence);
-      
-      expect(errors.some(e => e.rule === "evidence_required_for_compliance")).toBe(false);
-    });
-
-    it("should accept non-compliance document without evidence", () => {
-      const doc = { 
-        title: "Test", 
-        decisionSummary: "Summary",
-        complianceImpact: false
-      };
-      const roles = [
-        { roleType: "recommend", userId: "user1" },
-        { roleType: "decide", userId: "user2" },
-        { roleType: "perform", userId: "user3" }
-      ];
-      const errors = validateDocument(doc, roles, []);
-      
-      expect(errors.some(e => e.rule === "evidence_required_for_compliance")).toBe(false);
-    });
+  it("fails when there is no Perform owner", () => {
+    const roles = [makeRole("recommend"), makeRole("decide", "user-3")];
+    const result = validateDocument({ document: makeDoc(), roles, evidence: [] });
+    expect(result.valid).toBe(false);
+    expect(result.errors.some((e: { rule: string }) => e.rule === "perform_required")).toBe(true);
   });
 
-  describe("Rule: Rejected documents cannot be finalized", () => {
-    it("should reject finalization of rejected document", () => {
-      const doc = { 
-        title: "Test", 
-        decisionSummary: "Summary",
-        status: "rejected"
-      };
-      const roles = [
-        { roleType: "recommend", userId: "user1" },
-        { roleType: "decide", userId: "user2" },
-        { roleType: "perform", userId: "user3" }
-      ];
-      const errors = validateDocument(doc, roles, []);
-      
-      expect(errors.some(e => e.rule === "rejected_cannot_finalize")).toBe(true);
-    });
+  it("fails when there are multiple Decide owners", () => {
+    const roles = [
+      makeRole("recommend"),
+      makeRole("perform", "user-2"),
+      makeRole("decide", "user-3"),
+      makeRole("decide", "user-4"),
+    ];
+    const result = validateDocument({ document: makeDoc(), roles, evidence: [] });
+    expect(result.valid).toBe(false);
+    expect(result.errors.some((e: { rule: string }) => e.rule === "single_decider")).toBe(true);
   });
 
-  describe("isDocumentValid helper", () => {
-    it("should return true for fully valid document", () => {
-      const doc = { 
-        title: "Test Decision",
-        decisionSummary: "We will do this thing",
-        riskLevel: "low"
-      };
-      const roles = [
-        { roleType: "recommend", userId: "user1" },
-        { roleType: "decide", userId: "user2" },
-        { roleType: "perform", userId: "user3" }
-      ];
-      
-      expect(isDocumentValid(doc, roles, [])).toBe(true);
-    });
+  it("fails when the same user is both Recommend and Decide", () => {
+    const roles = [
+      makeRole("recommend", "user-X"),
+      makeRole("perform", "user-2"),
+      makeRole("decide", "user-X"),
+    ];
+    const result = validateDocument({ document: makeDoc(), roles, evidence: [] });
+    expect(result.valid).toBe(false);
+    expect(result.errors.some((e: { rule: string }) => e.rule === "recommend_decide_conflict")).toBe(true);
+  });
 
-    it("should return false for invalid document", () => {
-      const doc = { title: "Test" }; // missing decisionSummary
-      const roles = [
-        { roleType: "recommend", userId: "user1" }
-        // missing decide and perform
-      ];
-      
-      expect(isDocumentValid(doc, roles, [])).toBe(false);
+  it("fails for high-risk doc without an Agree owner", () => {
+    const result = validateDocument({
+      document: makeDoc({ riskLevel: "high" }),
+      roles: BASE_ROLES,
+      evidence: [makeEvidence()],
     });
+    expect(result.valid).toBe(false);
+    expect(result.errors.some((e: { rule: string }) => e.rule === "agree_required_high_risk")).toBe(true);
+  });
+
+  it("fails for high-risk doc without evidence", () => {
+    const roles = [...BASE_ROLES, makeRole("agree", "user-4")];
+    const result = validateDocument({ document: makeDoc({ riskLevel: "high" }), roles, evidence: [] });
+    expect(result.valid).toBe(false);
+    expect(result.errors.some((e: { rule: string }) => e.rule === "evidence_required_high_risk")).toBe(true);
+  });
+
+  it("passes for high-risk doc with Agree owner and evidence", () => {
+    const roles = [...BASE_ROLES, makeRole("agree", "user-4")];
+    const result = validateDocument({
+      document: makeDoc({ riskLevel: "high" }),
+      roles,
+      evidence: [makeEvidence()],
+    });
+    expect(result.valid).toBe(true);
+  });
+
+  it("passes for critical-risk doc with Agree owner and evidence", () => {
+    const roles = [...BASE_ROLES, makeRole("agree", "user-4")];
+    const result = validateDocument({
+      document: makeDoc({ riskLevel: "critical" }),
+      roles,
+      evidence: [makeEvidence()],
+    });
+    expect(result.valid).toBe(true);
+  });
+
+  it("fails for compliance doc without businessContext", () => {
+    const result = validateDocument({
+      document: makeDoc({ complianceImpact: true, businessContext: null }),
+      roles: BASE_ROLES,
+      evidence: [],
+    });
+    expect(result.valid).toBe(false);
+    expect(result.errors.some((e: { rule: string }) => e.rule === "business_context_required_compliance")).toBe(true);
+  });
+
+  it("passes for compliance doc with businessContext", () => {
+    const result = validateDocument({
+      document: makeDoc({ complianceImpact: true, businessContext: "Regulatory requirement" }),
+      roles: BASE_ROLES,
+      evidence: [],
+    });
+    expect(result.valid).toBe(true);
+  });
+
+  it("returns multiple errors simultaneously", () => {
+    const result = validateDocument({ document: makeDoc({ title: "", decisionSummary: "" }), roles: [], evidence: [] });
+    expect(result.valid).toBe(false);
+    expect(result.errors.length).toBeGreaterThan(1);
   });
 });

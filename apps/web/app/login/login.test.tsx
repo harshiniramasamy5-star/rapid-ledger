@@ -14,7 +14,7 @@ jest.mock("sonner", () => ({
 import { toast } from "sonner";
 import LoginPage from "./page";
 
-function mockFetch(data: any, ok = true) {
+function mockFetch(data: Record<string, unknown>, ok = true) {
   global.fetch = jest.fn().mockResolvedValueOnce({
     ok, json: async () => data,
   });

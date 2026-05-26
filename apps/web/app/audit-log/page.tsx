@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import type { AuditEntry, ApiUser } from "@/lib/types";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -45,10 +46,10 @@ function relativeTime(iso: string) {
 
 export default function AuditLogPage() {
   const router = useRouter();
-  const [entries, setEntries] = useState<any[]>([]);
+  const [entries, setEntries] = useState<AuditEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter]   = useState("all");
-  const [me, setMe]           = useState<any>(null);
+  const [me, setMe]           = useState<ApiUser | null>(null);
 
   useEffect(() => {
     const token = localStorage.getItem("rapid_token");
@@ -187,7 +188,7 @@ export default function AuditLogPage() {
                         <p className="text-sm text-slate-700 font-medium truncate mb-1">{e.documentTitle}</p>
                       )}
                       <div className="flex items-center gap-2 text-xs text-slate-400">
-                        <span className={`font-semibold px-1.5 py-0.5 rounded text-[10px] ${ROLE_COLORS[e.actorRole] ?? "bg-gray-100 text-gray-600"}`}>
+                        <span className={`font-semibold px-1.5 py-0.5 rounded text-[10px] ${ROLE_COLORS[e.actorRole ?? ""] ?? "bg-gray-100 text-gray-600"}`}>
                           {e.actorRole}
                         </span>
                         <span className="font-medium text-slate-600">{e.actorName ?? "Unknown"}</span>

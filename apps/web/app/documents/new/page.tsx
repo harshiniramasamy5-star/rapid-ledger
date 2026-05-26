@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import type { ApiUser } from "@/lib/types";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,7 +23,7 @@ const ROLE_CONFIG: Record<string, { label: string; color: string; bg: string; de
 
 export default function NewDocumentPage() {
   const router = useRouter();
-  const [users, setUsers]   = useState<any[]>([]);
+  const [users, setUsers]   = useState<ApiUser[]>([]);
   const [loading, setLoading] = useState(false);
   const [step, setStep]     = useState(1);
   const [docId, setDocId]   = useState<string|null>(null);
@@ -48,7 +49,7 @@ export default function NewDocumentPage() {
   }, [router]);
 
   function token() { return localStorage.getItem("rapid_token") ?? ""; }
-  function setF(field: string, value: any) { setForm(f => ({ ...f, [field]: value })); }
+  function setF(field: string, value: unknown) { setForm(f => ({ ...f, [field]: value })); }
 
   async function createDocument() {
     if (!form.title || !form.decisionSummary || !form.department || !form.deadline) {
@@ -66,7 +67,7 @@ export default function NewDocumentPage() {
       setDocId(data.id);
       toast.success("Document created! Now assign roles.");
       setStep(2);
-    } catch (e: any) { toast.error(e.message); }
+    } catch (e: unknown) { toast.error(e instanceof Error ? e.message : "Failed"); }
     setLoading(false);
   }
 
@@ -261,7 +262,7 @@ export default function NewDocumentPage() {
                       <Badge variant="outline" className="text-[10px] border-slate-300 text-slate-500">Required</Badge>
                     )}
                   </div>
-                  <Select value={roles[roleType]} onValueChange={v => setRoles((r: any) => ({ ...r, [roleType]: v }))}>
+                  <Select value={roles[roleType]} onValueChange={v => v && setRoles(r => ({ ...r, [roleType]: v }))}>
                     <SelectTrigger className="bg-white border-slate-200 text-sm h-9">
                       <SelectValue placeholder="-- Not assigned --" />
                     </SelectTrigger>
@@ -302,7 +303,7 @@ export default function NewDocumentPage() {
               </div>
               <div className="space-y-1.5">
                 <Label className="text-slate-700 font-semibold text-sm">Type</Label>
-                <Select value={evidence.type} onValueChange={v => setEvidence((ev: any) => ({ ...ev, type: v }))}>
+                <Select value={evidence.type} onValueChange={v => v && setEvidence(ev => ({ ...ev, type: v }))}>
                   <SelectTrigger className="border-slate-200"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="link">Link</SelectItem>

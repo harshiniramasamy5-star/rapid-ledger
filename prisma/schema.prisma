@@ -4,122 +4,161 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  admin
+  creator
+  approver
+  viewer
+  recommender
+  performer
+}
+
+enum DocumentStatus {
+  draft
+  submitted
+  awaiting_agreement
+  approved
+  rejected
+  needs_changes
+  finalized
+}
+
+enum RiskLevel {
+  low
+  medium
+  high
+  critical
+}
+
+enum RoleType {
+  recommend
+  agree
+  perform
+  input
+  decide
+}
+
+enum AuditAction {
+  login
+  document_created
+  document_submitted
+  document_approved
+  document_rejected
+  document_needs_changes
+  document_finalized
+  document_versioned
+  role_assigned
+  evidence_added
+  user_created
+  user_updated
+  ledger_entry_created
 }
 
 model User {
-  id           String   @id @default(cuid())
-  name         String
-  email        String   @unique
-  passwordHash String
-  role         String
-  department   String?
-  isActive     Boolean  @default(true)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-  createdDocuments  RapidDocument[]       @relation("CreatedBy")
-  roleAssignments   RapidRoleAssignment[]
-  uploadedEvidence  Evidence[]
-  approvals         Approval[]
-  auditLogs         AuditLog[]
-  decideOnLedger    LedgerEntry[]         @relation("DecideOwner")
-  performOnLedger   LedgerEntry[]         @relation("PerformOwner")
+  id              String           @id @default(cuid())
+  email           String           @unique
+  name            String
+  password        String
+  role            UserRole         @default(viewer)
+  department      String?
+  isActive        Boolean          @default(true)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  documents       RapidDocument[]  @relation("CreatedBy")
+  auditLogs       AuditLog[]
+  roleAssignments RoleAssignment[]
+  evidence        Evidence[]
+  approvals       Approval[]
 }
 
 model RapidDocument {
-  id                     String    @id @default(cuid())
+  id                     String           @id @default(cuid())
   documentCode           String
+  version                Int              @default(1)
   title                  String
   decisionSummary        String
+  riskLevel              RiskLevel        @default(low)
+  status                 DocumentStatus   @default(draft)
+  complianceImpact       Boolean          @default(false)
   businessContext        String?
   problemStatement       String?
   proposedDecision       String?
   alternativesConsidered String?
-  riskLevel              String    @default("low")
-  complianceImpact       Boolean   @default(false)
-  department             String
-  deadline               DateTime
-  status                 String    @default("draft")
-  version                Int       @default(1)
-  parentDocumentId       String?
-  createdBy              String
-  createdAt              DateTime  @default(now())
-  updatedAt              DateTime  @updatedAt
+  department             String?
+  deadline               DateTime?
   submittedAt            DateTime?
   finalizedAt            DateTime?
+  createdById            String
+  createdBy              User             @relation("CreatedBy", fields: [createdById], references: [id])
+  createdAt              DateTime         @default(now())
+  updatedAt              DateTime         @updatedAt
+  roleAssignments        RoleAssignment[]
+  evidence               Evidence[]
+  approvals              Approval[]
+  auditLogs              AuditLog[]
+  ledgerEntries          LedgerEntry[]
+
   @@unique([documentCode, version])
-  creator        User                  @relation("CreatedBy", fields: [createdBy], references: [id])
-  parentDocument RapidDocument?        @relation("Versions", fields: [parentDocumentId], references: [id])
-  childVersions  RapidDocument[]       @relation("Versions")
-  roleAssignments RapidRoleAssignment[]
-  evidence       Evidence[]
-  approvals      Approval[]
-  ledgerEntry    LedgerEntry?
-  auditLogs      AuditLog[]
 }
 
-model RapidRoleAssignment {
-  id         String   @id @default(cuid())
+model RoleAssignment {
+  id         String        @id @default(cuid())
   documentId String
-  roleType   String
+  document   RapidDocument @relation(fields: [documentId], references: [id])
+  roleType   RoleType
   userId     String
-  createdAt  DateTime @default(now())
-  document RapidDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
-  user     User          @relation(fields: [userId], references: [id])
+  user       User          @relation(fields: [userId], references: [id])
+  createdAt  DateTime      @default(now())
 }
 
 model Evidence {
-  id          String   @id @default(cuid())
+  id          String        @id @default(cuid())
   documentId  String
+  document    RapidDocument @relation(fields: [documentId], references: [id])
   type        String
   title       String
-  urlOrPath   String?
+  urlOrPath   String
   description String?
   uploadedBy  String
-  createdAt   DateTime @default(now())
-  document RapidDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
-  uploader User          @relation(fields: [uploadedBy], references: [id])
+  uploader    User          @relation(fields: [uploadedBy], references: [id])
+  createdAt   DateTime      @default(now())
 }
 
 model Approval {
-  id         String   @id @default(cuid())
+  id         String        @id @default(cuid())
   documentId String
+  document   RapidDocument @relation(fields: [documentId], references: [id])
   approverId String
-  status     String   @default("pending")
-  notes      String?
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-  document RapidDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
-  approver User          @relation(fields: [approverId], references: [id])
+  approver   User          @relation(fields: [approverId], references: [id])
+  decision   String        @default("pending")
+  comment    String?
+  createdAt  DateTime      @default(now())
 }
 
 model LedgerEntry {
-  id               String   @id @default(cuid())
-  documentId       String   @unique
-  documentCode     String
-  title            String
-  finalDecision    String
-  decideOwnerId    String
-  performOwnerId   String
-  riskLevel        String
-  complianceImpact Boolean
-  version          Int
-  finalizedAt      DateTime
-  createdAt        DateTime @default(now())
+  id           String        @id @default(cuid())
+  documentId   String
   document     RapidDocument @relation(fields: [documentId], references: [id])
-  decideOwner  User          @relation("DecideOwner", fields: [decideOwnerId], references: [id])
-  performOwner User          @relation("PerformOwner", fields: [performOwnerId], references: [id])
+  documentCode String
+  version      Int
+  title        String
+  finalizedBy  String
+  finalizedAt  DateTime      @default(now())
+  summary      String?
+  createdAt    DateTime      @default(now())
 }
 
 model AuditLog {
-  id         String   @id @default(cuid())
-  actorId    String
-  action     String
-  objectType String
-  objectId   String
-  details    String?
+  id         String         @id @default(cuid())
+  userId     String
+  user       User           @relation(fields: [userId], references: [id])
+  action     AuditAction
+  entityType String
+  entityId   String
+  details    Json?
   documentId String?
-  createdAt  DateTime @default(now())
-  actor    User           @relation(fields: [actorId], references: [id])
-  document RapidDocument? @relation(fields: [documentId], references: [id])
+  document   RapidDocument? @relation(fields: [documentId], references: [id])
+  createdAt  DateTime       @default(now())
 }

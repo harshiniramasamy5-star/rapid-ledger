@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import type { ApiUser } from "@/lib/types";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,7 +28,7 @@ const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
 
 export default function AdminPage() {
   const router = useRouter();
-  const [users, setUsers]       = useState<any[]>([]);
+  const [users, setUsers]       = useState<ApiUser[]>([]);
   const [loading, setLoading]   = useState(true);
   const [showAdd, setShowAdd]   = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -41,6 +42,7 @@ export default function AdminPage() {
     const me = JSON.parse(localStorage.getItem("rapid_user") ?? "{}");
     if (me.role !== "admin") { router.replace("/dashboard"); return; }
     loadUsers();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router]);
 
   async function loadUsers() {
@@ -75,8 +77,8 @@ export default function AdminPage() {
       setShowAdd(false);
       setForm({ name: "", email: "", password: "", role: "creator", department: "" });
       loadUsers();
-    } catch (err: any) {
-      toast.error(err?.error?.message ?? "Failed to create user");
+    } catch (err: unknown) {
+      toast.error((err as { error?: { message?: string } })?.error?.message ?? "Failed to create user");
     } finally {
       setSubmitting(false);
     }
@@ -91,8 +93,8 @@ export default function AdminPage() {
       if (!res.ok) throw await res.json();
       toast.success(`User ${isActive ? "deactivated" : "activated"} successfully`);
       loadUsers();
-    } catch (err: any) {
-      toast.error(err?.error?.message ?? "Failed to update user");
+    } catch (err: unknown) {
+      toast.error((err as { error?: { message?: string } })?.error?.message ?? "Failed to update user");
     }
   }
 
@@ -246,7 +248,7 @@ export default function AdminPage() {
             </div>
             <div className="space-y-1.5">
               <Label className="text-slate-700 text-sm font-semibold">Role</Label>
-              <Select value={form.role} onValueChange={v => setForm((f: any) => ({ ...f, role: v }))}>
+              <Select value={form.role} onValueChange={v => setForm(f => ({ ...f, role: v ?? "" }))}>
                 <SelectTrigger className="border-slate-200">
                   <SelectValue />
                 </SelectTrigger>

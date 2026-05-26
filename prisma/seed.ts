@@ -1,98 +1,37 @@
-import { PrismaClient } from "@prisma/client";
+import { config } from "dotenv";
+import { resolve } from "path";
+config({ path: resolve(process.cwd(), ".env") });
+
+import { PrismaClient, UserRole } from "@prisma/client";
+import { Pool } from "pg";
+import { PrismaPg } from "@prisma/adapter-pg";
 import bcrypt from "bcryptjs";
 
-const prisma = new PrismaClient();
+const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+const adapter = new PrismaPg(pool);
+const prisma = new PrismaClient({ adapter });
+
+const SEED_USERS = [
+  { name: "Alice Admin",      email: "admin@rapid.dev",       role: UserRole.admin,       department: "Operations" },
+  { name: "Carol Creator",    email: "creator@rapid.dev",     role: UserRole.creator,     department: "Engineering" },
+  { name: "Bob Approver",     email: "approver@rapid.dev",    role: UserRole.approver,    department: "Legal" },
+  { name: "Rick Recommender", email: "recommender@rapid.dev", role: UserRole.recommender, department: "Product" },
+  { name: "Pam Performer",    email: "performer@rapid.dev",   role: UserRole.performer,   department: "Engineering" },
+  { name: "Vera Viewer",      email: "viewer@rapid.dev",      role: UserRole.viewer,      department: "Finance" },
+];
 
 async function main() {
-  console.log("Seeding users...");
-
-  const hash = (pw: string) => bcrypt.hash(pw, 10);
-
-  await prisma.user.upsert({
-    where: { email: "admin@rapid.com" },
-    update: {},
-    create: {
-      name: "Admin User",
-      email: "admin@rapid.com",
-      passwordHash: await hash("password123"),
-      role: "admin",
-      department: "Management",
-    },
-  });
-
-  await prisma.user.upsert({
-    where: { email: "creator@rapid.com" },
-    update: {},
-    create: {
-      name: "Document Creator",
-      email: "creator@rapid.com",
-      passwordHash: await hash("password123"),
-      role: "creator",
-      department: "Operations",
-    },
-  });
-
-  await prisma.user.upsert({
-    where: { email: "recommender@rapid.com" },
-    update: {},
-    create: {
-      name: "Risk Recommender",
-      email: "recommender@rapid.com",
-      passwordHash: await hash("password123"),
-      role: "recommender",
-      department: "Risk",
-    },
-  });
-
-  await prisma.user.upsert({
-    where: { email: "approver@rapid.com" },
-    update: {},
-    create: {
-      name: "Senior Approver",
-      email: "approver@rapid.com",
-      passwordHash: await hash("password123"),
-      role: "approver",
-      department: "Finance",
-    },
-  });
-
-  await prisma.user.upsert({
-    where: { email: "decision@rapid.com" },
-    update: {},
-    create: {
-      name: "Decision Owner",
-      email: "decision@rapid.com",
-      passwordHash: await hash("password123"),
-      role: "decision_owner",
-      department: "Leadership",
-    },
-  });
-
-  await prisma.user.upsert({
-    where: { email: "performer@rapid.com" },
-    update: {},
-    create: {
-      name: "Task Performer",
-      email: "performer@rapid.com",
-      passwordHash: await hash("password123"),
-      role: "performer",
-      department: "Operations",
-    },
-  });
-
-  await prisma.user.upsert({
-    where: { email: "auditor@rapid.com" },
-    update: {},
-    create: {
-      name: "Audit Officer",
-      email: "auditor@rapid.com",
-      passwordHash: await hash("password123"),
-      role: "auditor",
-      department: "Compliance",
-    },
-  });
-
-  console.log("✅ All users seeded successfully!");
+  console.log("Seeding database...");
+  const hashed = await bcrypt.hash("password123", 10);
+  for (const u of SEED_USERS) {
+    await prisma.user.upsert({
+      where: { email: u.email },
+      update: {},
+      create: { ...u, password: hashed, isActive: true },
+    });
+    console.log("  done: " + u.name);
+  }
+  console.log("Seed complete. All users password: password123");
 }
 
 main()

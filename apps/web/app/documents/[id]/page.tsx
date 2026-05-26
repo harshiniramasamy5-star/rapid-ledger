@@ -1,5 +1,7 @@
 "use client";
+import React from "react";
 import { useEffect, useState } from "react";
+import type { ApiDocument, ApiUser, Approval, RoleAssignment } from "@/lib/types";
 import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -31,9 +33,9 @@ const ROLE_CONFIG: Record<string, { label: string; color: string; bg: string }> 
 export default function DocumentDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const [doc, setDoc]               = useState<any>(null);
-  const [me, setMe]                 = useState<any>(null);
-  const [myApproval, setMyApproval] = useState<any>(null);
+  const [doc, setDoc]               = useState<ApiDocument | null>(null);
+  const [me, setMe]                 = useState<ApiUser | null>(null);
+  const [myApproval, setMyApproval] = useState<Approval | null>(null);
   const [approvalNotes, setApprovalNotes]     = useState("");
   const [execNotes, setExecNotes]             = useState("");
   const [recommendNotes, setRecommendNotes]   = useState("");
@@ -52,17 +54,20 @@ export default function DocumentDetailPage() {
         fetch(`${API}/approvals/my`,       { headers: { Authorization: `Bearer ${t}` } }),
       ]);
       const [meData, docData, appData] = await Promise.all([meRes.json(), docRes.json(), appRes.json()]);
-      setMe(meData);
-      setDoc(docData?.error ? null : docData);
-      const found = Array.isArray(appData) ? appData.find((a: any) => a.documentId === params.id || a.document?.id === params.id) : null;
-      setMyApproval(found ?? null);
-    } catch { toast.error("Failed to load document"); }
-    setLoading(false);
+      const found = Array.isArray(appData) ? (appData as Approval[]).find(a => a.documentId === params.id || a.document?.id === params.id) : null;
+      // batch state updates to avoid cascading renders
+      React.startTransition(() => {
+        setMe(meData);
+        setDoc(docData?.error ? null : docData);
+        setMyApproval(found ?? null);
+        setLoading(false);
+      });
+    } catch { toast.error("Failed to load document"); setLoading(false); } // eslint-disable-line
   }
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => { void load(); }, [params.id]);
 
-  useEffect(() => { load(); }, [params.id]);
-
-  async function apiPost(path: string, body?: any) {
+  async function apiPost(path: string, body?: Record<string, unknown>) {
     const res = await fetch(`${API}${path}`, {
       method: "POST",
       headers: { Authorization: `Bearer ${token()}`, "Content-Type": "application/json" },
@@ -73,13 +78,13 @@ export default function DocumentDetailPage() {
 
   async function handle(action: () => Promise<void>) {
     setActing(true);
-    try { await action(); } catch (e: any) { toast.error(e.message ?? "Something went wrong"); }
+    try { await action(); } catch (e: unknown) { toast.error((e instanceof Error ? e.message : undefined) ?? "Something went wrong"); }
     setActing(false);
   }
 
   const myId    = me?.id ?? "";
   const roles   = doc?.roleAssignments ?? [];
-  const myRole  = roles.find((r: any) => r.userId === myId);
+  const myRole  = (roles as RoleAssignment[]).find(r => r.userId === myId);
   const isCreator   = doc?.createdBy === myId;
   const status      = doc?.status ?? "";
 
@@ -339,7 +344,7 @@ export default function DocumentDetailPage() {
               <p className="text-sm text-slate-400">No roles assigned yet.</p>
             ) : (
               <div className="space-y-2">
-                {roles.map((r: any, i: number) => {
+                {(roles as import('@/lib/types').RoleAssignment[]).map((r, i) => {
                   const cfg = ROLE_CONFIG[r.roleType] ?? { label: r.roleType, color: "text-slate-700", bg: "bg-slate-50 border-slate-200" };
                   const isMe = r.userId === myId;
                   return (
@@ -367,7 +372,7 @@ export default function DocumentDetailPage() {
               <CardTitle className="text-base text-slate-900">Evidence</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
-              {doc.evidence.map((ev: any, i: number) => (
+              {(doc.evidence as import('@/lib/types').Evidence[]).map((ev, i) => (
                 <div key={i} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-100">
                   <div>
                     <p className="text-sm font-semibold text-slate-800">{ev.title}</p>

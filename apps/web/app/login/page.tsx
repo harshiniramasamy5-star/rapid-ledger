@@ -40,19 +40,19 @@ export default function LoginPage() {
 
       // Store in localStorage
       localStorage.setItem("rapid_token", data.token);
-      localStorage.setItem("rapid_user", JSON.stringify(data.User));
+      localStorage.setItem("rapid_user", JSON.stringify(data.user));
 
       // Set cookies for middleware — add Secure flag on HTTPS (production/Vercel)
       const isSecure = window.location.protocol === "https:";
       const secureFlag = isSecure ? "; Secure" : "";
       const maxAge = 60 * 60 * 24 * 7; // 7 days
       document.cookie = `rapid_token=${data.token}; path=/; max-age=${maxAge}; SameSite=Lax${secureFlag}`;
-      document.cookie = `rapid_role=${data.User.role}; path=/; max-age=${maxAge}; SameSite=Lax${secureFlag}`;
+      document.cookie = `rapid_role=${data.user.role}; path=/; max-age=${maxAge}; SameSite=Lax${secureFlag}`;
 
-      toast.success("Welcome back, " + data.User.name + "!");
-      router.push(ROLE_ROUTES[data.User.role] ?? "/dashboard");
-    } catch (err: any) {
-      toast.error(err?.error?.message ?? "Invalid credentials. Please try again.");
+      toast.success("Welcome back, " + data.user.name + "!");
+      router.push(ROLE_ROUTES[data.user.role] ?? "/dashboard");
+    } catch (err: unknown) {
+      toast.error((err as { error?: { message?: string } })?.error?.message ?? "Invalid credentials. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -83,10 +83,10 @@ export default function LoginPage() {
               </span>
             </div>
             <h2 className="text-[2.6rem] font-bold text-white leading-[1.15] tracking-tight">
-              Invoice compliance<br />without compromise.
+              Decision governance<br />without compromise.
             </h2>
             <p className="text-slate-400 text-[15px] leading-relaxed max-w-[340px]">
-              End-to-end compliance invoicing with full audit trails, role-based governance, and regulatory-grade controls built for enterprise teams.
+              Turn every important decision into a structured RAPID document with clear ownership, approval workflows, and immutable audit trails.
             </p>
           </div>
           <div className="space-y-3">
@@ -94,7 +94,7 @@ export default function LoginPage() {
               "Multi-stage approval workflows",
               "Immutable audit log & ledger",
               "Role-based access control",
-              "Real-time compliance tracking",
+              "Full governance traceability",
               "Regulatory reporting & exports",
             ].map(f => (
               <div key={f} className="flex items-center gap-3">
@@ -126,7 +126,7 @@ export default function LoginPage() {
           <div className="mb-8">
             <h1 className="text-[1.75rem] font-bold text-slate-900 tracking-tight">Sign in</h1>
             <p className="text-slate-500 text-sm mt-2 leading-relaxed">
-              Access your Complyance workspace with your organizational credentials.
+              Access your RAPID Ledger workspace with your organisational credentials.
             </p>
           </div>
           <form onSubmit={handleSubmit} className="space-y-5">

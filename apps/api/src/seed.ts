@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 
@@ -20,8 +21,8 @@ async function main() {
   for (const u of users) {
     await prisma.user.upsert({
       where: { email: u.email },
-      update: { passwordHash: password, isActive: true, updatedAt: now },
-      create: { ...u, passwordHash: password, isActive: true, createdAt: now, updatedAt: now } as any,
+      update: { password: password, isActive: true, updatedAt: now },
+      create: { ...u, role: u.role as any, password: password, isActive: true, createdAt: now, updatedAt: now } ,
     });
     console.log(`✓ ${u.email}`);
   }

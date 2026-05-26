@@ -1,15 +1,16 @@
 "use client";
 import { useEffect, useState } from "react";
+import type { Approval } from "@/lib/types";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 
 export default function ApprovalsPage() {
   const router = useRouter();
-  const [approvals, setApprovals] = useState<any[]>([]);
+  const [approvals, setApprovals] = useState<Approval[]>([]);
   const [loading, setLoading]     = useState(true);
   const [acting, setActing]       = useState<string|null>(null);
   const [notes, setNotes]         = useState<Record<string,string>>({});
@@ -113,10 +114,10 @@ export default function ApprovalsPage() {
                       </CardTitle>
                     </div>
                     <div className="flex gap-2 flex-shrink-0">
-                      <Badge variant={RISK_VARIANT[approval.document?.riskLevel] ?? "outline"} className="capitalize">
+                      <Badge variant={RISK_VARIANT[approval.document?.riskLevel ?? "low"] ?? "outline"} className="capitalize">
                         {approval.document?.riskLevel} risk
                       </Badge>
-                      {approval.document?.complianceImpact === 1 && (
+                      {approval.document?.complianceImpact === true && (
                         <Badge variant="secondary">Compliance</Badge>
                       )}
                     </div>
@@ -157,13 +158,13 @@ export default function ApprovalsPage() {
                   {/* Action buttons */}
                   <div className="grid grid-cols-3 gap-3">
                     <Button
-                      onClick={() => act(approval.document?.id, approval.id, "approve")}
+                      onClick={() => act(approval.document?.id ?? "", approval.id, "approve")}
                       disabled={acting === approval.id}
                       className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold">
                       Approve
                     </Button>
                     <Button
-                      onClick={() => act(approval.document?.id, approval.id, "request-changes")}
+                      onClick={() => act(approval.document?.id ?? "", approval.id, "request-changes")}
                       disabled={acting === approval.id}
                       className="bg-amber-500 hover:bg-amber-600 text-white font-semibold">
                       Request Changes
@@ -171,7 +172,7 @@ export default function ApprovalsPage() {
                     <Button
                       onClick={() => {
                         if (window.confirm("Reject this approval request? This action will notify the document creator.")) {
-                          act(approval.document?.id, approval.id, "reject")
+                          act(approval.document?.id ?? "", approval.id, "reject")
                         }
                       }}
                       disabled={acting === approval.id}

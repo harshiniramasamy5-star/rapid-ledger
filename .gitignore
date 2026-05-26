@@ -25,3 +25,5 @@ build/
 
 # Prisma generated (keep schema, ignore generated client)
 apps/api/node_modules/
+.vercel
+.env*.local

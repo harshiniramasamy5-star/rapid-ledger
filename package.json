@@ -1,27 +1,40 @@
 {
   "name": "rapid-ledger",
   "version": "1.0.0",
-  "description": "Decision governance platform with RAPID framework — role-based approvals, audit logs, and immutable ledger entries",
-  "author": "Harshini Ramasamy",
-  "license": "MIT",
-  "keywords": ["governance", "compliance", "nextjs", "elysia", "prisma", "postgresql"],
-  "main": "index.js",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "scripts": {
-    "seed": "tsx prisma/seed.ts"
-  },
-  "type": "commonjs",
-  "prisma": {
-    "seed": "tsx prisma/seed.ts"
+    "dev": "concurrently \"npm run dev -w apps/api\" \"npm run dev -w apps/web\"",
+    "build": "npm run build --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "db:generate": "prisma generate --schema=prisma/schema.prisma",
+    "db:push": "prisma db push --schema=prisma/schema.prisma",
+    "db:migrate": "prisma migrate dev --schema=prisma/schema.prisma",
+    "db:seed": "tsx prisma/seed.ts",
+    "db:studio": "prisma studio --schema=prisma/schema.prisma",
+    "db:reset": "prisma migrate reset --schema=prisma/schema.prisma --force && npm run db:seed",
+    "setup": "npm install && npm run db:generate && npm run db:push && npm run db:seed"
   },
   "devDependencies": {
-    "prisma": "^5.22.0",
-    "tsx": "^4.21.0"
-  },
-  "dependencies": {
-    "@prisma/client": "^5.22.0",
-    "bcryptjs": "^3.0.3"
+    "@types/pg": "^8.20.0",
+    "concurrently": "^8.2.2",
+    "prisma": "^7.8.0",
+    "tsx": "^4.7.0",
+    "typescript": "^5.3.3"
   },
   "engines": {
     "node": ">=20.0.0"
+  },
+  "dependencies": {
+    "@prisma/adapter-pg": "^7.8.0",
+    "@prisma/client": "^7.8.0",
+    "@types/bcryptjs": "^2.4.6",
+    "bcryptjs": "^3.0.3",
+    "pg": "^8.21.0"
   }
 }
