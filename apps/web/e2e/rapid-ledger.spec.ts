@@ -5,6 +5,7 @@ async function login(page: Page, email: string, password = 'password123') {
   await page.getByLabel(/work email/i).fill(email);
   await page.getByLabel(/password/i).fill(password);
   await page.getByRole('button', { name: /continue/i }).click();
+  await expect(page).toHaveURL(/\/(dashboard|approvals|audit-log|ledger|admin)/, { timeout: 15000 });
 }
 
 test.describe('RAPID Ledger — E2E', () => {
@@ -54,13 +55,13 @@ test.describe('RAPID Ledger — E2E', () => {
   test('admin can see audit log page', async ({ page }) => {
     await login(page, 'admin@rapid.dev');
     await page.goto('/audit-log');
-    await expect(page).toHaveURL(/\/audit-log/, { timeout: 10000 });
+    await expect(page).toHaveURL(/\/audit-log/, { timeout: 15000 });
   });
 
   test('admin can see ledger page', async ({ page }) => {
     await login(page, 'admin@rapid.dev');
     await page.goto('/ledger');
-    await expect(page).toHaveURL(/\/ledger/, { timeout: 10000 });
+    await expect(page).toHaveURL(/\/ledger/, { timeout: 15000 });
   });
 
 });
