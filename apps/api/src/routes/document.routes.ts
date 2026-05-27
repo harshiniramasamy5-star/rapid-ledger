@@ -1,4 +1,5 @@
 import { Elysia } from "elysia";
+import { createAuditLog } from "../services/audit.service";
 import { authMiddleware } from "../middleware/auth";
 import { requirePermission } from "../middleware/permissions";
 import { parseBody, createDocumentSchema, approvalSchema, assignRoleSchema, addEvidenceSchema } from "../validators/schemas";
@@ -137,6 +138,7 @@ export const documentRoutes = new Elysia({ prefix: "/documents" })
       where: { id: params.id },
       data: { status: "execution_complete" },
     }));
+    await createAuditLog(user.id, "execution_complete", "RapidDocument", params.id, { documentCode: updated.documentCode });
     return updated;
   })
 
