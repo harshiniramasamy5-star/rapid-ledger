@@ -85,7 +85,7 @@ export default function DocumentDetailPage() {
   const myId    = me?.id ?? "";
   const roles   = doc?.roleAssignments ?? [];
   const myRole  = (roles as RoleAssignment[]).find(r => r.userId === myId);
-  const isCreator   = doc?.createdBy === myId;
+  const isCreator   = (typeof doc?.createdBy === "object" ? (doc?.createdBy as ApiUser)?.id : doc?.createdBy) === myId;
   const status      = doc?.status ?? "";
 
   const canSubmit   = isCreator && status === "draft";
