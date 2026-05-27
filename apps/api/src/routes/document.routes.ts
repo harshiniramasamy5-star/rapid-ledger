@@ -17,6 +17,7 @@ import {
   runValidation,
 } from "../services/document.service";
 import { Errors } from "../lib/errors";
+import { finalizeDocument } from "../services/ledger.service";
 import type { DocumentStatus } from "@prisma/client";
 
 export const documentRoutes = new Elysia({ prefix: "/documents" })
@@ -118,13 +119,26 @@ export const documentRoutes = new Elysia({ prefix: "/documents" })
   // ── POST /documents/:id/finalize ──────────────────────────────────────────
   .post("/:id/finalize", async ({ user, params, set }: any) => {
     requirePermission(user, "document:finalize", set);
-    const { finalizeDocument } = await import("../services/ledger.service.js");
     const result = await finalizeDocument(params.id, user.id);
     if (!result.ok) {
       if ("notFound" in result) { set.status = 404; return Errors.notFound("Document"); }
       if ("invalidStatus" in result) { set.status = 409; return Errors.invalidStatus(result.invalidStatus ?? "unknown", ["approved"]); }
     }
     return result.document;
+  })
+
+
+  // ── POST /documents/:id/execution-complete ────────────────────────────────
+  .post("/:id/execution-complete", async ({ user, params, body, set }: any) => {
+    requirePermission(user, "document:finalize", set);
+    const doc = await import("../lib/prisma").then(m => m.prisma.rapidDocument.findUnique({ where: { id: params.id } }));
+    if (!doc) { set.status = 404; return Errors.notFound("Document"); }
+    if (doc.status !== "finalized") { set.status = 409; return Errors.badRequest("Document must be finalized first"); }
+    const updated = await import("../lib/prisma").then(m => m.prisma.rapidDocument.update({
+      where: { id: params.id },
+      data: { status: "finalized" },
+    }));
+    return updated;
   })
 
   // ── POST /documents/:id/version ───────────────────────────────────────────
