@@ -5,7 +5,7 @@ export type Role = UserRole;
 
 const ROLE_PERMISSIONS: Record<UserRole, Set<string>> = {
   admin:       new Set(["document:read","document:create","document:update","document:submit","document:approve","document:reject","document:finalize","document:version","document:recommend","role:assign","evidence:add","user:create","user:update","user:read","ledger:read","audit:read","report:read"]),
-  creator:     new Set(["document:read","document:create","document:update","document:submit","document:version","role:assign","evidence:add","ledger:read","audit:read"]),
+  creator:     new Set(["document:read","document:create","document:update","document:submit","document:version","role:assign","evidence:add","user:read","ledger:read","audit:read"]),
   approver:    new Set(["document:read","document:approve","document:reject","ledger:read","audit:read"]),
   recommender: new Set(["document:read","document:recommend","evidence:add","ledger:read"]),
   performer:   new Set(["document:read","document:finalize","ledger:read"]),
