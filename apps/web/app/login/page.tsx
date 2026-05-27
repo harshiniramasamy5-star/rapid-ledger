@@ -15,6 +15,7 @@ const ROLE_ROUTES: Record<string, string> = {
   decider:      "/dashboard",
   performer:    "/dashboard",
   auditor:      "/audit-log",
+  viewer:       "/dashboard",
 };
 
 export default function LoginPage() {
