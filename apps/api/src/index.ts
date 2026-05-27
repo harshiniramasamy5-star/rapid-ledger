@@ -5,6 +5,7 @@ import { authRoutes } from "./routes/auth.routes";
 import { documentRoutes } from "./routes/document.routes";
 import { ledgerRoutes } from "./routes/ledger.routes";
 import { userRoutes } from "./routes/user.routes";
+import { approvalRoutes } from "./routes/approval.routes";
 import { auditRoutes } from "./routes/audit.routes";
 
 export const app = new Elysia()
@@ -19,6 +20,7 @@ export const app = new Elysia()
   .use(documentRoutes)
   .use(ledgerRoutes)
   .use(userRoutes)
+  .use(approvalRoutes)
   .use(auditRoutes)
   .onError(({ error, set }) => {
     try {

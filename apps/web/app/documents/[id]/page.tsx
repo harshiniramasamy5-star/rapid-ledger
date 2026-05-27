@@ -188,7 +188,7 @@ export default function DocumentDetailPage() {
                 <div className="grid grid-cols-3 gap-3">
                   <Button className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold" disabled={acting}
                     onClick={() => handle(async () => {
-                      const { res, data } = await apiPost(`/documents/${params.id}/approvals/${myApproval.id}/approve`, { notes: approvalNotes });
+                      const { res, data } = await apiPost(`/documents/${params.id}/approve`, { comment: approvalNotes });
                       if (res.ok) { toast.success("Approved!"); setMyApproval(null); await load(); }
                       else toast.error(data?.error?.message ?? "Failed");
                     })}>
@@ -196,7 +196,7 @@ export default function DocumentDetailPage() {
                   </Button>
                   <Button className="bg-amber-500 hover:bg-amber-600 text-white font-semibold" disabled={acting}
                     onClick={() => handle(async () => {
-                      const { res, data } = await apiPost(`/documents/${params.id}/approvals/${myApproval.id}/request-changes`, { notes: approvalNotes });
+                      const { res, data } = await apiPost(`/documents/${params.id}/needs-changes`, { comment: approvalNotes });
                       if (res.ok) { toast.success("Changes requested."); setMyApproval(null); await load(); }
                       else toast.error(data?.error?.message ?? "Failed");
                     })}>
@@ -204,7 +204,7 @@ export default function DocumentDetailPage() {
                   </Button>
                   <Button variant="destructive" className="font-semibold" disabled={acting}
                     onClick={() => handle(async () => {
-                      const { res, data } = await apiPost(`/documents/${params.id}/approvals/${myApproval.id}/reject`, { notes: approvalNotes });
+                      const { res, data } = await apiPost(`/documents/${params.id}/reject`, { comment: approvalNotes });
                       if (res.ok) { toast.success("Rejected."); setMyApproval(null); await load(); }
                       else toast.error(data?.error?.message ?? "Failed");
                     })}>

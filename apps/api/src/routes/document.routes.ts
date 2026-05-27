@@ -47,6 +47,8 @@ export const documentRoutes = new Elysia({ prefix: "/documents" })
     return doc;
   })
 
+
+
   // ── GET /documents/:id ────────────────────────────────────────────────────
   .get("/:id", async ({ user, params, set }: any) => {
     requirePermission(user, "document:read", set);
@@ -54,6 +56,8 @@ export const documentRoutes = new Elysia({ prefix: "/documents" })
     if (!doc) { set.status = 404; return Errors.notFound("Document"); }
     return doc;
   })
+
+
 
   // ── GET /documents/:id/validate ───────────────────────────────────────────
   .get("/:id/validate", async ({ user, params, set }: any) => {
