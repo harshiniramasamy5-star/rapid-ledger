@@ -1,7 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
 
 const isCI = !!process.env.CI;
-const baseURL = process.env.BASE_URL || 'http://localhost:3000';
+const baseURL = process.env.BASE_URL || (isCI ? 'https://rapid-ledger.vercel.app' : 'http://localhost:3000');
 
 export default defineConfig({
   testDir: './e2e',
@@ -24,12 +24,12 @@ export default defineConfig({
       use: { ...devices['Desktop Chrome'], headless: true },
     },
   ],
-  ...(isCI ? {} : {
+  ...(!isCI ? {
     webServer: {
       command: 'npm run dev',
       url: 'http://localhost:3000',
       reuseExistingServer: true,
       timeout: 60000,
     },
-  }),
+  } : {}),
 });

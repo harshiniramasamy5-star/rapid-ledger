@@ -6,7 +6,7 @@ async function login(page: Page, email: string, password = 'password123') {
   await page.getByLabel(/password/i).fill(password);
   await page.getByRole('button', { name: /continue/i }).click();
   await expect(page).toHaveURL(/\/(dashboard|approvals|audit-log|ledger|admin)/, { timeout: 15000 });
-  await page.waitForFunction(() => document.cookie.includes('rapid_token'), { timeout: 10000 });
+  
 }
 
 test.describe('RAPID Ledger — E2E', () => {

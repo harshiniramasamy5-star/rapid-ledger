@@ -28,3 +28,6 @@ apps/api/node_modules/
 .vercel
 .env*.local
 apps/api/.env
+
+!apps/api/.env.example
+!apps/web/.env.example
