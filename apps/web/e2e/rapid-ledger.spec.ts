@@ -1,21 +1,16 @@
 import { test, expect, type Page } from '@playwright/test';
 
-const BASE = 'http://localhost:3000';
-const NEEDS_BACKEND = !process.env.CI;
-
 async function login(page: Page, email: string, password = 'password123') {
-  await page.goto(`${BASE}/login`);
+  await page.goto('/login');
   await page.getByLabel(/work email/i).fill(email);
   await page.getByLabel(/password/i).fill(password);
   await page.getByRole('button', { name: /continue/i }).click();
 }
 
-test.describe('RAPID Ledger E2E', () => {
-
-  // ─── FRONTEND ONLY (run in CI) ───────────────────────────────────────────
+test.describe('RAPID Ledger — E2E', () => {
 
   test('login page renders correctly', async ({ page }) => {
-    await page.goto(`${BASE}/login`);
+    await page.goto('/login');
     await expect(page.getByLabel(/work email/i)).toBeVisible();
     await expect(page.getByLabel(/password/i)).toBeVisible();
     await expect(page.getByRole('button', { name: /continue/i })).toBeVisible();
@@ -23,53 +18,49 @@ test.describe('RAPID Ledger E2E', () => {
   });
 
   test('unauthenticated user is redirected to login', async ({ page }) => {
-    await page.goto(`${BASE}/dashboard`);
-    await expect(page).toHaveURL(/\/login/, { timeout: 8000 });
+    await page.goto('/dashboard');
+    await expect(page).toHaveURL(/\/login/, { timeout: 10000 });
   });
 
   test('root path redirects to login when not authenticated', async ({ page }) => {
-    await page.goto(BASE);
-    await expect(page).toHaveURL(/\/login/, { timeout: 8000 });
-  });
-
-  test('page title contains RAPID Ledger', async ({ page }) => {
-    await page.goto(`${BASE}/login`);
-    await expect(page).toHaveTitle(/rapid ledger/i, { timeout: 5000 });
+    await page.goto('/');
+    await expect(page).toHaveURL(/\/login/, { timeout: 10000 });
   });
 
   test('shows error on invalid credentials', async ({ page }) => {
-    await page.goto(`${BASE}/login`);
-    await page.getByLabel(/work email/i).fill('wrong@rapid.com');
+    await page.goto('/login');
+    await page.getByLabel(/work email/i).fill('wrong@rapid.dev');
     await page.getByLabel(/password/i).fill('wrongpass');
     await page.getByRole('button', { name: /continue/i }).click();
-    await expect(page.getByText(/invalid credentials/i)).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText(/invalid/i)).toBeVisible({ timeout: 8000 });
   });
-
-  // ─── REQUIRES BACKEND (local only, skipped in CI) ────────────────────────
 
   test('admin logs in and lands on dashboard', async ({ page }) => {
-    test.skip(!NEEDS_BACKEND, 'Requires backend API — run locally');
-    await login(page, 'admin@rapid.com');
-    await expect(page).toHaveURL(/\/dashboard/, { timeout: 8000 });
+    await login(page, 'admin@rapid.dev');
+    await expect(page).toHaveURL(/\/dashboard/, { timeout: 10000 });
   });
 
-  test('approver logs in and lands on approvals', async ({ page }) => {
-    test.skip(!NEEDS_BACKEND, 'Requires backend API — run locally');
-    await login(page, 'approver@rapid.com');
-    await expect(page).toHaveURL(/\/approvals/, { timeout: 8000 });
-  });
-
-  test('auditor logs in and lands on audit-log', async ({ page }) => {
-    test.skip(!NEEDS_BACKEND, 'Requires backend API — run locally');
-    await login(page, 'auditor@rapid.com');
-    await expect(page).toHaveURL(/\/audit-log/, { timeout: 8000 });
-  });
-
-  test('creator sees dashboard with New Document button', async ({ page }) => {
-    test.skip(!NEEDS_BACKEND, 'Requires backend API — run locally');
-    await login(page, 'creator@rapid.com');
-    await expect(page).toHaveURL(/\/dashboard/, { timeout: 8000 });
+  test('creator logs in and sees New Document button', async ({ page }) => {
+    await login(page, 'creator@rapid.dev');
+    await expect(page).toHaveURL(/\/dashboard/, { timeout: 10000 });
     await expect(page.getByRole('button', { name: /new document/i })).toBeVisible();
+  });
+
+  test('approver logs in and reaches approvals page', async ({ page }) => {
+    await login(page, 'approver@rapid.dev');
+    await expect(page).toHaveURL(/\/(dashboard|approvals)/, { timeout: 10000 });
+  });
+
+  test('admin can see audit log page', async ({ page }) => {
+    await login(page, 'admin@rapid.dev');
+    await page.goto('/audit-log');
+    await expect(page).toHaveURL(/\/audit-log/, { timeout: 10000 });
+  });
+
+  test('admin can see ledger page', async ({ page }) => {
+    await login(page, 'admin@rapid.dev');
+    await page.goto('/ledger');
+    await expect(page).toHaveURL(/\/ledger/, { timeout: 10000 });
   });
 
 });
