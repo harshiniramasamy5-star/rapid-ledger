@@ -1,4 +1,6 @@
 /** Shared API response types — eliminates `any` in page components */
+export type { ApiError } from "@rapid-ledger/shared";
+
 
 export interface ApiUser {
   id: string;
