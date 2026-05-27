@@ -136,7 +136,7 @@ export const documentRoutes = new Elysia({ prefix: "/documents" })
     if (doc.status !== "finalized") { set.status = 409; return Errors.badRequest("Document must be finalized first"); }
     const updated = await import("../lib/prisma").then(m => m.prisma.rapidDocument.update({
       where: { id: params.id },
-      data: { status: "finalized" },
+      data: { status: "execution_complete" },
     }));
     return updated;
   })
