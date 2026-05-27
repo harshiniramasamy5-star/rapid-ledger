@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Elysia } from "elysia";
 import { authMiddleware } from "../middleware/auth";
 import { requirePermission } from "../middleware/permissions";
@@ -24,7 +23,7 @@ export const documentRoutes = new Elysia({ prefix: "/documents" })
   .use(authMiddleware)
 
   // ── GET /documents ────────────────────────────────────────────────────────
-  .get("/", async ({ user, query, set }: any) => {
+  .get("/", async ({ user, query, set }) => {
     requirePermission(user, "document:read", set);
     const docs = await listDocuments({
       status: query.status as DocumentStatus | undefined,
@@ -36,7 +35,7 @@ export const documentRoutes = new Elysia({ prefix: "/documents" })
   })
 
   // ── POST /documents ───────────────────────────────────────────────────────
-  .post("/", async ({ user, body, set }: any) => {
+  .post("/", async ({ user, body, set }) => {
     requirePermission(user, "document:create", set);
     const parsed = parseBody(createDocumentSchema, body);
     if (!parsed.ok) {
@@ -51,7 +50,7 @@ export const documentRoutes = new Elysia({ prefix: "/documents" })
 
 
   // ── GET /documents/:id ────────────────────────────────────────────────────
-  .get("/:id", async ({ user, params, set }: any) => {
+  .get("/:id", async ({ user, params, set }) => {
     requirePermission(user, "document:read", set);
     const doc = await getDocument(params.id);
     if (!doc) { set.status = 404; return Errors.notFound("Document"); }
@@ -61,7 +60,7 @@ export const documentRoutes = new Elysia({ prefix: "/documents" })
 
 
   // ── GET /documents/:id/validate ───────────────────────────────────────────
-  .get("/:id/validate", async ({ user, params, set }: any) => {
+  .get("/:id/validate", async ({ user, params, set }) => {
     requirePermission(user, "document:read", set);
     const result = await runValidation(params.id);
     if (!result) { set.status = 404; return Errors.notFound("Document"); }
@@ -69,7 +68,7 @@ export const documentRoutes = new Elysia({ prefix: "/documents" })
   })
 
   // ── POST /documents/:id/submit ────────────────────────────────────────────
-  .post("/:id/submit", async ({ user, params, set }: any) => {
+  .post("/:id/submit", async ({ user, params, set }) => {
     requirePermission(user, "document:submit", set);
     const result = await submitDocument(params.id, user.id);
     if (!result.ok) {
@@ -81,7 +80,7 @@ export const documentRoutes = new Elysia({ prefix: "/documents" })
   })
 
   // ── POST /documents/:id/approve ───────────────────────────────────────────
-  .post("/:id/approve", async ({ user, params, body, set }: any) => {
+  .post("/:id/approve", async ({ user, params, body, set }) => {
     requirePermission(user, "document:approve", set);
     const parsed = parseBody(approvalSchema, body ?? {});
     const result = await approveDocument(params.id, user.id, parsed.ok ? parsed.data.comment : undefined);
@@ -93,7 +92,7 @@ export const documentRoutes = new Elysia({ prefix: "/documents" })
   })
 
   // ── POST /documents/:id/reject ────────────────────────────────────────────
-  .post("/:id/reject", async ({ user, params, body, set }: any) => {
+  .post("/:id/reject", async ({ user, params, body, set }) => {
     requirePermission(user, "document:reject", set);
     const parsed = parseBody(approvalSchema, body ?? {});
     const result = await rejectDocument(params.id, user.id, parsed.ok ? parsed.data.comment : undefined);
@@ -105,7 +104,7 @@ export const documentRoutes = new Elysia({ prefix: "/documents" })
   })
 
   // ── POST /documents/:id/needs-changes ─────────────────────────────────────
-  .post("/:id/needs-changes", async ({ user, params, body, set }: any) => {
+  .post("/:id/needs-changes", async ({ user, params, body, set }) => {
     requirePermission(user, "document:reject", set);
     const parsed = parseBody(approvalSchema, body ?? {});
     const result = await requestChanges(params.id, user.id, parsed.ok ? parsed.data.comment : undefined);
@@ -117,7 +116,7 @@ export const documentRoutes = new Elysia({ prefix: "/documents" })
   })
 
   // ── POST /documents/:id/finalize ──────────────────────────────────────────
-  .post("/:id/finalize", async ({ user, params, set }: any) => {
+  .post("/:id/finalize", async ({ user, params, set }) => {
     requirePermission(user, "document:finalize", set);
     const result = await finalizeDocument(params.id, user.id);
     if (!result.ok) {
@@ -129,7 +128,7 @@ export const documentRoutes = new Elysia({ prefix: "/documents" })
 
 
   // ── POST /documents/:id/execution-complete ────────────────────────────────
-  .post("/:id/execution-complete", async ({ user, params, body, set }: any) => {
+  .post("/:id/execution-complete", async ({ user, params, body, set }) => {
     requirePermission(user, "document:finalize", set);
     const doc = await import("../lib/prisma").then(m => m.prisma.rapidDocument.findUnique({ where: { id: params.id } }));
     if (!doc) { set.status = 404; return Errors.notFound("Document"); }
@@ -142,7 +141,7 @@ export const documentRoutes = new Elysia({ prefix: "/documents" })
   })
 
   // ── POST /documents/:id/version ───────────────────────────────────────────
-  .post("/:id/version", async ({ user, params, set }: any) => {
+  .post("/:id/version", async ({ user, params, set }) => {
     requirePermission(user, "document:version", set);
     const result = await createDocumentVersion(params.id, user.id);
     if (!result.ok) {
@@ -154,7 +153,7 @@ export const documentRoutes = new Elysia({ prefix: "/documents" })
   })
 
   // ── POST /documents/:id/roles ─────────────────────────────────────────────
-  .post("/:id/roles", async ({ user, params, body, set }: any) => {
+  .post("/:id/roles", async ({ user, params, body, set }) => {
     requirePermission(user, "role:assign", set);
     const parsed = parseBody(assignRoleSchema, body);
     if (!parsed.ok) { set.status = 400; return Errors.badRequest("Invalid role data", parsed.errors); }
@@ -168,7 +167,7 @@ export const documentRoutes = new Elysia({ prefix: "/documents" })
   })
 
   // ── POST /documents/:id/evidence ──────────────────────────────────────────
-  .post("/:id/evidence", async ({ user, params, body, set }: any) => {
+  .post("/:id/evidence", async ({ user, params, body, set }) => {
     requirePermission(user, "evidence:add", set);
     const parsed = parseBody(addEvidenceSchema, body);
     if (!parsed.ok) { set.status = 400; return Errors.badRequest("Invalid evidence data", parsed.errors); }

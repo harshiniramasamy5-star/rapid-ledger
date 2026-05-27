@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { PrismaClient } from "@prisma/client";
 import { UserRole } from "@prisma/client";
 import bcrypt from "bcryptjs";

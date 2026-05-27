@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Elysia } from "elysia";
 import bcrypt from "bcryptjs";
 import { authMiddleware } from "../middleware/auth";
@@ -13,7 +12,7 @@ export const userRoutes = new Elysia({ prefix: "/users" })
   .use(authMiddleware)
 
   // ── GET /users ────────────────────────────────────────────────────────────
-  .get("/", async ({ user, set }: any) => {
+  .get("/", async ({ user, set }) => {
     requirePermission(user, "user:read", set);
     return prisma.user.findMany({
       select: { id: true, name: true, email: true, role: true, department: true, isActive: true, createdAt: true },
@@ -22,7 +21,7 @@ export const userRoutes = new Elysia({ prefix: "/users" })
   })
 
   // ── POST /users ───────────────────────────────────────────────────────────
-  .post("/", async ({ user, body, set }: any) => {
+  .post("/", async ({ user, body, set }) => {
     requirePermission(user, "user:create", set);
     const parsed = parseBody(createUserSchema, body);
     if (!parsed.ok) { set.status = 400; return Errors.badRequest("Invalid user data", parsed.errors); }
@@ -49,7 +48,7 @@ export const userRoutes = new Elysia({ prefix: "/users" })
   })
 
   // ── PATCH /users/:id ──────────────────────────────────────────────────────
-  .patch("/:id", async ({ user, params, body, set }: any) => {
+  .patch("/:id", async ({ user, params, body, set }) => {
     requirePermission(user, "user:update", set);
     const parsed = parseBody(updateUserSchema, body);
     if (!parsed.ok) { set.status = 400; return Errors.badRequest("Invalid update data", parsed.errors); }
