@@ -258,11 +258,11 @@ npx prisma db seed
 | Name | Email | Role |
 |------|-------|------|
 | Alice Admin | admin@rapid.dev | admin |
-| Charlie Creator | creator@rapid.dev | creator |
-| Bob Recommender | recommender@rapid.dev | recommender |
-| Aria Approver | approver@rapid.dev | approver |
-| Dana Decider | decider@rapid.dev | decision_owner |
-| Dave Performer | performer@rapid.dev | performer |
+| Carol Creator | creator@rapid.dev | creator |
+| Rick Recommender | recommender@rapid.dev | recommender |
+| Bob Approver | approver@rapid.dev | approver |
+| Pam Performer | viewer@rapid.dev | viewer |
+| Vera Viewer | viewer@rapid.dev | viewer |
 
 **Sample documents:**
 - RAPID-001 — Draft, low-risk (no roles assigned yet)
@@ -338,7 +338,7 @@ All passwords are `password123`.
 | Creator | creator@rapid.dev | Create and submit RAPID documents |
 | Recommender | recommender@rapid.dev | View assigned documents, add recommendation notes |
 | Approver | approver@rapid.dev | Approve, reject, or request changes on assigned documents |
-| Decision Owner | decider@rapid.dev | Finalize approved documents, create new versions |
+| Decision Owner | performer@rapid.dev | Finalize approved documents, create new versions |
 | Performer | performer@rapid.dev | Mark execution complete on finalized documents |
 
 > There is no seeded Auditor account by default. Create one via the Admin panel: log in as admin@rapid.dev, go to Admin → Create User, and set role to Auditor.
@@ -355,7 +355,7 @@ All passwords are `password123`.
 4. On the Roles tab: assign Recommend, Perform, and Decide owners
 5. Click **Submit**
 6. Document moves to **Approved** (no Agree required for low-risk)
-7. Log in as `decider@rapid.dev`
+7. Log in as `performer@rapid.dev`
 8. Open the document → click **Finalize**
 9. Document moves to **Finalized** and appears in the Ledger
 
@@ -368,7 +368,7 @@ All passwords are `password123`.
 5. Log in as `approver@rapid.dev`
 6. Go to **Approvals** → click **Approve** with notes
 7. Document moves to **Approved**
-8. Log in as `decider@rapid.dev` → Finalize
+8. Log in as `performer@rapid.dev` → Finalize
 
 ### Flow 3 — Compliance-impacting decision
 
@@ -387,7 +387,7 @@ All passwords are `password123`.
 
 ### Flow 5 — Version a finalized decision
 
-1. Log in as `decider@rapid.dev`
+1. Log in as `performer@rapid.dev`
 2. Open a finalized document
 3. Click **Create New Version**
 4. A new Draft v2 is created — original v1 remains read-only in the ledger
