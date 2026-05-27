@@ -1,4 +1,5 @@
 import { Elysia } from "elysia";
+import { cors } from "@elysiajs/cors";
 import { createServer } from "node:http";
 import { authRoutes } from "./routes/auth.routes";
 import { documentRoutes } from "./routes/document.routes";
@@ -7,6 +8,7 @@ import { userRoutes } from "./routes/user.routes";
 import { auditRoutes } from "./routes/audit.routes";
 
 export const app = new Elysia()
+  .use(cors({ origin: true, credentials: true }))
   .get("/health", () => ({ status: "ok", timestamp: new Date().toISOString() }))
   .use(authRoutes)
   .use(documentRoutes)
