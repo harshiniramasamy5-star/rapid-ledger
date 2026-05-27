@@ -41,17 +41,17 @@ export default function LoginPage() {
 
       // Store in localStorage
       localStorage.setItem("rapid_token", data.token);
-      localStorage.setItem("rapid_user", JSON.stringify(data.user));
+      localStorage.setItem("rapid_user", JSON.stringify(data.User));
 
       // Set cookies for middleware — add Secure flag on HTTPS (production/Vercel)
       const isSecure = window.location.protocol === "https:";
       const secureFlag = isSecure ? "; Secure" : "";
       const maxAge = 60 * 60 * 24 * 7; // 7 days
       document.cookie = `rapid_token=${data.token}; path=/; max-age=${maxAge}; SameSite=Lax${secureFlag}`;
-      document.cookie = `rapid_role=${data.user.role}; path=/; max-age=${maxAge}; SameSite=Lax${secureFlag}`;
+      document.cookie = `rapid_role=${data.User.role}; path=/; max-age=${maxAge}; SameSite=Lax${secureFlag}`;
 
-      toast.success("Welcome back, " + data.user.name + "!");
-      router.push(ROLE_ROUTES[data.user.role] ?? "/dashboard");
+      toast.success("Welcome back, " + data.User.name + "!");
+      router.push(ROLE_ROUTES[data.User.role] ?? "/dashboard");
     } catch (err: unknown) {
       toast.error((err as { error?: { message?: string } })?.error?.message ?? "Invalid credentials. Please try again.");
     } finally {

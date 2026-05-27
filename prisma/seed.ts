@@ -3,13 +3,9 @@ import { resolve } from "path";
 config({ path: resolve(process.cwd(), ".env") });
 
 import { PrismaClient, UserRole } from "@prisma/client";
-import { Pool } from "pg";
-import { PrismaPg } from "@prisma/adapter-pg";
 import bcrypt from "bcryptjs";
 
-const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-const adapter = new PrismaPg(pool);
-const prisma = new PrismaClient({ adapter });
+const prisma = new PrismaClient();
 
 const SEED_USERS = [
   { name: "Alice Admin",      email: "admin@rapid.dev",       role: UserRole.admin,       department: "Operations" },
