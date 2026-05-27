@@ -24,6 +24,7 @@ enum DocumentStatus {
   rejected
   needs_changes
   finalized
+  execution_complete
 }
 
 enum RiskLevel {
