@@ -53,7 +53,7 @@ export default function DashboardPage() {
     ]).then(([docsData, meData]) => {
       const list = Array.isArray(docsData) ? docsData : [];
       setAllDocs(list); setMe(meData); setLoading(false);
-    }).catch(() => router.replace("/login"));
+    }).catch(() => { setLoading(false); });
   }, [router]);
 
   const docs = useMemo(() => {
