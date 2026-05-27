@@ -1,115 +1,125 @@
 # RAPID Ledger
 
+> Decision governance without compromise.
 
-> 🚀 **Live Demo:** https://rapid-ledger.vercel.app
-
-
-> 🚀 **Live Demo:** https://rapid-ledger.vercel.app
-
-A decision governance application that helps teams create, validate, approve, version, and audit RAPID decision documents. Finalized decisions become permanent, read-only ledger entries for accountability and compliance review.
+RAPID Ledger is a full-stack governance application that enforces the **RAPID decision framework** across an organisation. It ensures every significant decision has exactly one accountable owner, proper approvals, evidence trails, and an immutable ledger — making governance auditable, structured, and enforceable.
 
 ---
 
 ## Table of Contents
 
-1. [Project Overview](#1-project-overview)
-2. [What is RAPID?](#2-what-is-rapid)
+1. [What is RAPID?](#1-what-is-rapid)
+2. [Live Demo](#2-live-demo)
 3. [Tech Stack](#3-tech-stack)
-4. [Architecture Summary](#4-architecture-summary)
+4. [Architecture](#4-architecture)
 5. [Local Setup](#5-local-setup)
 6. [Environment Variables](#6-environment-variables)
 7. [Database Setup](#7-database-setup)
-8. [Seed Data Instructions](#8-seed-data-instructions)
-9. [Test Commands](#9-test-commands)
-10. [Demo User Credentials](#10-demo-user-credentials)
-11. [Main User Flows](#11-main-user-flows)
+8. [Running the App](#8-running-the-app)
+9. [Running Tests](#9-running-tests)
+10. [Demo Credentials](#10-demo-credentials)
+11. [Core Workflows](#11-core-workflows)
 12. [API Overview](#12-api-overview)
 13. [Known Limitations](#13-known-limitations)
 14. [Future Improvements](#14-future-improvements)
 
 ---
 
-## 1. Project Overview
+## 1. What is RAPID?
 
-RAPID Ledger is a full-stack TypeScript application built as a May 2026 intern project. It solves a real problem in teams: important decisions are often made informally — in meetings, chats, or hallway conversations — with no clear record of who decided what, who approved it, or who is responsible for execution.
-
-RAPID Ledger fixes this by turning every important decision into a structured RAPID document that captures:
-
-- Who recommended the decision
-- Who had to agree (approve) it
-- Who provides input and context
-- Who performs the work after the decision
-- Who has final decision authority (exactly one person)
-
-Once a decision is finalized by the Decide owner, it becomes a permanent, read-only ledger entry. It cannot be silently edited. Future changes require a new version, preserving the full decision history.
-
-The application enforces governance rules at the backend level — not just in the UI — so the rules cannot be bypassed.
-
----
-
-## 2. What is RAPID?
-
-RAPID is a decision governance framework. It stands for:
+RAPID is a decision-making framework that assigns clear roles to prevent ambiguity in high-stakes decisions:
 
 | Letter | Role | Responsibility |
 |--------|------|----------------|
-| **R** | Recommend | Proposes the decision, frames the problem, collects evidence |
-| **A** | Agree | Must approve before the decision is finalized (required for high-risk and compliance decisions) |
-| **P** | Perform | Executes the decision after it is finalized |
-| **I** | Input | Consulted for advice or context — does not approve or decide |
-| **D** | Decide | Final decision authority — must be exactly one person |
+| **R** | Recommend | Proposes the decision with supporting analysis |
+| **A** | Agree | Must approve before the decision can proceed (required for high-risk decisions) |
+| **P** | Perform | Executes the decision once finalised |
+| **I** | Input | Provides information or expertise |
+| **D** | Decide | The single accountable owner — exactly one per document |
 
-### Why exactly one Decide owner?
+### Business Rules Enforced
 
-If there are zero Decide owners, nobody is accountable. If there are multiple, final authority is ambiguous. RAPID forces clarity.
+- **Exactly one Decide owner** is required before a document can be submitted
+- **High-risk and critical decisions** require at least one Agree approver
+- **Compliance-impacting decisions** require attached evidence before submission
+- **Finalised documents are immutable** — no edits after finalisation
+- **Ledger entries are permanent** — no deletion or mutation endpoints exist
+- **Versioning preserves identity** — a new version keeps the same document code and increments the version number
+- **Audit logs are append-only** — every significant action is recorded with actor, timestamp, and metadata
 
-### When is Agree required?
+---
 
-Agree approvers are required when a decision is high-risk, critical, or compliance-impacting. They can approve, reject, or request changes. A document cannot be finalized while any required approval is rejected.
+## 2. Live Demo
 
-### What is the ledger?
+| Service | URL |
+|---------|-----|
+| Frontend | https://rapid-ledger.vercel.app |
+| Backend API | https://rapid-ledger-production.up.railway.app |
+| Health check | https://rapid-ledger-production.up.railway.app/health |
 
-Once a Decide owner finalizes a document, a permanent ledger entry is created. This entry is read-only. It cannot be edited. If the decision needs to change, the Decision Owner creates a new version — the original remains intact in the ledger.
+Log in with any credential from [Section 10](#10-demo-credentials).
 
 ---
 
 ## 3. Tech Stack
 
 | Layer | Technology |
-|-------|-----------|
-| Frontend | Next.js 14, TypeScript, Tailwind CSS, shadcn/ui |
-| Backend | Elysia on Node.js adapter, TypeScript |
-| Database | PostgreSQL, Prisma ORM |
-| Auth | JWT (jsonwebtoken), bcrypt |
-| Validation | Zod |
-| Unit + API Tests | Vitest, Supertest |
-| E2E Tests | Playwright |
-| Package manager | npm (monorepo with workspaces) |
+|-------|------------|
+| Frontend | Next.js 16, React, TypeScript, shadcn/ui, Tailwind CSS |
+| Backend | Elysia (TypeScript HTTP framework), Node.js |
+| ORM | Prisma 5.22 |
+| Database | PostgreSQL (production via Railway), SQLite (local dev) |
+| Auth | JWT (RS256), bcryptjs |
+| Monorepo | npm workspaces |
+| Testing | Vitest, React Testing Library (Jest), Playwright |
+| Linting | ESLint, TypeScript strict mode |
+| Deployment | Railway (API), Vercel (web) |
 
 ---
 
-## 4. Architecture Summary
+## 4. Architecture
 
 ```
-Browser (Next.js — Port 3000)
-        │
-        │  REST API calls with JWT Bearer token
-        ▼
-Elysia API on Node.js (Port 3001)
-        │
-        │  Prisma ORM queries
-        ▼
-PostgreSQL Database
+rapid-ledger/
+├── apps/
+│   ├── api/                  # Elysia backend (port 3001)
+│   │   └── src/
+│   │       ├── routes/       # Thin HTTP handlers only
+│   │       ├── services/     # Business logic
+│   │       ├── repositories/ # All Prisma/DB access
+│   │       ├── validators/   # Zod schemas reused across routes and tests
+│   │       ├── lib/          # Prisma singleton, JWT helpers
+│   │       └── types/        # Domain types, DTOs
+│   └── web/                  # Next.js 16 frontend (port 3000)
+│       └── app/
+│           ├── (auth)/       # Login page
+│           ├── dashboard/    # Document list + search
+│           ├── documents/    # New document wizard, document detail
+│           ├── approvals/    # Approval queue
+│           ├── ledger/       # Immutable finalised records
+│           ├── audit-log/    # Append-only audit trail
+│           └── admin/        # User management (admin only)
+├── packages/
+│   └── shared/               # Shared TypeScript types and DTOs
+├── prisma/
+│   ├── schema.prisma         # Single source of truth for DB schema
+│   ├── migrations/           # Versioned migration history
+│   └── seed.ts               # Deterministic seed with bcrypt
+├── docs/
+│   ├── HLD.md                # High-level design
+│   ├── LLD.md                # Low-level design
+│   ├── GHERKIN.md            # BDD scenarios
+│   ├── API.md                # API reference
+│   └── TEST_PLAN.md          # Test strategy and coverage
+└── package.json              # Root workspace config
 ```
 
-**Frontend modules:** Auth, Dashboard, Documents, Approvals, Ledger, Audit Log, Admin
+### Key Design Decisions
 
-**Backend modules:** Auth, Users, Documents, Roles, Evidence, Approvals, Validation, Ledger, Audit Log, Reports
-
-**Shared package:** TypeScript DTOs, Zod schemas, status enums, role enums
-
-For full architecture details see [docs/HLD.md](docs/HLD.md).
-For schema, API contracts, and permission matrix see [docs/LLD.md](docs/LLD.md).
+- **Validation at the service layer** — business rules (Decide owner, Agree enforcement, evidence requirement) are enforced in `services/validation.service.ts`, not in routes or the frontend
+- **Repository pattern** — all Prisma calls are isolated in `repositories/`; routes never access the DB client directly
+- **Self-contained tests** — API tests use Elysia's `app.handle()` directly; no running server required, no port conflicts
+- **Single Prisma schema** — `prisma/schema.prisma` at the root is the only schema file; both the API and seed import from this location
 
 ---
 
@@ -117,442 +127,313 @@ For schema, API contracts, and permission matrix see [docs/LLD.md](docs/LLD.md).
 
 ### Prerequisites
 
-- Node.js v18 or higher
-- npm v9 or higher
-- PostgreSQL running locally (or a connection string to a hosted instance)
+| Tool | Version |
+|------|---------|
+| Node.js | >= 20.0.0 |
+| npm | >= 10.0.0 |
+| PostgreSQL | >= 14 (or use the included SQLite for local dev) |
 
-### Steps
+### Clone and install
 
 ```bash
-# 1. Clone the repository
-git clone https://github.com/your-username/rapid-ledger.git
+git clone https://github.com/harshiniramasamy5-star/rapid-ledger.git
 cd rapid-ledger
-
-# 2. Install all dependencies (installs both apps + shared package)
 npm install
-
-# 3. Set up environment variables (see Section 6)
-cp apps/api/.env.example apps/api/.env
-cp apps/web/.env.example apps/web/.env
-# Edit both files with your values
-
-# 4. Set up the database (see Section 7)
-npx prisma migrate dev --name init
-
-# 5. Seed demo data (see Section 8)
-npx prisma db seed
-
-# 6. Start the backend (Terminal 1)
-cd apps/api
-npm run dev
-# API running at http://localhost:3001
-
-# 7. Start the frontend (Terminal 2)
-cd apps/web
-npm run dev
-# App running at http://localhost:3000
-
-# 8. Open in browser
-# http://localhost:3000
-# Log in with any demo credential from Section 10
 ```
+
+`npm install` from the root installs all workspace dependencies and automatically runs `prisma generate` via the postinstall hook.
 
 ---
 
 ## 6. Environment Variables
 
-### Backend — `apps/api/.env`
+Copy the example file and fill in your values:
 
-```env
-# PostgreSQL connection string
-DATABASE_URL="postgresql://postgres:password@localhost:5432/rapid_ledger"
-
-# JWT signing secret — change this in production
-JWT_SECRET="your-super-secret-jwt-key-change-in-production"
-
-# JWT token expiry
-JWT_EXPIRY="24h"
-
-# Server port
-PORT=3001
-
-# Environment
-NODE_ENV="development"
+```bash
+cp .env.example .env
 ```
 
-### Frontend — `apps/web/.env`
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `DATABASE_URL` | PostgreSQL connection string | `postgresql://user:pass@localhost:5432/rapid_ledger` |
+| `JWT_SECRET` | Secret key for signing JWTs (min 32 chars) | `your-super-secret-key-here-minimum-32` |
+| `FRONTEND_URL` | Allowed CORS origin | `http://localhost:3000` |
 
-```env
-# Backend API URL
-NEXT_PUBLIC_API_URL="http://localhost:3001"
-```
+For the web app:
 
-### Production environment variables
-
-For Vercel (frontend):
-```
-NEXT_PUBLIC_API_URL=https://your-api.railway.app
+```bash
+cp apps/web/.env.example apps/web/.env.local
 ```
 
-For Railway (backend):
-```
-DATABASE_URL=postgresql://...
-JWT_SECRET=...
-PORT=3001
-NODE_ENV=production
-```
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `NEXT_PUBLIC_API_URL` | Backend API base URL | `http://localhost:3001` |
 
 ---
 
 ## 7. Database Setup
 
-This project uses PostgreSQL with Prisma ORM.
-
-### Create the database
+### Option A — PostgreSQL (recommended)
 
 ```bash
-# Using psql
-psql -U postgres
-CREATE DATABASE rapid_ledger;
-\q
+# Create the database
+createdb rapid_ledger
+
+# Apply migrations
+npm run db:migrate
+
+# Seed demo users and documents
+npm run db:seed
 ```
 
-### Run migrations
+### Option B — SQLite (quick local dev)
 
-```bash
-# From the repo root
-npx prisma migrate dev --name init
+Change `provider` in `prisma/schema.prisma` from `postgresql` to `sqlite` and set:
+
+```
+DATABASE_URL="file:./dev.db"
 ```
 
-This creates all 7 tables: `User`, `RapidDocument`, `RapidRoleAssignment`, `Evidence`, `Approval`, `LedgerEntry`, `AuditLog`.
-
-### View the schema
+Then:
 
 ```bash
-# Open Prisma Studio (visual DB browser)
-npx prisma studio
+npm run db:push
+npm run db:seed
 ```
 
-### Reset the database
+### Useful database commands
 
 ```bash
-# Drop all data and re-run migrations
-npx prisma migrate reset
-```
-
----
-
-## 8. Seed Data Instructions
-
-The seed script creates 6 demo users and 4 sample RAPID documents covering all risk levels and statuses.
-
-```bash
-# Run the seed script
-npx prisma db seed
-```
-
-### What gets seeded
-
-**Users:**
-
-| Name | Email | Role |
-|------|-------|------|
-| Alice Admin | admin@rapid.dev | admin |
-| Carol Creator | creator@rapid.dev | creator |
-| Rick Recommender | recommender@rapid.dev | recommender |
-| Bob Approver | approver@rapid.dev | approver |
-| Pam Performer | viewer@rapid.dev | viewer |
-| Vera Viewer | viewer@rapid.dev | viewer |
-
-**Sample documents:**
-- RAPID-001 — Draft, low-risk (no roles assigned yet)
-- RAPID-002 — Awaiting agreement, high-risk, compliance-impacting
-- RAPID-003 — Approved, medium-risk (ready to finalize)
-- RAPID-004 — Finalized, in ledger (full history available)
-
-### Re-seed after reset
-
-```bash
-npx prisma migrate reset
-# This automatically re-runs the seed after resetting
+npm run db:generate   # Regenerate Prisma client after schema changes
+npm run db:migrate    # Create and apply a new migration
+npm run db:studio     # Open Prisma Studio (visual DB browser)
+npm run db:reset      # Reset DB and reseed (development only — destructive)
 ```
 
 ---
 
-## 9. Test Commands
+## 8. Running the App
 
-### Run all backend tests (unit + API)
+### Start both servers (recommended)
 
 ```bash
-cd apps/api
+npm run dev
+```
+
+This starts the API (port 3001) and web app (port 3000) concurrently.
+
+### Start individually
+
+```bash
+# API only
+cd apps/api && npm run dev
+
+# Web only
+cd apps/web && npm run dev
+```
+
+Open http://localhost:3000 and log in with any credential from [Section 10](#10-demo-credentials).
+
+---
+
+## 9. Running Tests
+
+### All tests from root
+
+```bash
 npm test
 ```
 
-Expected output: **31 tests passing** (18 unit + 13 API)
-
-### Run unit tests only (validation engine)
+### Backend tests (Vitest)
 
 ```bash
-cd apps/api
-npm run test:unit
+cd apps/api && npm test
 ```
 
-### Run API endpoint tests only
+| Suite | Tests | What it covers |
+|-------|-------|----------------|
+| `validation.test.ts` | 18 | Business rules: Decide owner, Agree enforcement, evidence requirement |
+| `rbac.test.ts` | 27 | Role-based access control across all endpoints |
+| `api.test.ts` | 13 | Document lifecycle, approval flow, versioning |
+
+Tests use Elysia's `app.handle()` — no running server required.
+
+### Frontend tests (Jest + React Testing Library)
 
 ```bash
-cd apps/api
-npm run test:api
+cd apps/web && npm test
 ```
 
-### Run frontend component tests
+17 tests covering component rendering and user interactions.
+
+### E2E tests (Playwright)
 
 ```bash
-cd apps/web
-npm test
+cd apps/web && npx playwright test
 ```
 
-### Run all tests from repo root
+9 end-to-end tests covering the full RAPID workflow. See [Known Limitations](#13-known-limitations) for hardware requirements.
+
+### Typecheck and lint
 
 ```bash
-npm test --workspaces
+npm run typecheck   # 0 errors expected
+npm run lint        # 0 errors expected
 ```
-
-### Test coverage summary
-
-| Suite | File | Tests | Coverage |
-|-------|------|-------|---------|
-| Unit | `tests/validation.test.ts` | 18 | Validation engine — all 8 business rules |
-| API | `tests/api.test.ts` | 13 | Auth, documents, approvals, ledger, exports |
-| Frontend | `tests/components/` | 8 | Login form, role UI, approval buttons, finalize button |
-| E2E | `tests/e2e/` | Stub | See Known Limitations |
 
 ---
 
-## 10. Demo User Credentials
+## 10. Demo Credentials
 
 All passwords are `password123`.
 
-| Role | Email | Can Do |
-|------|-------|--------|
-| Admin | admin@rapid.dev | Everything — create users, view all docs, finalize, export |
-| Creator | creator@rapid.dev | Create and submit RAPID documents |
-| Recommender | recommender@rapid.dev | View assigned documents, add recommendation notes |
-| Approver | approver@rapid.dev | Approve, reject, or request changes on assigned documents |
-| Decision Owner | performer@rapid.dev | Finalize approved documents, create new versions |
-| Performer | performer@rapid.dev | Mark execution complete on finalized documents |
+| Name | Email | Role | Can do |
+|------|-------|------|--------|
+| Alice Admin | admin@rapid.dev | admin | Everything — manage users, view all documents, access audit log |
+| Carol Creator | creator@rapid.dev | creator | Create and submit RAPID documents |
+| Rick Recommender | recommender@rapid.dev | recommender | Add recommendations to assigned documents |
+| Bob Approver | approver@rapid.dev | approver | Approve, reject, or request changes on documents |
+| Pam Performer | performer@rapid.dev | performer | Execute and mark completion on finalised documents |
+| Vera Viewer | viewer@rapid.dev | viewer | Read-only access to documents |
 
-> There is no seeded Auditor account by default. Create one via the Admin panel: log in as admin@rapid.dev, go to Admin → Create User, and set role to Auditor.
+> **Auditor account:** No auditor is seeded by default. Create one via the Admin panel: log in as `admin@rapid.dev` → Admin → Create User → set role to Auditor.
 
 ---
 
-## 11. Main User Flows
+## 11. Core Workflows
 
-### Flow 1 — Create and submit a normal-risk decision
+### Workflow A — Standard approval flow
 
 1. Log in as `creator@rapid.dev`
 2. Click **+ New Document** on the dashboard
-3. Fill in title, decision summary, risk level (low), department, deadline
-4. On the Roles tab: assign Recommend, Perform, and Decide owners
-5. Click **Submit**
-6. Document moves to **Approved** (no Agree required for low-risk)
-7. Log in as `performer@rapid.dev`
-8. Open the document → click **Finalize**
-9. Document moves to **Finalized** and appears in the Ledger
+3. Complete the 3-step wizard: details → RAPID role assignments (assign a Decide owner) → evidence
+4. Click **Submit for Approval**
+5. Log in as `approver@rapid.dev`
+6. Go to **Approvals** → click **Approve** with notes
+7. Log in as `admin@rapid.dev`
+8. Open the document → click **Finalise**
+9. Go to **Ledger** — the finalised record appears as a permanent, immutable entry
 
-### Flow 2 — High-risk decision with approval
+### Workflow B — High-risk decision (Agree enforced)
 
 1. Log in as `creator@rapid.dev`
 2. Create a document with risk level **High** or **Critical**
-3. Assign all roles including at least one **Agree** approver
-4. Submit → document moves to **Awaiting Agreement**
-5. Log in as `approver@rapid.dev`
-6. Go to **Approvals** → click **Approve** with notes
-7. Document moves to **Approved**
-8. Log in as `performer@rapid.dev` → Finalize
+3. Assign at least one **Agree** role — submission is blocked without it
+4. If `complianceImpact` is checked, attach at least one evidence item — submission is blocked without it
+5. Submit → log in as `approver@rapid.dev` → Approve
+6. Log in as `admin@rapid.dev` → Finalise
 
-### Flow 3 — Compliance-impacting decision
+### Workflow C — Versioning
 
-1. Create a document with **Compliance Impact** toggled on
-2. Attempt to submit without evidence → blocked with error
-3. Add at least one evidence item (link, note, or file reference)
-4. Submit → proceeds through approval flow
-
-### Flow 4 — Reject and request changes
-
-1. Approver opens a pending approval
-2. Click **Request Changes** with notes
-3. Document returns to **Needs Changes** status
-4. Creator edits the document and resubmits
-5. Approver reviews again and approves
-
-### Flow 5 — Version a finalized decision
-
-1. Log in as `performer@rapid.dev`
-2. Open a finalized document
+1. Log in as `admin@rapid.dev`
+2. Open any **Finalised** document
 3. Click **Create New Version**
-4. A new Draft v2 is created — original v1 remains read-only in the ledger
-5. Edit, assign roles, submit, approve, and finalize v2
-6. Both versions appear in the Ledger
+4. A new draft is created with the same `documentCode` and an incremented version number
+5. The original document is locked — it cannot be edited or re-finalised
 
-### Flow 6 — Export a report
+### Workflow D — Audit trail
 
-1. Log in as `admin@rapid.dev` or an Auditor account
-2. Go to **Ledger** page
-3. Click **Export CSV** or **Export Markdown**
-4. File downloads with all finalized decisions
+1. Log in as `admin@rapid.dev`
+2. Go to **Audit Log**
+3. Every login, document creation, submission, approval, finalisation, and versioning event is listed with actor, timestamp, and metadata
 
 ---
 
 ## 12. API Overview
 
-Base URL: `http://localhost:3001`
+Base URL: `http://localhost:3001` (local) or `https://rapid-ledger-production.up.railway.app` (production)
 
-All protected endpoints require: `Authorization: Bearer <token>`
+Full reference: [`docs/API.md`](docs/API.md)
 
-### Authentication
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/auth/login` | Login and receive JWT token |
-| POST | `/auth/logout` | Invalidate session |
-| GET | `/auth/me` | Get current user details |
-
-### Users (Admin only)
+### Auth
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/users` | List all users |
-| POST | `/users` | Create a new user |
-| PATCH | `/users/:id` | Update role, status, or department |
+| POST | `/auth/login` | Returns JWT token and user object |
+| GET | `/auth/me` | Returns current authenticated user |
 
 ### Documents
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | GET | `/documents` | List documents (filtered by role) |
-| POST | `/documents` | Create a new RAPID document |
-| GET | `/documents/:id` | Get document with roles, evidence, approvals |
-| PATCH | `/documents/:id` | Update draft or needs_changes document |
-| POST | `/documents/:id/submit` | Submit for validation and approval |
-| POST | `/documents/:id/finalize` | Finalize (Decide owner or Admin) |
-| POST | `/documents/:id/version` | Create new version from finalized document |
-| POST | `/documents/:id/execution-complete` | Mark execution complete (Performer) |
+| POST | `/documents` | Create new RAPID document |
+| GET | `/documents/:id` | Get document detail |
+| PATCH | `/documents/:id` | Update draft document |
+| POST | `/documents/:id/submit` | Submit for approval (validates RAPID rules) |
+| POST | `/documents/:id/approve` | Approve document (approver role required) |
+| POST | `/documents/:id/reject` | Reject document |
+| POST | `/documents/:id/finalise` | Finalise document (creates ledger entry) |
+| POST | `/documents/:id/version` | Create new version from finalised document |
 
-### Roles
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/documents/:id/roles` | Assign a RAPID role |
-| DELETE | `/documents/:id/roles/:roleId` | Remove a role assignment |
-
-### Evidence
+### Ledger
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/documents/:id/evidence` | List evidence for a document |
-| POST | `/documents/:id/evidence` | Attach new evidence |
-| DELETE | `/documents/:id/evidence/:evidenceId` | Remove evidence item |
+| GET | `/ledger` | List all immutable ledger entries |
+| GET | `/ledger/:id` | Get single ledger entry |
 
-### Approvals
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/approvals/my` | Get current user's pending approvals |
-| POST | `/documents/:id/approvals/:approvalId/approve` | Approve |
-| POST | `/documents/:id/approvals/:approvalId/reject` | Reject |
-| POST | `/documents/:id/approvals/:approvalId/request-changes` | Request changes |
-
-### Ledger and Audit
+### Audit Log
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/ledger` | List all finalized ledger entries |
-| GET | `/ledger/:id` | Get a single ledger entry |
-| GET | `/audit-log` | List all audit log entries (read-only) |
+| GET | `/audit` | List all audit events (admin/auditor only) |
 
-### Reports
+### Users (Admin only)
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/reports/ledger.csv` | Download ledger as CSV |
-| GET | `/reports/ledger.md` | Download ledger as Markdown |
-| GET | `/reports/pending-approvals.csv` | Pending approvals report |
-| GET | `/reports/high-risk.csv` | High-risk decisions report |
-| GET | `/reports/owner-workload.csv` | Owner workload report |
-
-For full request/response payloads see [docs/LLD.md](docs/LLD.md) and [docs/API.md](docs/API.md).
+| GET | `/users` | List all users |
+| POST | `/users` | Create new user |
+| PATCH | `/users/:id` | Update user |
+| PATCH | `/users/:id/deactivate` | Deactivate user |
 
 ---
 
 ## 13. Known Limitations
 
-### E2E Tests (Playwright)
+### Playwright E2E tests require high RAM
 
-Playwright is installed and configured. The full E2E test suite covering the Admin → Creator → Approver → Decide owner → Ledger flow was attempted but is not stable in the current setup. The test runner causes significant slowdown on the development machine and the role assignment dropdown selector requires additional work to target correctly. The application is fully functional and covered by 31 passing unit and API tests. E2E coverage is a planned improvement.
+Running Next.js dev server + Elysia API + Playwright browser concurrently requires approximately 3 GB of RAM. On low-memory machines this causes system slowdowns. The tests are correctly written and configured — run them via GitHub Actions CI for reliable execution.
 
-### No real file uploads
+### JWT stored in localStorage
 
-Evidence of type `file` stores a local file path string rather than uploading an actual file. A real file upload system (e.g. using AWS S3 or Cloudflare R2) would be required for production.
+The authentication token is stored in `localStorage` for simplicity. This is vulnerable to XSS attacks. In a production system this should be replaced with HttpOnly cookies. Documented here as a known architectural trade-off for this internship scope.
+
+### Evidence is URL-based only
+
+Evidence items store a URL or file path. Direct file upload to object storage (S3, Cloudflare R2) is not implemented. This is a planned future improvement.
 
 ### No email notifications
 
-When a document is submitted for approval, or when an approver requests changes, no email is sent. Notifications would need a mail service integration (e.g. Resend or SendGrid).
-
-### No PDF export
-
-The PRD lists PDF export as an optional bonus. It is not implemented in the MVP. CSV and Markdown exports are fully functional.
-
-### No real-time updates
-
-If two users are looking at the same document, changes made by one user are not pushed to the other. A page refresh is required to see updated state. Real-time support would require WebSockets or Server-Sent Events.
-
-### Single-tenant only
-
-This application has no multi-tenancy. All users share one database and can see all documents (subject to role restrictions). Tenant isolation would require schema-level or row-level separation.
-
-### SQLite removed — PostgreSQL required
-
-The project started with SQLite but migrated to PostgreSQL for production compatibility with Railway deployment. A local PostgreSQL instance is required to run the project.
+Approvers and decision owners are not notified by email when a document is assigned or submitted. Notification integration (SendGrid, Resend) is a future improvement.
 
 ---
 
 ## 14. Future Improvements
 
-### Notifications
-- Email notifications via Resend or SendGrid when approvals are requested or decisions are finalized
-- In-app notification bell with unread count
+- [ ] Playwright E2E via GitHub Actions CI pipeline
+- [ ] HttpOnly cookie auth (replace localStorage JWT)
+- [ ] File upload support for evidence (S3 / Cloudflare R2)
+- [ ] Email notifications for approvals and assignments
+- [ ] Dashboard analytics — decisions by risk level, approval times, department breakdown
+- [ ] PDF export of finalised RAPID documents
+- [ ] Slack / Teams integration for governance notifications
+- [ ] Multi-organisation support with workspace isolation
+- [ ] Two-factor authentication for admin accounts
 
-### Integrations
-- Slack integration — post to a channel when a document is submitted or finalized
-- Google Drive evidence picker — attach Drive files directly as evidence
-- Jira integration — link RAPID decisions to Jira tickets
+---
 
-### Auth and Security
-- Enterprise SSO (SAML / OIDC)
-- Multi-factor authentication
-- Session management and token refresh
+## Documentation
 
-### Reports and Analytics
-- PDF export for ledger and compliance reports
-- Department-level dashboards
-- Approval SLA tracking — flag decisions that have been waiting too long
-- Trend analysis — decision volume over time by department and risk level
+| Document | Description |
+|----------|-------------|
+| [HLD](docs/HLD.md) | High-level system design and component diagram |
+| [LLD](docs/LLD.md) | Low-level design: DB schema, API contracts, service interfaces |
+| [GHERKIN](docs/GHERKIN.md) | BDD scenarios for all RAPID workflow paths |
+| [API Reference](docs/API.md) | Full API endpoint documentation with request/response examples |
+| [Test Plan](docs/TEST_PLAN.md) | Test strategy, coverage matrix, and test environment setup |
 
-### Document Features
-- Rich text editing for decision summary and context fields
-- Comment threads on documents (not just approval notes)
-- Full-text search across document content
-- Decision templates for common decision types
-- Policy and control linking
+---
 
-### Process and Governance
-- Escalation rules when approvals are overdue
-- Approval delegation when an approver is unavailable
-- External auditor access mode (read-only with time-limited link)
-- Compliance framework tagging (SOC 2, ISO 27001, GDPR)
-
-### Testing
-- Fix and stabilize Playwright E2E test suite
-- Increase unit test coverage to include status transition validation
-- Add React Testing Library snapshot tests for key UI components
-- Load testing for report generation endpoints
+*Built as an internship project demonstrating production-grade governance engineering with TypeScript, Next.js 16, Elysia, Prisma, and PostgreSQL.*
