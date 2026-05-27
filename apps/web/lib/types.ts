@@ -1,6 +1,7 @@
 /** Shared API response types — eliminates `any` in page components */
 export type { ApiError } from "@rapid-ledger/shared";
-
+export { UserRole, DocumentStatus, RiskLevel, RapidRoleType, ApprovalStatus } from "@rapid-ledger/shared";
+export type { User, RapidDocument, ValidationError } from "@rapid-ledger/shared";
 
 export interface ApiUser {
   id: string;
