@@ -11,6 +11,21 @@ jobs:
     name: Typecheck · Lint · Test
     runs-on: ubuntu-latest
 
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: rapid_ledger_ci
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -27,7 +42,17 @@ jobs:
       - name: Generate Prisma Client
         run: npx prisma generate
         env:
-          DATABASE_URL: "file:./ci-test.db"
+          DATABASE_URL: "postgresql://ci:ci@localhost:5432/rapid_ledger_ci"
+
+      - name: Run Prisma migrations
+        run: npx prisma migrate deploy
+        env:
+          DATABASE_URL: "postgresql://ci:ci@localhost:5432/rapid_ledger_ci"
+
+      - name: Seed test database
+        run: cd apps/api && npx tsx src/seed.ts
+        env:
+          DATABASE_URL: "postgresql://ci:ci@localhost:5432/rapid_ledger_ci"
 
       - name: TypeScript — check all workspaces
         run: npm run typecheck
@@ -38,7 +63,7 @@ jobs:
       - name: Tests — API
         run: npm run test --workspace=apps/api
         env:
-          DATABASE_URL: "file:./ci-test.db"
+          DATABASE_URL: "postgresql://ci:ci@localhost:5432/rapid_ledger_ci"
           JWT_SECRET: "ci-test-secret-do-not-use-in-production"
           NODE_ENV: "test"
 

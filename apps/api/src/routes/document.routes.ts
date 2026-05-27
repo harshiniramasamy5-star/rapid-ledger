@@ -81,7 +81,7 @@ export const documentRoutes = new Elysia({ prefix: "/documents" })
   })
 
   // ── POST /documents/:id/approve ───────────────────────────────────────────
-  .post("/:id/approve", async ({ user, params, body: _body, set }: any) => {
+  .post("/:id/approve", async ({ user, params, body, set }: any) => {
     requirePermission(user, "document:approve", set);
     const parsed = parseBody(approvalSchema, body ?? {});
     const result = await approveDocument(params.id, user.id, parsed.ok ? parsed.data.comment : undefined);
@@ -93,7 +93,7 @@ export const documentRoutes = new Elysia({ prefix: "/documents" })
   })
 
   // ── POST /documents/:id/reject ────────────────────────────────────────────
-  .post("/:id/reject", async ({ user, params, body: _body, set }: any) => {
+  .post("/:id/reject", async ({ user, params, body, set }: any) => {
     requirePermission(user, "document:reject", set);
     const parsed = parseBody(approvalSchema, body ?? {});
     const result = await rejectDocument(params.id, user.id, parsed.ok ? parsed.data.comment : undefined);
@@ -105,7 +105,7 @@ export const documentRoutes = new Elysia({ prefix: "/documents" })
   })
 
   // ── POST /documents/:id/needs-changes ─────────────────────────────────────
-  .post("/:id/needs-changes", async ({ user, params, body: _body, set }: any) => {
+  .post("/:id/needs-changes", async ({ user, params, body, set }: any) => {
     requirePermission(user, "document:reject", set);
     const parsed = parseBody(approvalSchema, body ?? {});
     const result = await requestChanges(params.id, user.id, parsed.ok ? parsed.data.comment : undefined);
@@ -129,7 +129,7 @@ export const documentRoutes = new Elysia({ prefix: "/documents" })
 
 
   // ── POST /documents/:id/execution-complete ────────────────────────────────
-  .post("/:id/execution-complete", async ({ user, params, body: _body, set }: any) => {
+  .post("/:id/execution-complete", async ({ user, params, body, set }: any) => {
     requirePermission(user, "document:finalize", set);
     const doc = await import("../lib/prisma").then(m => m.prisma.rapidDocument.findUnique({ where: { id: params.id } }));
     if (!doc) { set.status = 404; return Errors.notFound("Document"); }
