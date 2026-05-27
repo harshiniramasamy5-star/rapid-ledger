@@ -60,7 +60,7 @@ export default function NewDocumentPage() {
       const res = await fetch(`${API}/documents`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token()}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ ...form, complianceImpact: Boolean(form.complianceImpact) }),
+        body: JSON.stringify({ ...form, complianceImpact: Boolean(form.complianceImpact), deadline: form.deadline ? new Date(form.deadline).toISOString() : undefined }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error?.message ?? "Failed");
