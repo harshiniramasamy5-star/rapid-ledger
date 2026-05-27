@@ -8,7 +8,12 @@ import { userRoutes } from "./routes/user.routes";
 import { auditRoutes } from "./routes/audit.routes";
 
 export const app = new Elysia()
-  .use(cors({ origin: true, credentials: true }))
+  .use(cors({
+  origin: ["https://rapid-ledger.vercel.app", "http://localhost:3000"],
+  credentials: true,
+  allowedHeaders: ["Content-Type", "Authorization"],
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
+}))
   .get("/health", () => ({ status: "ok", timestamp: new Date().toISOString() }))
   .use(authRoutes)
   .use(documentRoutes)
