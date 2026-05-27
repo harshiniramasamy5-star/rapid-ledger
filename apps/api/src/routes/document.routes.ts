@@ -154,7 +154,7 @@ export const documentRoutes = new Elysia({ prefix: "/documents" })
   })
 
   // ── POST /documents/:id/roles ─────────────────────────────────────────────
-  .post("/:id/roles", async ({ user, params, body: _body, set }: any) => {
+  .post("/:id/roles", async ({ user, params, body, set }: any) => {
     requirePermission(user, "role:assign", set);
     const parsed = parseBody(assignRoleSchema, body);
     if (!parsed.ok) { set.status = 400; return Errors.badRequest("Invalid role data", parsed.errors); }
@@ -168,7 +168,7 @@ export const documentRoutes = new Elysia({ prefix: "/documents" })
   })
 
   // ── POST /documents/:id/evidence ──────────────────────────────────────────
-  .post("/:id/evidence", async ({ user, params, body: _body, set }: any) => {
+  .post("/:id/evidence", async ({ user, params, body, set }: any) => {
     requirePermission(user, "evidence:add", set);
     const parsed = parseBody(addEvidenceSchema, body);
     if (!parsed.ok) { set.status = 400; return Errors.badRequest("Invalid evidence data", parsed.errors); }
