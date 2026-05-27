@@ -51,7 +51,7 @@ export default function DocumentDetailPage() {
       const [meRes, docRes, appRes] = await Promise.all([
         fetch(`${API}/auth/me`,            { headers: { Authorization: `Bearer ${t}` } }),
         fetch(`${API}/documents/${params.id}`, { headers: { Authorization: `Bearer ${t}` } }),
-        fetch(`${API}/approvals/my`,       { headers: { Authorization: `Bearer ${t}` } }),
+        fetch(`${API}/approvals/my`,       { headers: { Authorization: `Bearer ${t}` } }).catch(() => new Response('[]')),
       ]);
       const [meData, docData, appData] = await Promise.all([meRes.json(), docRes.json(), appRes.json()]);
       const found = Array.isArray(appData) ? (appData as Approval[]).find(a => a.documentId === params.id || a.document?.id === params.id) : null;
