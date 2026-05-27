@@ -81,7 +81,7 @@ export default function AuditLogPage() {
             </div>
             <div>
               <p className="font-semibold text-slate-900 text-sm leading-none">RAPID Ledger</p>
-              <p className="text-xs text-slate-400 mt-0.5">Compliance Invoicing Platform</p>
+              <p className="text-xs text-slate-400 mt-0.5">Decision governance without compromise</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
