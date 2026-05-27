@@ -44,7 +44,7 @@ export default function DocumentDetailPage() {
 
   function token() { return localStorage.getItem("rapid_token") ?? ""; }
 
-  async function load() {
+  const load = React.useCallback(async () => {
     try {
       const t = token();
       if (!t) { router.replace("/login"); return; }
@@ -62,10 +62,10 @@ export default function DocumentDetailPage() {
         setMyApproval(found ?? null);
         setLoading(false);
       });
-    } catch { toast.error("Failed to load document"); setLoading(false); } // eslint-disable-line
-  }
-  // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { void load(); }, [params.id]);
+    } catch { toast.error("Failed to load document"); setLoading(false); }
+  }, [params.id, router]);
+
+  useEffect(() => { void load(); }, [load]);
 
   async function apiPost(path: string, body?: Record<string, unknown>) {
     const res = await fetch(`${API}${path}`, {

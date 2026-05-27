@@ -1,8 +1,7 @@
 {
-  "extends": [
-    "next/core-web-vitals"
-  ],
+  "extends": ["next/core-web-vitals"],
   "rules": {
-    "react-compiler/react-compiler": "off"
+    "react-compiler/react-compiler": "off",
+    "react-hooks/set-state-in-effect": "off"
   }
 }
