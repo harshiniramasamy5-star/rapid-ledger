@@ -27,3 +27,4 @@ build/
 apps/api/node_modules/
 .vercel
 .env*.local
+apps/api/.env
