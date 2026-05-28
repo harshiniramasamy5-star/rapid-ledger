@@ -57,6 +57,7 @@ jobs:
     needs: api-tests
 
     env:
+      NEXT_PUBLIC_API_URL: https://rapid-ledger-production.up.railway.app
       BASE_URL: ${{ secrets.VERCEL_URL || 'https://rapid-ledger.vercel.app' }}
 
     steps:
