@@ -1,3 +1,4 @@
+// auth.ts — JWT utilities: sign, verify, extract bearer token
 import jwt from "jsonwebtoken";
 import type { JwtPayload } from "../types";
 

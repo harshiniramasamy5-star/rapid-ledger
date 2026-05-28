@@ -173,7 +173,12 @@ export const documentRoutes = new Elysia({ prefix: "/documents" })
     const updated = await prisma.rapidDocument.update({
       where: { id: params.id },
       data: _body as Record<string, unknown>,
-      include: INCLUDE,
+      include: {
+        createdBy: true,
+        roleAssignments: { include: { user: { select: { id: true, name: true, email: true, role: true } } } },
+        evidence: true,
+        approvals: { include: { approver: { select: { id: true, name: true, email: true } } } },
+      },
     });
     return updated;
   })

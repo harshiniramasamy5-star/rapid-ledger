@@ -1,3 +1,4 @@
+// permissions.ts — RBAC: role permission map, can(), hasPermission(), requirePermission()
 import type { User, UserRole } from "@prisma/client";
 import { Errors } from "../lib/errors";
 

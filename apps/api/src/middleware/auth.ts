@@ -1,3 +1,4 @@
+// auth middleware — Elysia plugin: validates Bearer token and attaches user to context
 import { Elysia } from "elysia";
 import { verifyToken, extractBearerToken } from "../lib/auth";
 import { prisma } from "../lib/prisma";
