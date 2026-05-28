@@ -98,7 +98,7 @@ export default function DocumentDetailPage() {
   const canFinalize = myRole?.roleType === "decide" && status === "approved";
   const canComplete = myRole?.roleType === "perform" && status === "finalized";
   const canVersion  = myRole?.roleType === "decide" && ["finalized","execution_complete"].includes(status);
-  const isRecommenderWaiting = myRole?.roleType === "recommend" && status === "awaiting_agreement";
+  const isRecommenderWaiting = myRole?.roleType === "recommend" && !!doc.recommendationNotes && status === "awaiting_agreement";
   const canRecommend = myRole?.roleType === "recommend" && !isRecommenderWaiting && ["draft","needs_changes","submitted","awaiting_agreement"].includes(status);
 
   const sc = STATUS_CONFIG[status] ?? { variant: "outline" as const, label: status, color: "text-slate-600" };
