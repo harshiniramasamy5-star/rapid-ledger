@@ -292,7 +292,7 @@ All passwords: `password123`
 | Carol Creator | creator@rapid.dev | creator | Create and submit RAPID documents |
 | Pam Performer | performer@rapid.dev | performer | Mark finalised documents as execution complete |
 | Rick Recommender | recommender@rapid.dev | recommender | Add recommendations and evidence to documents |
-| Vera Viewer | viewer@rapid.dev | viewer | Read-only access to all documents |
+| Vera Viewer | viewer@rapid.dev | viewer | Not just a viewer — when assigned the I — Input role on a document, can actively submit input notes and expertise before the decision is approved |
 
 ---
 
