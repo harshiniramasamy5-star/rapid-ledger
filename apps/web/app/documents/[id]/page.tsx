@@ -44,6 +44,7 @@ export default function DocumentDetailPage() {
   const [approvalNotes, setApprovalNotes]     = useState("");
   const [execNotes, setExecNotes]             = useState("");
   const [recommendNotes, setRecommendNotes]   = useState("");
+  const [inputNotes, setInputNotes]           = useState("");
   const [loading, setLoading]       = useState(true);
   const [acting, setActing]         = useState(false);
 
@@ -99,6 +100,8 @@ export default function DocumentDetailPage() {
   const canComplete = myRole?.roleType === "perform" && status === "finalized";
   const canVersion  = myRole?.roleType === "decide" && ["finalized","execution_complete"].includes(status);
   const isRecommenderWaiting = myRole?.roleType === "recommend" && !!doc?.recommendationNotes && status === "awaiting_agreement";
+  const canInput        = myRole?.roleType === "input" && !doc?.inputNotes && ["draft","needs_changes","submitted","awaiting_agreement"].includes(status);
+  const isInputWaiting  = myRole?.roleType === "input" && !!doc?.inputNotes;
   const canRecommend = myRole?.roleType === "recommend" && !isRecommenderWaiting && ["draft","needs_changes","submitted","awaiting_agreement"].includes(status);
 
   const sc = STATUS_CONFIG[status] ?? { variant: "outline" as const, label: status, color: "text-slate-600" };
@@ -264,6 +267,33 @@ export default function DocumentDetailPage() {
               </div>
             )}
 
+            {canInput && (
+              <div className="space-y-3">
+                <p className="text-xs text-slate-500 font-medium">
+                  Provide your input or expertise to support this decision.
+                </p>
+                <textarea rows={3} placeholder="Enter your input notes (required)..."
+                  value={inputNotes} onChange={e => setInputNotes(e.target.value)}
+                  className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary bg-white text-slate-900 placeholder:text-slate-400" />
+                <Button className="w-full h-11 bg-teal-600 hover:bg-teal-700 text-white font-semibold" disabled={acting}
+                  onClick={() => handle(async () => {
+                    if (!inputNotes.trim()) { toast.error("Input notes are required"); return; }
+                    const { res, data } = await apiPost(`/documents/${params.id}/input`, { notes: inputNotes });
+                    if (res.ok) { toast.success("Input submitted!"); setInputNotes(""); await load(); }
+                    else toast.error(data?.error?.message ?? "Failed to submit input");
+                  })}>
+                  {acting ? "Submitting..." : "Submit Input"}
+                </Button>
+              </div>
+            )}
+
+            {isInputWaiting && (
+              <div className="rounded-lg bg-teal-50 border border-teal-200 px-4 py-3">
+                <p className="text-sm text-teal-700 font-medium">✅ Your input has been recorded.</p>
+                <p className="text-xs text-teal-600 mt-1">Thank you for providing your expertise to support this decision.</p>
+              </div>
+            )}
+
             {canFinalize && (
               <AlertDialog>
                 <AlertDialogTrigger className="w-full inline-flex items-center justify-center rounded-md text-sm font-semibold bg-indigo-600 hover:bg-indigo-700 text-white h-11 px-4 py-2 disabled:opacity-50" disabled={acting}>{acting ? "Finalizing..." : "Finalize Decision"}</AlertDialogTrigger>
@@ -314,7 +344,7 @@ export default function DocumentDetailPage() {
               </Button>
             )}
 
-            {!canSubmit && !canAgree && !canFinalize && !canComplete && !canVersion && !canRecommend && !isRecommenderWaiting && (
+            {!canSubmit && !canAgree && !canFinalize && !canComplete && !canVersion && !canRecommend && !isRecommenderWaiting && !canInput && !isInputWaiting && (
               <p className="text-sm text-slate-400 text-center py-2">
                 No actions available for your role at this stage.
               </p>
