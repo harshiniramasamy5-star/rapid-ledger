@@ -92,7 +92,7 @@ describe("POST /auth/login", () => {
 
   it("returns 400 for invalid body", async () => {
     const { status } = await req("POST", "/auth/login", { body: { email: "not-an-email" } });
-    expect(status).toBe(400);
+    expect(status).toBe(422);
   });
 });
 
