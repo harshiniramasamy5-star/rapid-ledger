@@ -48,16 +48,19 @@ export async function submitDocument(documentId: string, actorId: string) {
   const hasAgree = doc.roleAssignments.some((r: { roleType: string }) => r.roleType === "agree");
   const nextStatus: DocumentStatus = hasAgree ? "awaiting_agreement" : "approved";
 
-  if (hasAgree) {
-    for (const a of doc.roleAssignments.filter((r: { roleType: string }) => r.roleType === "agree")) {
-      const existing = await prisma.approval.findFirst({ where: { documentId, approverId: a.userId } });
-      if (existing) { await prisma.approval.update({ where: { id: existing.id }, data: { decision: "pending", comment: null } }); }
-      else { await prisma.approval.create({ data: { documentId, approverId: a.userId, decision: "pending" } }); }
+  // Atomic: approval upserts + status update + audit log
+  const updated = await prisma.$transaction(async (tx) => {
+    if (hasAgree) {
+      for (const a of doc.roleAssignments.filter((r: { roleType: string }) => r.roleType === "agree")) {
+        const existing = await tx.approval.findFirst({ where: { documentId, approverId: a.userId } });
+        if (existing) { await tx.approval.update({ where: { id: existing.id }, data: { decision: "pending", comment: null } }); }
+        else { await tx.approval.create({ data: { documentId, approverId: a.userId, decision: "pending" } }); }
+      }
     }
-  }
-
-  const updated = await prisma.rapidDocument.update({ where: { id: documentId }, data: { status: nextStatus, submittedAt: new Date() }, include: INCLUDE });
-  await createAuditLog(actorId, "document_submitted", "RapidDocument", documentId, { newStatus: nextStatus });
+    const result = await tx.rapidDocument.update({ where: { id: documentId }, data: { status: nextStatus, submittedAt: new Date() }, include: INCLUDE });
+    await tx.auditLog.create({ data: { userId: actorId, action: "document_submitted", entityType: "RapidDocument", entityId: documentId, details: { newStatus: nextStatus } } });
+    return result;
+  });
   return { ok: true as const, document: updated };
 }
 
@@ -65,13 +68,17 @@ export async function approveDocument(documentId: string, approverId: string, co
   const doc = await prisma.rapidDocument.findUnique({ where: { id: documentId } });
   if (!doc) return { ok: false as const, notFound: true };
   if (doc.status !== "awaiting_agreement") return { ok: false as const, invalidStatus: doc.status };
-  await prisma.approval.updateMany({ where: { documentId, approverId }, data: { decision: "approved", comment } });
-  const allApprovals = await prisma.approval.findMany({ where: { documentId } });
-  const allApproved = allApprovals.every((a: { decision: string }) => a.decision === "approved");
-  const updated = allApproved
-    ? await prisma.rapidDocument.update({ where: { id: documentId }, data: { status: "approved" }, include: INCLUDE })
-    : await prisma.rapidDocument.findUnique({ where: { id: documentId }, include: INCLUDE });
-  await createAuditLog(approverId, "document_approved", "RapidDocument", documentId, { comment, allApproved });
+  // Atomic: approval update + optional status change + audit log
+  const updated = await prisma.$transaction(async (tx) => {
+    await tx.approval.updateMany({ where: { documentId, approverId }, data: { decision: "approved", comment } });
+    const allApprovals = await tx.approval.findMany({ where: { documentId } });
+    const allApproved = allApprovals.every((a: { decision: string }) => a.decision === "approved");
+    const result = allApproved
+      ? await tx.rapidDocument.update({ where: { id: documentId }, data: { status: "approved" }, include: INCLUDE })
+      : await tx.rapidDocument.findUnique({ where: { id: documentId }, include: INCLUDE });
+    await tx.auditLog.create({ data: { userId: approverId, action: "document_approved", entityType: "RapidDocument", entityId: documentId, details: { comment, allApproved } } });
+    return result;
+  });
   return { ok: true as const, document: updated };
 }
 

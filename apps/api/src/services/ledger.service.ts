@@ -7,20 +7,21 @@ export async function finalizeDocument(documentId: string, actorId: string) {
   if (doc.status !== "approved") return { ok: false as const, invalidStatus: doc.status };
 
   const now = new Date();
-  const updated = await prisma.rapidDocument.update({
-    where: { id: documentId },
-    data: { status: "finalized", finalizedAt: now },
-    include: { roleAssignments: { include: { user: { select: { id: true, name: true } } } }, evidence: true, ledgerEntries: true },
-  });
 
-  // Fix 10: Create ledger entry + emit TWO audit events
-  const ledgerEntry = await prisma.ledgerEntry.create({
-    data: { documentId, documentCode: doc.documentCode, version: doc.version, title: doc.title, finalizedBy: actorId, finalizedAt: now },
+  // Atomic: finalize status + ledger entry + both audit logs
+  const { updated, ledgerEntry } = await prisma.$transaction(async (tx) => {
+    const result = await tx.rapidDocument.update({
+      where: { id: documentId },
+      data: { status: "finalized", finalizedAt: now },
+      include: { roleAssignments: { include: { user: { select: { id: true, name: true } } } }, evidence: true, ledgerEntries: true },
+    });
+    const entry = await tx.ledgerEntry.create({
+      data: { documentId, documentCode: doc.documentCode, version: doc.version, title: doc.title, finalizedBy: actorId, finalizedAt: now },
+    });
+    await tx.auditLog.create({ data: { userId: actorId, action: "document_finalized", entityType: "RapidDocument", entityId: documentId, details: { documentCode: doc.documentCode, version: doc.version, ledgerEntryId: entry.id } } });
+    await tx.auditLog.create({ data: { userId: actorId, action: "ledger_entry_created", entityType: "LedgerEntry", entityId: entry.id, details: { documentId, documentCode: doc.documentCode, version: doc.version, title: doc.title } } });
+    return { updated: result, ledgerEntry: entry };
   });
-
-  await createAuditLog(actorId, "document_finalized", "RapidDocument", documentId, { documentCode: doc.documentCode, version: doc.version, ledgerEntryId: ledgerEntry.id });
-  // Fix 10: distinct audit event for ledger entry creation
-  await createAuditLog(actorId, "ledger_entry_created", "LedgerEntry", ledgerEntry.id, { documentId, documentCode: doc.documentCode, version: doc.version, title: doc.title });
 
   return { ok: true as const, document: updated, ledgerEntry };
 }
