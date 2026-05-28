@@ -53,6 +53,12 @@ RAPID is a decision-making framework that assigns clear roles to prevent ambigui
 
 ## 2. Live Demo
 
+> **Before demoing:** Hit the health endpoint first to wake the Railway server (free tier sleeps after inactivity):
+> ```
+> curl https://rapid-ledger-production.up.railway.app/health
+> ```
+> Wait for a response before opening the frontend.
+
 | Service | URL |
 |---------|-----|
 | Frontend | https://rapid-ledger.vercel.app |

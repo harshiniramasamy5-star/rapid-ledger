@@ -66,3 +66,45 @@ test.describe('RAPID Ledger — E2E', () => {
   });
 
 });
+
+test.describe('RAPID Ledger — Adversarial E2E', () => {
+
+  test('non-decide-role user cannot see finalize button', async ({ page }) => {
+    // Login as approver (not decision_owner) — finalize button must not exist
+    await login(page, 'approver@rapid.dev');
+    await page.goto('/dashboard');
+    // Navigate to any document if one exists
+    const docLink = page.locator('a[href*="/documents/"]').first();
+    const exists = await docLink.count();
+    if (exists) {
+      await docLink.click();
+      await page.waitForTimeout(2000);
+      // Finalize button must NOT be visible to approver
+      const finalizeBtn = page.locator('button').filter({ hasText: /finaliz/i });
+      await expect(finalizeBtn).toHaveCount(0);
+    }
+  });
+
+  test('unauthenticated API request to finalize is rejected with 401', async ({ request }) => {
+    const response = await request.post(
+      `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/documents/fake-id/finalize`,
+      { headers: {} }
+    );
+    expect(response.status()).toBe(401);
+  });
+
+  test('creator cannot access audit log page', async ({ page }) => {
+    await login(page, 'creator@rapid.dev');
+    await page.goto('/audit-log');
+    // Should be redirected away or see forbidden message
+    const body = await page.locator('body').textContent();
+    const blocked = !body?.includes('audit') || 
+                    await page.url().includes('dashboard') ||
+                    body?.includes('forbidden') || 
+                    body?.includes('Forbidden') ||
+                    body?.includes('Access denied') ||
+                    body?.includes('unauthorized');
+    expect(blocked || await page.url().includes('login')).toBeTruthy();
+  });
+
+});
