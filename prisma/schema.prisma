@@ -143,6 +143,8 @@ enum DocumentStatus {
   needs_changes
   finalized
   execution_complete
+  document_recommended
+  document_input_provided
 }
 
 enum RiskLevel {
@@ -175,4 +177,6 @@ enum AuditAction {
   ledger_entry_created
   login
   execution_complete
+  document_recommended
+  document_input_provided
 }
