@@ -6,13 +6,14 @@ import { Errors } from "../lib/errors";
 export const authRoutes = new Elysia({ prefix: "/auth" })
   .post(
     "/login",
-    async ({ body, set }: { body: { email: string; password: string }; set: { status: number } }) => {
-      const result = await loginUser(body.email, body.password);
+    async (ctx) => {
+      const { email, password } = ctx.body as { email: string; password: string };
+      const result = await loginUser(email, password);
       if (!result) {
-        set.status = 401;
+        ctx.set.status = 401;
         return Errors.unauthorized("Invalid email or password");
       }
-      set.status = 200;
+      ctx.set.status = 200;
       return result;
     },
     {
@@ -23,10 +24,11 @@ export const authRoutes = new Elysia({ prefix: "/auth" })
     }
   )
   .use(authMiddleware)
-  .get("/me", async ({ user, set }: { user: { id: string }; set: { status: number } }) => {
+  .get("/me", async (ctx) => {
+    const user = ctx.user as { id: string };
     const profile = await getCurrentUser(user.id);
     if (!profile) {
-      set.status = 401;
+      ctx.set.status = 401;
       return Errors.unauthorized();
     }
     return profile;

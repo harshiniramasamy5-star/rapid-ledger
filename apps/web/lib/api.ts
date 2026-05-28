@@ -21,3 +21,10 @@ export async function apiFetch(path: string, options?: RequestInit) {
   });
   return res;
 }
+
+export const api = {
+  get: <T>(path: string) => apiFetch(path) as Promise<T>,
+  post: <T>(path: string, body?: unknown) => apiFetch(path, { method: "POST", body: JSON.stringify(body) }) as Promise<T>,
+  patch: <T>(path: string, body?: unknown) => apiFetch(path, { method: "PATCH", body: JSON.stringify(body) }) as Promise<T>,
+  delete: <T>(path: string) => apiFetch(path, { method: "DELETE" }) as Promise<T>,
+};

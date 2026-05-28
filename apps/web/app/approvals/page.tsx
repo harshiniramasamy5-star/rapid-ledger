@@ -1,6 +1,9 @@
 "use client";
+"use client";
 
 import { useState } from "react";
+import type { Approval } from "@/lib/types";
+// placeholder from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -9,7 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useMyApprovals, useApprovalAction } from "@/hooks/use-approvals";
-import type { Approval } from "@rapid-ledger/shared";
+
 import { RISK_LABELS, STATUS_LABELS, RiskLevel, DocumentStatus } from "@rapid-ledger/shared";
 
 const RISK_BADGE: Record<string, string> = {
@@ -93,7 +96,7 @@ export default function ApprovalsPage() {
         </Card>
       ) : (
         <div className="space-y-4">
-          {approvals.map((approval) => (
+          {approvals.map((approval: Approval) => (
             <Card
               key={approval.id}
               className="transition-all duration-200"
@@ -130,7 +133,7 @@ export default function ApprovalsPage() {
                   placeholder="Add notes (optional)..."
                   className="text-sm resize-none h-20"
                   value={notes[approval.id] ?? ""}
-                  onChange={(e) =>
+                  onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
                     setNotes((prev) => ({ ...prev, [approval.id]: e.target.value }))
                   }
                 />

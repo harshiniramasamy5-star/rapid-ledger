@@ -36,7 +36,7 @@ export const documentRoutes = new Elysia({ prefix: "/documents" })
   })
 
   // ── POST /documents ───────────────────────────────────────────────────────
-  .post("/", async ({ user, body: _body, set }) => {
+  .post("/", async ({ user, body, set }) => {
     requirePermission(user, "document:create", set);
     const parsed = parseBody(createDocumentSchema, body);
     if (!parsed.ok) {

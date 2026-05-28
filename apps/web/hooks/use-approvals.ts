@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import type { Approval } from "@rapid-ledger/shared";
+import type { Approval } from "@/lib/types";
 
 export const APPROVALS_KEY = ["approvals"] as const;
 export const DOCUMENTS_KEY = ["documents"] as const;
