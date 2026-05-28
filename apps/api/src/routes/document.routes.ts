@@ -83,7 +83,7 @@ export const documentRoutes = new Elysia({ prefix: "/documents" })
   // ── POST /documents/:id/approve ───────────────────────────────────────────
   .post("/:id/approve", async ({ user, params, body: _body, set }) => {
     requirePermission(user, "document:approve", set);
-    const parsed = parseBody(approvalSchema, body ?? {});
+    const parsed = parseBody(approvalSchema, _body ?? {});
     const result = await approveDocument(params.id, user.id, parsed.ok ? parsed.data.comment : undefined);
     if (!result.ok) {
       if ("notFound" in result) { set.status = 404; return Errors.notFound("Document"); }
@@ -95,7 +95,7 @@ export const documentRoutes = new Elysia({ prefix: "/documents" })
   // ── POST /documents/:id/reject ────────────────────────────────────────────
   .post("/:id/reject", async ({ user, params, body: _body, set }) => {
     requirePermission(user, "document:reject", set);
-    const parsed = parseBody(approvalSchema, body ?? {});
+    const parsed = parseBody(approvalSchema, _body ?? {});
     const result = await rejectDocument(params.id, user.id, parsed.ok ? parsed.data.comment : undefined);
     if (!result.ok) {
       if ("notFound" in result) { set.status = 404; return Errors.notFound("Document"); }
@@ -107,7 +107,7 @@ export const documentRoutes = new Elysia({ prefix: "/documents" })
   // ── POST /documents/:id/needs-changes ─────────────────────────────────────
   .post("/:id/needs-changes", async ({ user, params, body: _body, set }) => {
     requirePermission(user, "document:reject", set);
-    const parsed = parseBody(approvalSchema, body ?? {});
+    const parsed = parseBody(approvalSchema, _body ?? {});
     const result = await requestChanges(params.id, user.id, parsed.ok ? parsed.data.comment : undefined);
     if (!result.ok) {
       if ("notFound" in result) { set.status = 404; return Errors.notFound("Document"); }
@@ -157,7 +157,7 @@ export const documentRoutes = new Elysia({ prefix: "/documents" })
   // ── POST /documents/:id/roles ─────────────────────────────────────────────
   .post("/:id/roles", async ({ user, params, body: _body, set }) => {
     requirePermission(user, "role:assign", set);
-    const parsed = parseBody(assignRoleSchema, body);
+    const parsed = parseBody(assignRoleSchema, _body);
     if (!parsed.ok) { set.status = 400; return Errors.badRequest("Invalid role data", parsed.errors); }
     const result = await assignRole(params.id, parsed.data.roleType, parsed.data.userId, user.id);
     if (!result.ok) {
@@ -171,7 +171,7 @@ export const documentRoutes = new Elysia({ prefix: "/documents" })
   // ── POST /documents/:id/evidence ──────────────────────────────────────────
   .post("/:id/evidence", async ({ user, params, body: _body, set }) => {
     requirePermission(user, "evidence:add", set);
-    const parsed = parseBody(addEvidenceSchema, body);
+    const parsed = parseBody(addEvidenceSchema, _body);
     if (!parsed.ok) { set.status = 400; return Errors.badRequest("Invalid evidence data", parsed.errors); }
     const result = await addEvidence(params.id, parsed.data, user.id);
     if (!result.ok && "notFound" in result) { set.status = 404; return Errors.notFound("Document"); }
