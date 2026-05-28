@@ -183,3 +183,101 @@ describe("GET /ledger", () => {
     expect(status).toBe(401);
   });
 });
+
+describe("Immutability — finalized documents cannot be mutated", () => {
+  let docId = "";
+  let deciderId = "";
+  let performerId = "";
+  let localCreator = "";
+  let localAdmin = "";
+
+  beforeAll(async () => {
+    // Ensure tokens
+    const a = await req("POST", "/auth/login", { body: { email: "admin@rapid.dev", password: "password123" } });
+    localAdmin = (a.body as { token: string }).token;
+    const c = await req("POST", "/auth/login", { body: { email: "creator@rapid.dev", password: "password123" } });
+    localCreator = (c.body as { token: string }).token;
+
+    // Get user IDs
+    const users = await req("GET", "/users", { token: localAdmin });
+    const list = users.body as { id: string; email: string }[];
+    const creator = list.find(u => u.email === "creator@rapid.dev");
+    const decider = list.find(u => u.email === "admin@rapid.dev");
+    const performer = list.find(u => u.email === "approver@rapid.dev");
+    deciderId = decider?.id ?? "";
+    performerId = performer?.id ?? "";
+
+    // 1. Create document
+    const created = await req("POST", "/documents", {
+      token: localCreator,
+      body: {
+        title: "Immutability Test Document",
+        decisionSummary: "This decision tests that finalized records cannot be mutated",
+        riskLevel: "low",
+      },
+    });
+    docId = (created.body as { id: string }).id;
+
+    // 2. Assign all required RAPID roles: recommend + decide + perform
+    const creatorUser = list.find(u => u.email === "creator@rapid.dev");
+    if (creatorUser) {
+      await req("POST", `/documents/${docId}/roles`, {
+        token: localAdmin,
+        body: { userId: creatorUser.id, roleType: "recommend" },
+      });
+    }
+    await req("POST", `/documents/${docId}/roles`, {
+      token: localAdmin,
+      body: { userId: deciderId, roleType: "decide" },
+    });
+    await req("POST", `/documents/${docId}/roles`, {
+      token: localAdmin,
+      body: { userId: performerId, roleType: "perform" },
+    });
+
+    // 3. Submit
+    const submitResult = await req("POST", `/documents/${docId}/submit`, { token: localCreator });
+    if (submitResult.status !== 200 && submitResult.status !== 201) {
+      console.error("Submit failed:", submitResult.status, JSON.stringify(submitResult.body));
+    }
+
+    // 4. Approve (admin is decider — doc may be submitted or awaiting_agreement)
+    const approveResult = await req("POST", `/documents/${docId}/approve`, {
+      token: localAdmin,
+      body: { comment: "Approved for immutability test" },
+    });
+    if (approveResult.status !== 200 && approveResult.status !== 201) {
+      console.error("Approve failed:", approveResult.status, JSON.stringify(approveResult.body));
+    }
+
+    // 5. Finalize
+    const finalizeResult = await req("POST", `/documents/${docId}/finalize`, { token: localAdmin });
+    if (finalizeResult.status !== 200 && finalizeResult.status !== 201) {
+      console.error("Finalize failed:", finalizeResult.status, JSON.stringify(finalizeResult.body));
+    }
+  });
+
+  it("finalized document exists and is locked", async () => {
+    const { status, body } = await req("GET", `/documents/${docId}`, { token: localAdmin });
+    expect(status).toBe(200);
+    expect((body as { status: string }).status).toBe("finalized");
+  });
+
+  it("PATCH on finalized document returns 403, 404, or 409", async () => {
+    const { status } = await req("PATCH", `/documents/${docId}`, {
+      token: localAdmin,
+      body: { title: "Mutated Title — should be rejected" },
+    });
+    expect([403, 404, 409]).toContain(status);
+  });
+
+  it("second finalize attempt on finalized document returns 400, 403, or 409", async () => {
+    const { status } = await req("POST", `/documents/${docId}/finalize`, { token: localAdmin });
+    expect([400, 403, 409]).toContain(status);
+  });
+
+  it("submit on finalized document is rejected", async () => {
+    const { status } = await req("POST", `/documents/${docId}/submit`, { token: localCreator });
+    expect([400, 403, 409, 422]).toContain(status);
+  });
+});

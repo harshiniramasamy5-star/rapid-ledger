@@ -16,6 +16,7 @@ import {
   addEvidence,
   runValidation,
 } from "../services/document.service";
+import { prisma } from "../lib/prisma";
 import { Errors } from "../lib/errors";
 import { finalizeDocument } from "../services/ledger.service";
 import type { DocumentStatus } from "@prisma/client";
@@ -154,6 +155,28 @@ export const documentRoutes = new Elysia({ prefix: "/documents" })
     return result.document;
   })
 
+
+  // ── PATCH /documents/:id — blocked for finalized documents ────────────────
+  .patch("/:id", async ({ user, params, body: _body, set }) => {
+    requirePermission(user, "document:update", set);
+    const doc = await prisma.rapidDocument.findUnique({ where: { id: params.id } });
+    if (!doc) { set.status = 404; return Errors.notFound("Document"); }
+    if (doc.status === "finalized") {
+      set.status = 403;
+      return Errors.forbidden("Finalized documents are immutable and cannot be edited");
+    }
+    const allowed = ["draft", "needs_changes"];
+    if (!allowed.includes(doc.status)) {
+      set.status = 409;
+      return Errors.invalidStatus(doc.status, allowed);
+    }
+    const updated = await prisma.rapidDocument.update({
+      where: { id: params.id },
+      data: _body as Record<string, unknown>,
+      include: INCLUDE,
+    });
+    return updated;
+  })
   // ── POST /documents/:id/roles ─────────────────────────────────────────────
   .post("/:id/roles", async ({ user, params, body: _body, set }) => {
     requirePermission(user, "role:assign", set);
