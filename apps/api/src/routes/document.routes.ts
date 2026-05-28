@@ -147,6 +147,24 @@ export const documentRoutes = new Elysia({ prefix: "/documents" })
     return updated;
   })
 
+
+  // ── POST /documents/:id/input ─────────────────────────────────────────────
+  .post("/:id/input", async ({ user, params, body, set }) => {
+    const { prisma } = await import("../lib/prisma");
+    const doc = await prisma.rapidDocument.findUnique({ where: { id: params.id } });
+    if (!doc) { set.status = 404; return Errors.notFound("Document"); }
+    const assignment = await prisma.roleAssignment.findFirst({
+      where: { documentId: params.id, userId: user.id, roleType: "input" }
+    });
+    if (!assignment) { set.status = 403; return Errors.forbidden("You are not assigned the Input role on this document"); }
+    const updated = await prisma.rapidDocument.update({
+      where: { id: params.id },
+      data: { inputNotes: (body as { notes?: string }).notes ?? "" },
+    });
+    await createAuditLog(user.id, "document_input_provided", "RapidDocument", params.id, { documentCode: updated.documentCode });
+    return updated;
+  })
+
   // ── POST /documents/:id/execution-complete ────────────────────────────────
   .post("/:id/execution-complete", async ({ user, params, body: _body, set }) => {
     requirePermission(user, "document:finalize", set);

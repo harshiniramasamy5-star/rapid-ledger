@@ -3,8 +3,126 @@ generator client {
 }
 
 datasource db {
-  url      = env("DATABASE_URL")
   provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id              String           @id @default(cuid())
+  email           String           @unique
+  name            String
+  password        String
+  role            UserRole         @default(viewer)
+  department      String?
+  isActive        Boolean          @default(true)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  approvals       Approval[]
+  auditLogs       AuditLog[]
+  evidence        Evidence[]
+  documents       RapidDocument[]  @relation("CreatedBy")
+  refreshTokens   RefreshToken[]   @relation("UserRefreshTokens")
+  roleAssignments RoleAssignment[]
+}
+
+model RapidDocument {
+  id                     String           @id @default(cuid())
+  documentCode           String
+  version                Int              @default(1)
+  title                  String
+  decisionSummary        String
+  riskLevel              RiskLevel        @default(low)
+  status                 DocumentStatus   @default(draft)
+  complianceImpact       Boolean          @default(false)
+  businessContext        String?
+  problemStatement       String?
+  proposedDecision       String?
+  department             String?
+  createdById            String
+  createdAt              DateTime         @default(now())
+  updatedAt              DateTime         @updatedAt
+  alternativesConsidered String?
+  deadline               DateTime?
+  submittedAt            DateTime?
+  finalizedAt            DateTime?
+  approvals              Approval[]
+  auditLogs              AuditLog[]
+  evidence               Evidence[]
+  ledgerEntries          LedgerEntry[]
+  createdBy              User             @relation("CreatedBy", fields: [createdById], references: [id])
+  roleAssignments        RoleAssignment[]
+
+  @@unique([documentCode, version])
+}
+
+model RoleAssignment {
+  id         String        @id @default(cuid())
+  documentId String
+  roleType   RoleType
+  userId     String
+  createdAt  DateTime      @default(now())
+  document   RapidDocument @relation(fields: [documentId], references: [id])
+  user       User          @relation(fields: [userId], references: [id])
+}
+
+model Evidence {
+  id          String        @id @default(cuid())
+  documentId  String
+  type        String
+  title       String
+  urlOrPath   String
+  description String?
+  uploadedBy  String
+  createdAt   DateTime      @default(now())
+  document    RapidDocument @relation(fields: [documentId], references: [id])
+  uploader    User          @relation(fields: [uploadedBy], references: [id])
+}
+
+model Approval {
+  id         String        @id @default(cuid())
+  documentId String
+  approverId String
+  decision   String        @default("pending")
+  comment    String?
+  createdAt  DateTime      @default(now())
+  approver   User          @relation(fields: [approverId], references: [id])
+  document   RapidDocument @relation(fields: [documentId], references: [id])
+}
+
+model LedgerEntry {
+  id           String        @id @default(cuid())
+  documentId   String
+  finalizedAt  DateTime      @default(now())
+  summary      String?
+  createdAt    DateTime      @default(now())
+  documentCode String
+  version      Int
+  title        String
+  finalizedBy  String
+  document     RapidDocument @relation(fields: [documentId], references: [id])
+}
+
+model AuditLog {
+  id         String         @id @default(cuid())
+  userId     String
+  action     AuditAction
+  entityType String
+  entityId   String
+  details    Json?
+  documentId String?
+  createdAt  DateTime       @default(now())
+  document   RapidDocument? @relation(fields: [documentId], references: [id])
+  user       User           @relation(fields: [userId], references: [id])
+}
+
+model RefreshToken {
+  id        String    @id @default(cuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+  user      User      @relation("UserRefreshTokens", fields: [userId], references: [id], onDelete: Cascade)
 }
 
 enum UserRole {
@@ -43,7 +161,6 @@ enum RoleType {
 }
 
 enum AuditAction {
-  login
   document_created
   document_submitted
   document_approved
@@ -56,124 +173,6 @@ enum AuditAction {
   user_created
   user_updated
   ledger_entry_created
+  login
   execution_complete
-}
-
-model User {
-  id              String           @id @default(cuid())
-  email           String           @unique
-  name            String
-  password        String
-  role            UserRole         @default(viewer)
-  department      String?
-  isActive        Boolean          @default(true)
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
-  refreshTokens RefreshToken[] @relation("UserRefreshTokens")
-  documents       RapidDocument[]  @relation("CreatedBy")
-  auditLogs       AuditLog[]
-  roleAssignments RoleAssignment[]
-  evidence        Evidence[]
-  approvals       Approval[]
-}
-
-model RapidDocument {
-  id                     String           @id @default(cuid())
-  documentCode           String
-  version                Int              @default(1)
-  title                  String
-  decisionSummary        String
-  riskLevel              RiskLevel        @default(low)
-  status                 DocumentStatus   @default(draft)
-  complianceImpact       Boolean          @default(false)
-  businessContext        String?
-  problemStatement       String?
-  proposedDecision       String?
-  alternativesConsidered String?
-  department             String?
-  deadline               DateTime?
-  submittedAt            DateTime?
-  finalizedAt            DateTime?
-  createdById            String
-  createdBy              User             @relation("CreatedBy", fields: [createdById], references: [id])
-  createdAt              DateTime         @default(now())
-  updatedAt              DateTime         @updatedAt
-  roleAssignments        RoleAssignment[]
-  evidence               Evidence[]
-  approvals              Approval[]
-  auditLogs              AuditLog[]
-  ledgerEntries          LedgerEntry[]
-
-  @@unique([documentCode, version])
-}
-
-model RoleAssignment {
-  id         String        @id @default(cuid())
-  documentId String
-  document   RapidDocument @relation(fields: [documentId], references: [id])
-  roleType   RoleType
-  userId     String
-  user       User          @relation(fields: [userId], references: [id])
-  createdAt  DateTime      @default(now())
-}
-
-model Evidence {
-  id          String        @id @default(cuid())
-  documentId  String
-  document    RapidDocument @relation(fields: [documentId], references: [id])
-  type        String
-  title       String
-  urlOrPath   String
-  description String?
-  uploadedBy  String
-  uploader    User          @relation(fields: [uploadedBy], references: [id])
-  createdAt   DateTime      @default(now())
-}
-
-model Approval {
-  id         String        @id @default(cuid())
-  documentId String
-  document   RapidDocument @relation(fields: [documentId], references: [id])
-  approverId String
-  approver   User          @relation(fields: [approverId], references: [id])
-  decision   String        @default("pending")
-  comment    String?
-  createdAt  DateTime      @default(now())
-}
-
-model LedgerEntry {
-  id           String        @id @default(cuid())
-  documentId   String
-  document     RapidDocument @relation(fields: [documentId], references: [id])
-  documentCode String
-  version      Int
-  title        String
-  finalizedBy  String
-  finalizedAt  DateTime      @default(now())
-  summary      String?
-  createdAt    DateTime      @default(now())
-}
-
-model AuditLog {
-  id         String         @id @default(cuid())
-  userId     String
-  user       User           @relation(fields: [userId], references: [id])
-  action     AuditAction
-  entityType String
-  entityId   String
-  details    Json?
-  documentId String?
-  document   RapidDocument? @relation(fields: [documentId], references: [id])
-  createdAt  DateTime       @default(now())
-}
-
-model RefreshToken {
-  id        String    @id @default(cuid())
-  userId    String
-  tokenHash String    @unique
-  expiresAt DateTime
-  revokedAt DateTime?
-  createdAt DateTime  @default(now())
-
-  user User @relation("UserRefreshTokens", fields: [userId], references: [id], onDelete: Cascade)
 }
