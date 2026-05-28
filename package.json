@@ -37,5 +37,8 @@
     "@types/bcryptjs": "^2.4.6",
     "bcryptjs": "^3.0.3",
     "dotenv": "^17.4.2"
+  },
+  "prisma": {
+    "seed": "tsx apps/api/src/seed.ts"
   }
 }
