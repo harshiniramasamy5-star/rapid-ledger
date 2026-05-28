@@ -2,13 +2,11 @@ import { Elysia, t } from "elysia";
 import { authMiddleware } from "../middleware/auth";
 import { loginUser, getCurrentUser } from "../services/auth.service";
 import { Errors } from "../lib/errors";
-import { rateLimiter } from "../lib/rate-limit";
 
 export const authRoutes = new Elysia({ prefix: "/auth" })
-  .use(rateLimiter)
   .post(
     "/login",
-    async ({ body, set }) => {
+    async ({ body, set }: { body: { email: string; password: string }; set: { status: number } }) => {
       const result = await loginUser(body.email, body.password);
       if (!result) {
         set.status = 401;
@@ -25,7 +23,7 @@ export const authRoutes = new Elysia({ prefix: "/auth" })
     }
   )
   .use(authMiddleware)
-  .get("/me", async ({ user, set }) => {
+  .get("/me", async ({ user, set }: { user: { id: string }; set: { status: number } }) => {
     const profile = await getCurrentUser(user.id);
     if (!profile) {
       set.status = 401;
