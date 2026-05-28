@@ -24,7 +24,7 @@ export default defineConfig({
       use: { ...devices['Desktop Chrome'], headless: true },
     },
   ],
-  ...(!isCI ? {
+  ...(!isCI && !process.env.BASE_URL ? {
     webServer: {
       command: 'npm run dev',
       url: 'http://localhost:3000',
