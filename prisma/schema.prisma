@@ -45,6 +45,8 @@ model RapidDocument {
   deadline               DateTime?
   submittedAt            DateTime?
   finalizedAt            DateTime?
+  recommendationNotes    String?          @default("")
+  inputNotes             String?          @default("")
   approvals              Approval[]
   auditLogs              AuditLog[]
   evidence               Evidence[]
