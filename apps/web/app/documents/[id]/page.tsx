@@ -8,6 +8,11 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel,
+  AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
+  AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
 
@@ -186,14 +191,23 @@ export default function DocumentDetailPage() {
                   value={approvalNotes} onChange={e => setApprovalNotes(e.target.value)}
                   className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary bg-white text-slate-900 placeholder:text-slate-400" />
                 <div className="grid grid-cols-3 gap-3">
-                  <Button className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold" disabled={acting}
-                    onClick={() => handle(async () => {
-                      const { res, data } = await apiPost(`/documents/${params.id}/approve`, { comment: approvalNotes });
-                      if (res.ok) { toast.success("Approved!"); setMyApproval(null); await load(); }
-                      else toast.error(data?.error?.message ?? "Failed");
-                    })}>
-                    Approve
-                  </Button>
+                  <AlertDialog>
+                    <AlertDialogTrigger className="inline-flex items-center justify-center rounded-md text-sm font-semibold bg-emerald-600 hover:bg-emerald-700 text-white h-10 px-4 py-2 disabled:opacity-50" disabled={acting}>Approve</AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Approve this document?</AlertDialogTitle>
+                        <AlertDialogDescription>This will mark your agreement. The decision owner will be notified.</AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction className="bg-emerald-600 hover:bg-emerald-700" onClick={() => handle(async () => {
+                          const { res, data } = await apiPost(`/documents/${params.id}/approve`, { comment: approvalNotes });
+                          if (res.ok) { toast.success("Approved!"); setMyApproval(null); await load(); }
+                          else toast.error(data?.error?.message ?? "Failed");
+                        })}>Confirm Approve</AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
                   <Button className="bg-amber-500 hover:bg-amber-600 text-white font-semibold" disabled={acting}
                     onClick={() => handle(async () => {
                       const { res, data } = await apiPost(`/documents/${params.id}/needs-changes`, { comment: approvalNotes });
@@ -202,14 +216,23 @@ export default function DocumentDetailPage() {
                     })}>
                     Request Changes
                   </Button>
-                  <Button variant="destructive" className="font-semibold" disabled={acting}
-                    onClick={() => handle(async () => {
-                      const { res, data } = await apiPost(`/documents/${params.id}/reject`, { comment: approvalNotes });
-                      if (res.ok) { toast.success("Rejected."); setMyApproval(null); await load(); }
-                      else toast.error(data?.error?.message ?? "Failed");
-                    })}>
-                    Reject
-                  </Button>
+                  <AlertDialog>
+                    <AlertDialogTrigger className="inline-flex items-center justify-center rounded-md text-sm font-semibold bg-destructive text-destructive-foreground hover:bg-destructive/90 h-10 px-4 py-2 disabled:opacity-50" disabled={acting}>Reject</AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Reject this document?</AlertDialogTitle>
+                        <AlertDialogDescription>This action will reject the document. The creator will be notified to revise.</AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={() => handle(async () => {
+                          const { res, data } = await apiPost(`/documents/${params.id}/reject`, { comment: approvalNotes });
+                          if (res.ok) { toast.success("Rejected."); setMyApproval(null); await load(); }
+                          else toast.error(data?.error?.message ?? "Failed");
+                        })}>Confirm Reject</AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
                 </div>
               </div>
             )}
@@ -242,14 +265,25 @@ export default function DocumentDetailPage() {
             )}
 
             {canFinalize && (
-              <Button className="w-full h-11 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold" disabled={acting}
-                onClick={() => handle(async () => {
-                  const { res, data } = await apiPost(`/documents/${params.id}/finalize`);
-                  if (res.ok) { toast.success("Document finalized and added to Ledger!"); await load(); }
-                  else toast.error(data?.error?.message ?? "Finalize failed");
-                })}>
-                {acting ? "Finalizing..." : "Finalize Decision"}
-              </Button>
+              <AlertDialog>
+                <AlertDialogTrigger className="w-full inline-flex items-center justify-center rounded-md text-sm font-semibold bg-indigo-600 hover:bg-indigo-700 text-white h-11 px-4 py-2 disabled:opacity-50" disabled={acting}>{acting ? "Finalizing..." : "Finalize Decision"}</AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Finalize this decision?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This is irreversible. The document will be locked and added to the permanent ledger.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction className="bg-indigo-600 hover:bg-indigo-700" onClick={() => handle(async () => {
+                      const { res, data } = await apiPost(`/documents/${params.id}/finalize`);
+                      if (res.ok) { toast.success("Document finalized and added to Ledger!"); await load(); }
+                      else toast.error(data?.error?.message ?? "Finalize failed");
+                    })}>Confirm Finalize</AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             )}
 
             {canComplete && (
