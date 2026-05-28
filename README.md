@@ -1,3 +1,5 @@
+![CI](https://github.com/harshiniramasamy5-star/rapid-ledger/actions/workflows/ci.yml/badge.svg)
+
 # RAPID Ledger
 
 > Decision governance without compromise.
