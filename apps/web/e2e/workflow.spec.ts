@@ -18,7 +18,7 @@ test.describe('RAPID Ledger E2E Flow', () => {
 
     // ── Step 2: Navigate to new document ──────────────────────────────
     // Try common button texts for "new document"
-    const newDocBtn = page.locator('button, a').filter({ hasText: /new.*doc|create.*doc|\+ new|new decision/i }).first();
+    const newDocBtn = page.locator('button, a').filter({ hasText: /new|create|document/i }).first();
     await newDocBtn.waitFor({ timeout: 10000 });
     await newDocBtn.click();
     await page.waitForURL('**/documents/new', { timeout: 10000 });
