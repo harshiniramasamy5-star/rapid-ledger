@@ -69,11 +69,13 @@ model User {
   isActive        Boolean          @default(true)
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
+  refreshTokens RefreshToken[]
   documents       RapidDocument[]  @relation("CreatedBy")
   auditLogs       AuditLog[]
   roleAssignments RoleAssignment[]
   evidence        Evidence[]
   approvals       Approval[]
+  RefreshToken    RefreshToken[]
 }
 
 model RapidDocument {
