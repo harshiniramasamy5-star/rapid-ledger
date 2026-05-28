@@ -8,7 +8,7 @@ test.describe('RAPID Ledger E2E Flow', () => {
     await page.goto('/login');
     await page.waitForSelector('input[type="email"]', { timeout: 10000 });
 
-    await page.fill('input[type="email"]', 'admin@rapid.dev');
+    await page.fill('input[type="email"]', 'admin@rapid.com');
     await page.fill('input[type="password"]', 'password123');
 
     // Button says "Continue" (confirmed from component tests)
