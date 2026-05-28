@@ -25,7 +25,7 @@ export function useApprovalAction() {
       approvalId: string;
       action: "approve" | "reject" | "request-changes";
       notes?: string;
-    }) => api.post(`/documents/${docId}/approvals/${approvalId}/${action}`, { notes }),
+    }) => api.post(`/documents/${docId}/${action === 'request-changes' ? 'needs-changes' : action}`, { comment: notes }),
 
     // Optimistic update — remove approval immediately from the list
     onMutate: async ({ approvalId }) => {
