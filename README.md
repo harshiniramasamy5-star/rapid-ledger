@@ -288,11 +288,10 @@ All passwords: `password123`
 | Name | Email | Role | Capabilities |
 |------|-------|------|--------------|
 | Alice Admin | admin@rapid.dev | admin | Full access — manage users, finalise, audit log |
-| Amy Auditor | auditor@rapid.dev | viewer | Read-only access to all documents |
 | Bob Approver | approver@rapid.dev | approver | Approve, reject, request changes on documents |
 | Carol Creator | creator@rapid.dev | creator | Create and submit RAPID documents |
 | Pam Performer | performer@rapid.dev | performer | Mark finalised documents as execution complete |
-| Rick Recommender | recommender@rapid.dev | recommender | Assigned as R — Recommend role on documents |
+| Rick Recommender | recommender@rapid.dev | recommender | Add recommendations and evidence to documents |
 | Vera Viewer | viewer@rapid.dev | viewer | Read-only access to all documents |
 
 ---
