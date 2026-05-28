@@ -24,6 +24,7 @@ export interface ApiDocument {
   alternativesConsidered?: string | null; department?: string | null;
   deadline?: string | null; createdById: string; createdBy?: string;
   roleAssignments?: RoleAssignment[]; evidence?: Evidence[]; approvals?: Approval[];
+  recommendationNotes?: string | null; inputNotes?: string | null;
 }
 export interface AuditEntry {
   id: string; action: string; entityType: string; entityId: string;
