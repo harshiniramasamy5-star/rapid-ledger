@@ -165,3 +165,14 @@ model AuditLog {
   document   RapidDocument? @relation(fields: [documentId], references: [id])
   createdAt  DateTime       @default(now())
 }
+
+model RefreshToken {
+  id        String    @id @default(cuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}

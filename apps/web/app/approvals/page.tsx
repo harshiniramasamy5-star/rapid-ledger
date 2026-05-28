@@ -1,192 +1,177 @@
 "use client";
-import { useEffect, useState } from "react";
-import type { Approval } from "@/lib/types";
+
+import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
-import { toast } from "sonner";
+import { Textarea } from "@/components/ui/textarea";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useMyApprovals, useApprovalAction } from "@/hooks/use-approvals";
+import type { Approval } from "@rapid-ledger/shared";
+import { RISK_LABELS, STATUS_LABELS, RiskLevel, DocumentStatus } from "@rapid-ledger/shared";
+
+const RISK_BADGE: Record<string, string> = {
+  low:      "bg-green-50 text-green-700 border-green-200",
+  medium:   "bg-yellow-50 text-yellow-700 border-yellow-200",
+  high:     "bg-orange-50 text-orange-700 border-orange-200",
+  critical: "bg-red-50 text-red-700 border-red-200",
+};
 
 export default function ApprovalsPage() {
   const router = useRouter();
-  const [approvals, setApprovals] = useState<Approval[]>([]);
-  const [loading, setLoading]     = useState(true);
-  const [acting, setActing]       = useState<string|null>(null);
-  const [notes, setNotes]         = useState<Record<string,string>>({});
+  const { data: approvals = [], isLoading, error } = useMyApprovals();
+  const { mutateAsync: act } = useApprovalAction();
+  const [notes, setNotes] = useState<Record<string, string>>({});
+  const [acting, setActing] = useState<string | null>(null);
 
-  useEffect(() => {
-    const token = localStorage.getItem("rapid_token");
-    if (!token) { router.replace("/login"); return; }
-    fetch(`${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001"}/approvals/my`, {
-      headers: { Authorization: `Bearer ${token}` }
-    })
-      .then(r => r.json())
-      .then(data => setApprovals(Array.isArray(data) ? data : []))
-      .catch(() => toast.error("Failed to load approvals"))
-      .finally(() => setLoading(false));
-  }, [router]);
-
-  async function act(docId: string, approvalId: string, action: string) {
-    const token = localStorage.getItem("rapid_token");
-    setActing(approvalId);
+  async function handleAction(
+    approval: Approval,
+    action: "approve" | "reject" | "request-changes"
+  ) {
+    setActing(approval.id);
     try {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001"}/documents/${docId}/approvals/${approvalId}/${action}`,
-        {
-          method: "POST",
-          headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-          body: JSON.stringify({ notes: notes[approvalId] ?? "" }),
-        }
+      await act({
+        docId: approval.document.id,
+        approvalId: approval.id,
+        action,
+        notes: notes[approval.id] ?? "",
+      });
+      toast.success(
+        action === "approve" ? "Approved" :
+        action === "reject"  ? "Rejected" :
+        "Changes requested"
       );
-      const data = await res.json();
-      if (res.ok) {
-        setApprovals(prev => prev.filter(a => a.id !== approvalId));
-        toast.success("Decision recorded: " + action.replace("-", " "));
-      } else {
-        toast.error(data.error?.message ?? "Something went wrong");
-      }
-    } catch {
-      toast.error("Network error. Is the backend running?");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Action failed");
     } finally {
       setActing(null);
     }
   }
 
-  const RISK_VARIANT: Record<string, "destructive"|"default"> = {
-    high: "destructive", critical: "destructive",
-  };
+  if (isLoading) {
+    return (
+      <div className="p-8 space-y-4 max-w-3xl mx-auto">
+        <Skeleton className="h-8 w-48" />
+        {[1, 2, 3].map((i) => (
+          <Skeleton key={i} className="h-40 w-full rounded-xl" />
+        ))}
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-8 max-w-3xl mx-auto">
+        <Card className="border-red-200">
+          <CardContent className="pt-6 text-red-600 text-sm">
+            Failed to load approvals. Please refresh or check your connection.
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      {/* Topbar */}
-      <header className="bg-white border-b border-slate-200 sticky top-0 z-20 shadow-sm">
-        <div className="max-w-4xl mx-auto px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-primary flex items-center justify-center">
-              <span className="text-primary-foreground font-bold text-sm">RL</span>
-            </div>
-            <div>
-              <p className="font-semibold text-slate-900 text-sm leading-none">RAPID Ledger</p>
-              <p className="text-xs text-slate-400 mt-0.5">Decision governance without compromise</p>
-            </div>
-          </div>
-          <Button variant="ghost" size="sm" className="text-slate-500"
-            onClick={() => router.push("/dashboard")}>
-            Back to Dashboard
-          </Button>
-        </div>
-      </header>
+    <div className="p-6 md:p-8 max-w-3xl mx-auto space-y-6">
+      <div>
+        <h1 className="text-2xl font-semibold tracking-tight">Pending Approvals</h1>
+        <p className="text-sm text-muted-foreground mt-1">
+          {approvals.length === 0
+            ? "No approvals awaiting your decision"
+            : `${approvals.length} decision${approvals.length !== 1 ? "s" : ""} awaiting review`}
+        </p>
+      </div>
 
-      <main className="max-w-4xl mx-auto px-6 py-8 space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">My Approvals</h1>
-          <p className="text-slate-500 text-sm mt-1">Documents waiting for your review and decision.</p>
-        </div>
-
-        {loading ? (
-          <div className="flex flex-col items-center justify-center py-24 gap-3">
-            <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-            <p className="text-sm text-slate-400">Loading approvals...</p>
-          </div>
-        ) : approvals.length === 0 ? (
-          <Card className="border-slate-200 shadow-sm">
-            <CardContent className="flex flex-col items-center justify-center py-20 text-center">
-              <div className="w-14 h-14 rounded-full bg-emerald-50 flex items-center justify-center mb-4 text-2xl">
-                ✓
-              </div>
-              <h3 className="text-lg font-semibold text-slate-900">All caught up!</h3>
-              <p className="text-slate-400 text-sm mt-1">No pending approvals for you right now.</p>
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="space-y-4">
-            {approvals.map(approval => (
-              <Card key={approval.id} className="border-slate-200 shadow-sm">
-                <CardHeader className="pb-3">
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <p className="font-mono text-xs text-slate-400 mb-1">
-                        {approval.document?.documentCode}
-                      </p>
-                      <CardTitle className="text-lg text-slate-900">
-                        {approval.document?.title}
-                      </CardTitle>
-                    </div>
-                    <div className="flex gap-2 flex-shrink-0">
-                      <Badge variant={RISK_VARIANT[approval.document?.riskLevel ?? "low"] ?? "outline"} className="capitalize">
-                        {approval.document?.riskLevel} risk
-                      </Badge>
-                      {approval.document?.complianceImpact === true && (
-                        <Badge variant="secondary">Compliance</Badge>
-                      )}
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {/* Decision summary */}
-                  <div className="bg-slate-50 rounded-lg p-4 border border-slate-100">
-                    <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
-                      Decision Summary
-                    </p>
-                    <p className="text-sm text-slate-700 leading-relaxed">
-                      {approval.document?.decisionSummary}
+      {approvals.length === 0 ? (
+        <Card>
+          <CardContent className="py-12 text-center">
+            <div className="text-4xl mb-3">✓</div>
+            <p className="text-sm text-muted-foreground">All caught up — no pending approvals</p>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="space-y-4">
+          {approvals.map((approval) => (
+            <Card
+              key={approval.id}
+              className="transition-all duration-200"
+              style={{
+                opacity: acting === approval.id ? 0.5 : 1,
+                pointerEvents: acting === approval.id ? "none" : "auto",
+              }}
+            >
+              <CardHeader className="pb-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <CardTitle className="text-base font-medium leading-snug">
+                      {approval.document.title}
+                    </CardTitle>
+                    <p className="text-xs text-muted-foreground mt-0.5 font-mono">
+                      {approval.document.documentCode}
                     </p>
                   </div>
-
-                  <Button variant="outline" size="sm" className="text-primary border-slate-200"
-                    onClick={() => router.push(`/documents/${approval.document?.id}`)}>
-                    View Full Document
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <Badge
+                      variant="outline"
+                      className={`text-xs ${RISK_BADGE[approval.document.riskLevel] ?? ""}`}
+                    >
+                      {RISK_LABELS[approval.document.riskLevel as RiskLevel] ?? approval.document.riskLevel} risk
+                    </Badge>
+                    <Badge variant="outline" className="text-xs">
+                      {STATUS_LABELS[approval.document.status as DocumentStatus] ?? approval.document.status}
+                    </Badge>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <Textarea
+                  placeholder="Add notes (optional)..."
+                  className="text-sm resize-none h-20"
+                  value={notes[approval.id] ?? ""}
+                  onChange={(e) =>
+                    setNotes((prev) => ({ ...prev, [approval.id]: e.target.value }))
+                  }
+                />
+                <div className="flex gap-2 flex-wrap">
+                  <Button
+                    size="sm"
+                    onClick={() => handleAction(approval, "approve")}
+                    disabled={!!acting}
+                    className="bg-green-600 hover:bg-green-700 text-white"
+                  >
+                    {acting === approval.id ? "Processing..." : "Approve"}
                   </Button>
-
-                  <Separator />
-
-                  {/* Notes */}
-                  <div className="space-y-1.5">
-                    <label className="text-sm font-semibold text-slate-700">
-                      Notes <span className="text-slate-400 font-normal">(optional)</span>
-                    </label>
-                    <textarea
-                      rows={2}
-                      placeholder="Add context for your decision..."
-                      value={notes[approval.id] ?? ""}
-                      onChange={e => setNotes(n => ({ ...n, [approval.id]: e.target.value }))}
-                      className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary bg-white text-slate-900 placeholder:text-slate-400"
-                    />
-                  </div>
-
-                  {/* Action buttons */}
-                  <div className="grid grid-cols-3 gap-3">
-                    <Button
-                      onClick={() => act(approval.document?.id ?? "", approval.id, "approve")}
-                      disabled={acting === approval.id}
-                      className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold">
-                      Approve
-                    </Button>
-                    <Button
-                      onClick={() => act(approval.document?.id ?? "", approval.id, "request-changes")}
-                      disabled={acting === approval.id}
-                      className="bg-amber-500 hover:bg-amber-600 text-white font-semibold">
-                      Request Changes
-                    </Button>
-                    <Button
-                      onClick={() => {
-                        if (window.confirm("Reject this approval request? This action will notify the document creator.")) {
-                          act(approval.document?.id ?? "", approval.id, "reject")
-                        }
-                      }}
-                      disabled={acting === approval.id}
-                      variant="destructive"
-                      className="font-semibold">
-                      Reject
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        )}
-      </main>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleAction(approval, "request-changes")}
+                    disabled={!!acting}
+                  >
+                    Request Changes
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    onClick={() => handleAction(approval, "reject")}
+                    disabled={!!acting}
+                  >
+                    Reject
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => router.push(`/documents/${approval.document.id}`)}
+                  >
+                    View Document →
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
