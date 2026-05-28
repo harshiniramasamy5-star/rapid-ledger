@@ -140,7 +140,10 @@ Returns full document with role assignments, evidence, and approvals.
 }
 ```
 
-### PUT /documents/:id
+### PATCH /documents/:id
+Update a document. Only allowed when status is `draft` or `needs_changes`.
+Returns `403` if the document is `finalized` (immutable).
+Returns `409` if the document is in any other non-editable status.
 Update a draft document.
 
 **Request Body** — same fields as POST /documents (all optional).
@@ -161,7 +164,7 @@ Submit a document for approval. Triggers validation engine.
 
 **Response 400** — validation failure with details array.
 
-### POST /documents/:id/approvals/:approvalId/approve
+### POST /documents/:id/approve
 Approve a document (approver only).
 
 **Request Body**
@@ -171,7 +174,7 @@ Approve a document (approver only).
 
 **Response 200** — returns updated approval record.
 
-### POST /documents/:id/approvals/:approvalId/reject
+### POST /documents/:id/reject
 Reject a document (approver only).
 
 **Request Body**
@@ -179,7 +182,7 @@ Reject a document (approver only).
 { "notes": "string" }
 ```
 
-### POST /documents/:id/approvals/:approvalId/request-changes
+### POST /documents/:id/needs-changes
 Request changes on a document (approver only).
 
 **Request Body**
@@ -316,6 +319,8 @@ Returns all audit log entries. Admin only.
 ---
 
 ## Reports
+
+> Note: CSV and Markdown exports are available via `GET /ledger/export/csv` and `GET /ledger/export/markdown`.
 
 ### GET /reports/csv
 Download a CSV export of all RAPID documents.
