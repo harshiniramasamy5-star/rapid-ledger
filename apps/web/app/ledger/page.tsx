@@ -20,7 +20,7 @@ export default function LedgerPage() {
       headers: { Authorization: `Bearer ${token}` }
     })
       .then(r => r.json())
-      .then(data => setEntries(Array.isArray(data) ? data : []))
+      .then(data => setEntries(Array.isArray(data) ? data : (data.data ?? [])))
       .catch(() => toast.error("Failed to load ledger"))
       .finally(() => setLoading(false));
   }, [router]);
