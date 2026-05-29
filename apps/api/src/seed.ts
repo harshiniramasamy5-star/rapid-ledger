@@ -27,9 +27,11 @@ async function main() {
   }
 
   const creator = await prisma.user.findUniqueOrThrow({ where: { email: "creator@rapid.dev" } });
-  const decider = await prisma.user.findUniqueOrThrow({ where: { email: "approver@rapid.dev" } });
+  const decider = await prisma.user.findUniqueOrThrow({ where: { email: "admin@rapid.dev" } });
   const performer = await prisma.user.findUniqueOrThrow({ where: { email: "performer@rapid.dev" } });
   const approver = await prisma.user.findUniqueOrThrow({ where: { email: "approver@rapid.dev" } });
+  const recommender = await prisma.user.findUniqueOrThrow({ where: { email: "recommender@rapid.dev" } });
+  const viewer = await prisma.user.findUniqueOrThrow({ where: { email: "viewer@rapid.dev" } });
 
   // Demo Document 1 — FINALIZED (shows in ledger)
   const doc1 = await prisma.rapidDocument.upsert({
@@ -61,7 +63,7 @@ async function main() {
   await prisma.roleAssignment.upsert({
     where: { id: "role_demo1_recommend" },
     update: {},
-    create: { id: "role_demo1_recommend", documentId: doc1.id, roleType: RoleType.recommend, userId: creator.id, createdAt: now },
+    create: { id: "role_demo1_recommend", documentId: doc1.id, roleType: RoleType.recommend, userId: recommender.id, createdAt: now },
   });
   await prisma.roleAssignment.upsert({
     where: { id: "role_demo1_decide" },
@@ -72,6 +74,16 @@ async function main() {
     where: { id: "role_demo1_perform" },
     update: {},
     create: { id: "role_demo1_perform", documentId: doc1.id, roleType: RoleType.perform, userId: performer.id, createdAt: now },
+  });
+  await prisma.roleAssignment.upsert({
+    where: { id: "role_demo1_agree" },
+    update: {},
+    create: { id: "role_demo1_agree", documentId: doc1.id, roleType: RoleType.agree, userId: approver.id, createdAt: now },
+  });
+  await prisma.roleAssignment.upsert({
+    where: { id: "role_demo1_input" },
+    update: {},
+    create: { id: "role_demo1_input", documentId: doc1.id, roleType: RoleType.input, userId: viewer.id, createdAt: now },
   });
 
   await prisma.ledgerEntry.upsert({
@@ -119,7 +131,7 @@ async function main() {
   await prisma.roleAssignment.upsert({
     where: { id: "role_demo2_recommend" },
     update: {},
-    create: { id: "role_demo2_recommend", documentId: doc2.id, roleType: RoleType.recommend, userId: creator.id, createdAt: now },
+    create: { id: "role_demo2_recommend", documentId: doc2.id, roleType: RoleType.recommend, userId: recommender.id, createdAt: now },
   });
   await prisma.roleAssignment.upsert({
     where: { id: "role_demo2_agree" },
@@ -165,7 +177,7 @@ async function main() {
   await prisma.roleAssignment.upsert({
     where: { id: "role_demo3_recommend" },
     update: {},
-    create: { id: "role_demo3_recommend", documentId: doc3.id, roleType: RoleType.recommend, userId: creator.id, createdAt: now },
+    create: { id: "role_demo3_recommend", documentId: doc3.id, roleType: RoleType.recommend, userId: recommender.id, createdAt: now },
   });
   await prisma.roleAssignment.upsert({
     where: { id: "role_demo3_decide" },
@@ -176,6 +188,16 @@ async function main() {
     where: { id: "role_demo3_perform" },
     update: {},
     create: { id: "role_demo3_perform", documentId: doc3.id, roleType: RoleType.perform, userId: performer.id, createdAt: now },
+  });
+  await prisma.roleAssignment.upsert({
+    where: { id: "role_demo3_agree" },
+    update: {},
+    create: { id: "role_demo3_agree", documentId: doc3.id, roleType: RoleType.agree, userId: approver.id, createdAt: now },
+  });
+  await prisma.roleAssignment.upsert({
+    where: { id: "role_demo3_input" },
+    update: {},
+    create: { id: "role_demo3_input", documentId: doc3.id, roleType: RoleType.input, userId: viewer.id, createdAt: now },
   });
 
   // Audit log entries
