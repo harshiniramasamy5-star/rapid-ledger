@@ -164,7 +164,7 @@ export default function AuditLogPage() {
                 const cfg = ACTION_CONFIG[e.action] ?? { label: e.action, color: "text-slate-700", bg: "bg-slate-100" };
                 return (
                   <div key={e.id}
-                    onClick={() => e.documentCode && router.push(`/documents/${e.objectId}`)}
+                    onClick={() => e.documentCode && router.push(`/documents/${e.entityId}`)}
                     className={`flex items-start gap-4 px-5 py-4 transition-colors ${
                       e.documentCode ? "cursor-pointer hover:bg-slate-50" : ""
                     } ${i !== entries.length - 1 ? "border-b border-slate-100" : ""}`}>
@@ -188,10 +188,10 @@ export default function AuditLogPage() {
                         <p className="text-sm text-slate-700 font-medium truncate mb-1">{e.documentTitle}</p>
                       )}
                       <div className="flex items-center gap-2 text-xs text-slate-400">
-                        <span className={`font-semibold px-1.5 py-0.5 rounded text-[10px] ${ROLE_COLORS[e.actorRole ?? ""] ?? "bg-gray-100 text-gray-600"}`}>
-                          {e.actorRole}
+                        <span className={`font-semibold px-1.5 py-0.5 rounded text-[10px] ${ROLE_COLORS[e.user?.role ?? ""] ?? "bg-gray-100 text-gray-600"}`}>
+                          {e.user?.role}
                         </span>
-                        <span className="font-medium text-slate-600">{e.actorName ?? "Unknown"}</span>
+                        <span className="font-medium text-slate-600">{e.user?.name ?? "Unknown"}</span>
                         <span>·</span>
                         <span title={new Date(e.createdAt).toLocaleString()}>
                           {relativeTime(e.createdAt)}

@@ -7,5 +7,5 @@ export const auditRoutes = new Elysia({ prefix: "/audit" })
   .use(authMiddleware)
   .get("/", async ({ user, query, set }) => {
     requirePermission(user, "audit:read", set);
-    return getAuditLogs(query.actorId, query.objectType, query.objectId);
+    return getAuditLogs(query.actorId, query.objectType, query.objectId, query.action);
   });

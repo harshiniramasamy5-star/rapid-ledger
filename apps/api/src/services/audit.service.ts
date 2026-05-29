@@ -13,10 +13,10 @@ export async function createAuditLog(
   try {
     await prisma.auditLog.create({
       data: {
-        userId: actorId,        // schema field is userId
+        userId: actorId,
         action,
-        entityType: objectType, // schema field is entityType
-        entityId: objectId,     // schema field is entityId
+        entityType: objectType,
+        entityId: objectId,
         details: details ? (details as import("@prisma/client").Prisma.InputJsonValue) : undefined,
       },
     });
@@ -29,12 +29,14 @@ export async function getAuditLogs(
   actorId?: string,
   objectType?: string,
   objectId?: string,
+  action?: string,
 ) {
   return prisma.auditLog.findMany({
     where: {
-      ...(actorId    ? { userId: actorId }         : {}),
-      ...(objectType ? { entityType: objectType }  : {}),
-      ...(objectId   ? { entityId: objectId }      : {}),
+      ...(actorId    ? { userId: actorId }        : {}),
+      ...(objectType ? { entityType: objectType } : {}),
+      ...(objectId   ? { entityId: objectId }     : {}),
+      ...(action     ? { action: action as AuditAction } : {}),
     },
     include: { user: { select: { id: true, name: true, email: true, role: true } } },
     orderBy: { createdAt: "desc" },
