@@ -12,9 +12,9 @@ async function main() {
     { id: "user_admin_001",     name: "Alice Admin",    email: "admin@rapid.dev",     role: "admin" as UserRole,          department: "Engineering" },
     { id: "user_creator_001",   name: "Carol Creator",  email: "creator@rapid.dev",   role: "creator" as UserRole,        department: "Product" },
     { id: "user_approver_001",  name: "Bob Approver",   email: "approver@rapid.dev",  role: "approver" as UserRole,       department: "Finance" },
-    { id: "user_decider_001",   name: "Dana Decider",   email: "decider@rapid.dev",   role: "approver" as UserRole, department: "Leadership" },
     { id: "user_performer_001", name: "Pete Performer", email: "performer@rapid.dev", role: "performer" as UserRole,      department: "Operations" },
-    { id: "user_viewer_001",   name: "Amy Auditor",    email: "viewer@rapid.dev",   role: "viewer" as UserRole,       department: "Compliance" },
+    { id: "user_viewer_001",      name: "Vera Viewer",      email: "viewer@rapid.dev",      role: "viewer" as UserRole,      department: "Compliance" },
+    { id: "user_recommender_001", name: "Rick Recommender", email: "recommender@rapid.dev", role: "recommender" as UserRole, department: "Strategy" },
   ];
 
   for (const u of users) {
@@ -27,7 +27,7 @@ async function main() {
   }
 
   const creator = await prisma.user.findUniqueOrThrow({ where: { email: "creator@rapid.dev" } });
-  const decider = await prisma.user.findUniqueOrThrow({ where: { email: "decider@rapid.dev" } });
+  const decider = await prisma.user.findUniqueOrThrow({ where: { email: "approver@rapid.dev" } });
   const performer = await prisma.user.findUniqueOrThrow({ where: { email: "performer@rapid.dev" } });
   const approver = await prisma.user.findUniqueOrThrow({ where: { email: "approver@rapid.dev" } });
 
