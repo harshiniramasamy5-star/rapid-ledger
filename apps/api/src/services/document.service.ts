@@ -134,10 +134,19 @@ export async function createDocumentVersion(documentId: string, actorId: string)
   if (!original) return { ok: false as const, notFound: true };
   if (original.status !== "finalized" && original.status !== "execution_complete") return { ok: false as const, invalidStatus: original.status };
 
+  // Find the next available version number (avoid unique constraint collision)
+  const existingVersions = await prisma.rapidDocument.findMany({
+    where: { documentCode: original.documentCode },
+    select: { version: true },
+  });
+  const usedVersions = new Set(existingVersions.map(d => d.version));
+  let nextVersion = original.version + 1;
+  while (usedVersions.has(nextVersion)) nextVersion++;
+
   const newDoc = await prisma.rapidDocument.create({
     data: {
       documentCode: original.documentCode,
-      version: original.version + 1,
+      version: nextVersion,
       title: original.title, decisionSummary: original.decisionSummary, riskLevel: original.riskLevel,
       complianceImpact: original.complianceImpact, department: original.department, deadline: original.deadline,
       businessContext: original.businessContext, problemStatement: original.problemStatement,
