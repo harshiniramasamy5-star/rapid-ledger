@@ -21,6 +21,7 @@ export async function apiFetch(path: string, options?: RequestInit) {
   });
 
   // Safe response parsing
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
   let data: any = null;
 
   const text = await res.text();

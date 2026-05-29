@@ -98,13 +98,16 @@ export interface AuditEntry {
   action: string;
   entityType: string;
   entityId: string;
+  details: Record<string, unknown>;
   createdAt: string;
-  details?: Record<string, unknown>;
   documentCode?: string;
   documentTitle?: string;
-  actorName?: string;
-  actorRole?: string;
-  objectId?: string;
+  user?: {
+    id: string;
+    name: string;
+    email: string;
+    role: string;
+  };
 }
 
 // Utility
