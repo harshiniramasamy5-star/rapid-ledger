@@ -288,11 +288,11 @@ All passwords: `password123`
 | Name | Email | Role | Capabilities |
 |------|-------|------|--------------|
 | Alice Admin | admin@rapid.dev | admin | Full access — manage users, finalise, audit log |
-| Bob Approver | approver@rapid.dev | approver | Approve, reject, request changes on documents |
 | Carol Creator | creator@rapid.dev | creator | Create and submit RAPID documents |
-| Pam Performer | performer@rapid.dev | performer | Mark finalised documents as execution complete |
-| Rick Recommender | recommender@rapid.dev | recommender | When assigned the R — Recommend role, can submit recommendation notes before a decision is approved |
-| Vera Viewer | viewer@rapid.dev | viewer | Not just a viewer — when assigned the I — Input role on a document, can actively submit input notes and expertise before the decision is approved |
+| Rick Recommender | recommender@rapid.dev | recommender | Add recommendations |
+| Bob Approver | approver@rapid.dev | approver | Approve, reject, request changes |
+| Pam Performer | performer@rapid.dev | performer | Mark execution complete |
+| Vera Viewer | viewer@rapid.dev | viewer | Read-only access |
 
 ---
 
@@ -302,12 +302,6 @@ All passwords: `password123`
 1. `creator@rapid.dev` → **+ New Document** → assign all roles → Submit
 2. `approver@rapid.dev` → **Approvals** → Approve
 3. `admin@rapid.dev` → Finalise → **Ledger** → **Audit Log**
-
-### F — Recommendation and Input
-1. `creator@rapid.dev` → create and submit document → assign Rick as R, Vera as I
-2. `recommender@rapid.dev` → open document → **Submit Recommendation**
-3. `viewer@rapid.dev` → open document → **Submit Input**
-4. Both recorded in Audit Log with actor and timestamp
 
 ### B — High-risk (server enforces Agree)
 1. Create document with risk **High** or **Critical**
@@ -353,8 +347,6 @@ Full reference: [`docs/API.md`](docs/API.md)
 | POST | `/documents/:id/reject` | Reject (approver role) |
 | POST | `/documents/:id/finalise` | Finalise — creates ledger entry |
 | POST | `/documents/:id/version` | New version |
-| POST | `/documents/:id/recommend` | Submit recommendation notes (recommend role required) |
-| POST | `/documents/:id/input` | Submit input notes and expertise (input role required) |
 | POST | `/documents/:id/execution-complete` | Mark complete (performer role) |
 
 ### Ledger
