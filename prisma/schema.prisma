@@ -15,6 +15,8 @@ model User {
   role            UserRole         @default(viewer)
   department      String?
   isActive        Boolean          @default(true)
+  failedLogins    Int              @default(0)
+  lockedUntil     DateTime?
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
   approvals       Approval[]
@@ -147,6 +149,7 @@ enum DocumentStatus {
   execution_complete
   document_recommended
   document_input_provided
+  login_failed
 }
 
 enum RiskLevel {
@@ -181,4 +184,5 @@ enum AuditAction {
   execution_complete
   document_recommended
   document_input_provided
+  login_failed
 }

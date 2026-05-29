@@ -25,13 +25,17 @@
 
 | Metric | Value |
 |--------|-------|
-| 🧪 **Total tests** | 41 — 31 API (Vitest) · 10 frontend (Jest) · 12 E2E (Playwright) |
+| 🧪 **Total tests** | 45 — 35 API (Vitest) · 10 frontend (Jest) · 12 E2E (Playwright) |
 | 🔷 **TypeScript errors** | **0** — strict mode across both apps, zero `any` usage |
-| 🧹 **Lint errors** | **0** — zero `eslint-disable` directives anywhere in the codebase |
+| 🧹 **Lint errors** | **0** — zero `eslint-disable` directives, zero warnings |
 | 🔐 **RBAC roles** | 6 — Admin · Creator · Recommender · Approver · Performer · Viewer |
 | 📋 **Workflow stages** | 5 — Draft → Awaiting Agreement → Approved → Finalised → Execution Complete |
 | 🔒 **Immutability** | Finalised documents are permanently locked — `PATCH` rejected with 403 |
 | 📜 **Audit trail** | Every action logged with actor, timestamp, and metadata — append-only |
+| 📊 **Analytics** | Live dashboard charts — status distribution, risk levels, department breakdown |
+| 📄 **PDF Export** | Finalised RAPID documents exportable as professionally formatted PDFs |
+| 🔑 **Account Security** | 5-strike lockout (30 min), failed login audit trail, inactive account blocking |
+| 📑 **Pagination** | Server-side pagination on documents and ledger — `page`, `limit`, `total`, `totalPages` |
 | 🚀 **Deployment** | Railway (API) + Vercel (frontend) + PostgreSQL — live, always on |
 | ✅ **CI/CD** | GitHub Actions — lint → typecheck → API tests → web tests → E2E |
 
@@ -393,10 +397,10 @@ API on port 3001 · Web on port 3000. Open http://localhost:3000.
 ## 12. Running Tests
 
 ```bash
-npm test              # All tests from root
+npm test              # All tests from root — 57 total
 ```
 
-### API tests (Vitest) — 31 tests
+### API tests (Vitest) — 35 tests
 
 ```bash
 cd apps/api && npm test
@@ -539,6 +543,7 @@ Full reference: [`docs/API.md`](docs/API.md)
 | POST | `/documents/:id/finalise` | Finalise — creates immutable ledger entry |
 | POST | `/documents/:id/version` | Create new version from finalised document |
 | POST | `/documents/:id/execution-complete` | Mark complete (P role required) |
+| GET | `/documents/:id/export-pdf` | Export finalised document as PDF (authenticated) |
 
 ### Ledger
 
@@ -564,7 +569,25 @@ Full reference: [`docs/API.md`](docs/API.md)
 
 ---
 
-## 16. Known Limitations
+## 16. Security Features
+
+RAPID Ledger implements multiple layers of authentication and access security:
+
+| Feature | Implementation |
+|---------|---------------|
+| **Account lockout** | 5 consecutive failed login attempts locks the account for 30 minutes — resets on successful login |
+| **Failed login audit** | Every failed login attempt recorded in audit log with reason, attempt count, and lock status |
+| **Inactive account blocking** | Deactivated accounts (`isActive: false`) are rejected at login with a clear error message |
+| **IP rate limiting** | 10 requests per IP per 15-minute window on `/auth/login` — in-memory, stateless |
+| **RBAC middleware** | Every API endpoint enforces role-based permissions at the middleware layer — not the UI |
+| **JWT authentication** | Signed tokens with configurable expiry — verified on every protected request |
+| **Password hashing** | bcrypt with salt rounds — plaintext passwords never stored |
+
+> Lockout state is persisted in PostgreSQL — survives server restarts, works across instances.
+
+---
+
+## 17. Known Limitations
 
 **Multi-actor E2E in CI** — The full create → approve → finalise flow requires three separate authenticated sessions — correct RBAC behaviour, not a bug. A single Playwright session cannot walk this flow because a user cannot finalise their own submission. The 12 other E2E tests pass reliably in CI. Full explanation: [`apps/web/e2e/README.md`](apps/web/e2e/README.md)
 
@@ -581,12 +604,12 @@ Full reference: [`docs/API.md`](docs/API.md)
 - [ ] HttpOnly cookie auth (replace localStorage JWT for XSS hardening)
 - [ ] File upload for evidence (S3 / Cloudflare R2)
 - [ ] Email notifications for approvals and assignments (SendGrid / Resend)
-- [ ] Dashboard analytics — decisions by risk level, approval times, department
-- [ ] PDF export of finalised RAPID documents
+- [x] Dashboard analytics — status distribution, risk levels, department breakdown ✅
+- [x] PDF export of finalised RAPID documents ✅
 - [ ] Slack / Teams integration for governance notifications
 - [ ] Multi-organisation support with workspace isolation
 - [ ] Two-factor authentication for admin accounts
-- [ ] Pagination on document and audit log lists
+- [x] Server-side pagination on documents and ledger ✅
 
 ---
 

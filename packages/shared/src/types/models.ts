@@ -39,6 +39,7 @@ export enum AuditAction {
   role_assigned = "role_assigned",
   execution_complete = "execution_complete",
   user_login = "user_login",
+  login_failed = "login_failed",
 }
 
 export interface User {

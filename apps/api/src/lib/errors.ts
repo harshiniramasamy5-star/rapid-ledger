@@ -13,4 +13,6 @@ export const Errors = {
     ({ error: { code: "CONFLICT", message } }),
   invalidStatus: (current: string, allowed: string[]): ApiError =>
     ({ error: { code: "INVALID_STATUS_TRANSITION", message: `Cannot act on document with status "${current}"`, details: [`Allowed from: ${allowed.join(", ")}`] } }),
+  custom: (code: string, message: string): ApiError =>
+    ({ error: { code, message } }),
 } as const;
