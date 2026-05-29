@@ -29,7 +29,7 @@ const ROLE_COLORS: Record<string, string> = {
   approver:       "bg-amber-100 text-amber-700",
   decision_owner: "bg-purple-100 text-purple-700",
   performer:      "bg-green-100 text-green-700",
-  auditor:        "bg-gray-100 text-gray-700",
+  viewer:        "bg-gray-100 text-gray-700",
 };
 
 function relativeTime(iso: string) {

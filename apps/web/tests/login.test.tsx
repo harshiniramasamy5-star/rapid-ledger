@@ -151,17 +151,17 @@ describe("LoginPage", () => {
     });
   });
 
-  it("redirects auditor to /audit-log after successful login", async () => {
+  it("redirects viewer to /audit-log after successful login", async () => {
     mockFetch.mockResolvedValueOnce({
       ok: true,
       json: async () => ({
         token: "mock-jwt-token",
-        user: { name: "Adam Auditor", role: "auditor" },
+        user: { name: "Adam Auditor", role: "viewer" },
       }),
     });
 
     render(<LoginPage />);
-    await userEvent.type(screen.getByLabelText(/work email/i), "auditor@rapid.dev");
+    await userEvent.type(screen.getByLabelText(/work email/i), "viewer@rapid.dev");
     await userEvent.type(screen.getByLabelText(/password/i), "password123");
     fireEvent.click(screen.getByRole("button", { name: /continue/i }));
 

@@ -14,7 +14,7 @@ async function main() {
     { id: "user_approver_001",  name: "Bob Approver",   email: "approver@rapid.dev",  role: "approver" as UserRole,       department: "Finance" },
     { id: "user_decider_001",   name: "Dana Decider",   email: "decider@rapid.dev",   role: "approver" as UserRole, department: "Leadership" },
     { id: "user_performer_001", name: "Pete Performer", email: "performer@rapid.dev", role: "performer" as UserRole,      department: "Operations" },
-    { id: "user_auditor_001",   name: "Amy Auditor",    email: "auditor@rapid.dev",   role: "viewer" as UserRole,        department: "Compliance" },
+    { id: "user_viewer_001",   name: "Amy Auditor",    email: "viewer@rapid.dev",   role: "viewer" as UserRole,       department: "Compliance" },
   ];
 
   for (const u of users) {

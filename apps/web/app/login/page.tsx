@@ -14,7 +14,6 @@ const ROLE_ROUTES: Record<string, string> = {
   decision_owner: "/dashboard",
   decider:      "/dashboard",
   performer:    "/dashboard",
-  auditor:      "/audit-log",
   viewer:       "/dashboard",
 };
 

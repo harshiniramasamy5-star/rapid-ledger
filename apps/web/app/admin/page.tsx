@@ -13,7 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 
-const ROLES = ["admin","creator","approver","decider","performer","auditor"];
+const ROLES = ["admin","creator","approver","decider","performer","viewer"];
 
 const ROLE_COLORS: Record<string, string> = {
   admin:     "bg-red-100 text-red-700 border-red-200",
@@ -21,7 +21,7 @@ const ROLE_COLORS: Record<string, string> = {
   approver:  "bg-amber-100 text-amber-700 border-amber-200",
   decider:   "bg-purple-100 text-purple-700 border-purple-200",
   performer: "bg-green-100 text-green-700 border-green-200",
-  auditor:   "bg-gray-100 text-gray-700 border-gray-200",
+  viewer:   "bg-gray-100 text-gray-700 border-gray-200",
 };
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";

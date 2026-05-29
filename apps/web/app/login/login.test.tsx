@@ -76,13 +76,13 @@ describe("LoginPage", () => {
     await waitFor(() => expect(mockPush).toHaveBeenCalledWith("/approvals"));
   });
 
-  it("redirects auditor to /audit-log", async () => {
-    mockFetch({ token: "tok", user: { name: "Audit", role: "auditor" } });
+  it("redirects viewer to /dashboard", async () => {
+    mockFetch({ token: "tok", user: { name: "Audit", role: "viewer" } });
     render(<LoginPage />);
-    await userEvent.type(screen.getByLabelText(/work email/i), "auditor@rapid.dev");
+    await userEvent.type(screen.getByLabelText(/work email/i), "viewer@rapid.dev");
     await userEvent.type(screen.getByLabelText(/password/i), "password123");
     fireEvent.click(screen.getByRole("button", { name: /continue/i }));
-    await waitFor(() => expect(mockPush).toHaveBeenCalledWith("/audit-log"));
+    await waitFor(() => expect(mockPush).toHaveBeenCalledWith("/dashboard"));
   });
 
   it("shows error toast on invalid credentials", async () => {

@@ -27,7 +27,7 @@ const ROLE_BADGE: Record<string, string> = {
   approver:  "bg-amber-100 text-amber-700 border border-amber-200",
   decider:   "bg-purple-100 text-purple-700 border border-purple-200",
   performer: "bg-green-100 text-green-700 border border-green-200",
-  auditor:   "bg-gray-100 text-gray-700 border border-gray-200",
+  viewer:   "bg-gray-100 text-gray-700 border border-gray-200",
 };
 
 interface PaginatedResponse {
@@ -120,8 +120,8 @@ export default function DashboardPage() {
 
   const navItems = [
     { label: "Approvals", path: "/approvals",  roles: ["admin","approver"] },
-    { label: "Ledger",    path: "/ledger",      roles: ["admin","auditor","decider","creator","approver","performer"] },
-    { label: "Audit Log", path: "/audit-log",   roles: ["admin","auditor"] },
+    { label: "Ledger",    path: "/ledger",      roles: ["admin","viewer","decider","creator","approver","performer"] },
+    { label: "Audit Log", path: "/audit-log",   roles: ["admin","viewer"] },
     { label: "Admin",     path: "/admin",       roles: ["admin"] },
   ];
 
