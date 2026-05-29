@@ -79,7 +79,7 @@ export default function DocumentDetailPage() {
       headers: { Authorization: `Bearer ${token()}`, "Content-Type": "application/json" },
       body: body ? JSON.stringify(body) : undefined,
     });
-    return { res, data: await res.json() };
+    const text = await res.text(); let data: unknown; try { data = JSON.parse(text); } catch { data = { error: { message: text } }; } return { res, data };
   }
 
   async function handle(action: () => Promise<void>) {
