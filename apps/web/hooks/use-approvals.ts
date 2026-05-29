@@ -17,7 +17,6 @@ export function useApprovalAction() {
   return useMutation({
     mutationFn: ({
       docId,
-      approvalId,
       action,
       notes,
     }: {

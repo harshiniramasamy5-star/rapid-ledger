@@ -1,5 +1,4 @@
 import { prisma } from "../lib/prisma";
-import { createAuditLog } from "./audit.service";
 
 export async function finalizeDocument(documentId: string, actorId: string) {
   const doc = await prisma.rapidDocument.findUnique({ where: { id: documentId } });

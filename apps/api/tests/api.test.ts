@@ -201,7 +201,7 @@ describe("Immutability — finalized documents cannot be mutated", () => {
     // Get user IDs
     const users = await req("GET", "/users", { token: localAdmin });
     const list = users.body as { id: string; email: string }[];
-    const creator = list.find(u => u.email === "creator@rapid.dev");
+    // creator@rapid.dev not needed in this flow
     const decider = list.find(u => u.email === "admin@rapid.dev");
     const performer = list.find(u => u.email === "approver@rapid.dev");
     deciderId = decider?.id ?? "";
