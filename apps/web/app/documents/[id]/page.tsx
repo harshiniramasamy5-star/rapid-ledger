@@ -217,7 +217,7 @@ export default function DocumentDetailPage() {
                   const { res, data } = await apiPost(`/documents/${params.id}/submit`);
                   if (res.ok) { toast.success("Document submitted for approval!"); await load(); }
                   // removed dup
-                  else toast.error(data?.error?.message ?? "Submit failed");
+                  else toast.error((data as any)?.error?.message ?? "Submit failed");
                 })}>
                 {acting ? "Submitting..." : "Submit Document for Approval"}
               </Button>
