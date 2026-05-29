@@ -248,6 +248,9 @@ export const documentRoutes = new Elysia({ prefix: "/documents" })
     const doc = await prisma.rapidDocument.findUnique({ where: { id: params.id } });
     if (!doc) { set.status = 404; return Errors.notFound("Document"); }
     if (doc.status === "finalized" || doc.status === "execution_complete") { set.status = 403; return Errors.forbidden("Cannot delete finalized documents"); }
+    await prisma.approval.deleteMany({ where: { documentId: params.id } });
+    await prisma.roleAssignment.deleteMany({ where: { documentId: params.id } });
+    await prisma.evidence.deleteMany({ where: { documentId: params.id } });
     await prisma.rapidDocument.delete({ where: { id: params.id } });
     set.status = 204;
     return null;
