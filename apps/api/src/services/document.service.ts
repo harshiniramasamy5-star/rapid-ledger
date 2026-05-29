@@ -134,6 +134,22 @@ export async function createDocumentVersion(documentId: string, actorId: string)
   if (!original) return { ok: false as const, notFound: true };
   if (original.status !== "finalized" && original.status !== "execution_complete") return { ok: false as const, invalidStatus: original.status };
 
+  // ── Self-healing: wipe any stuck (non-finalized) prior version attempts of this documentCode ──
+  const stuckVersions = await prisma.rapidDocument.findMany({
+    where: {
+      documentCode: original.documentCode,
+      status: { notIn: ["finalized", "execution_complete"] },
+      id: { not: original.id },
+    },
+    select: { id: true },
+  });
+  for (const stuck of stuckVersions) {
+    await prisma.approval.deleteMany({ where: { documentId: stuck.id } });
+    await prisma.roleAssignment.deleteMany({ where: { documentId: stuck.id } });
+    await prisma.evidence.deleteMany({ where: { documentId: stuck.id } });
+    await prisma.rapidDocument.delete({ where: { id: stuck.id } });
+  }
+
   // Find the next available version number (avoid unique constraint collision)
   const existingVersions = await prisma.rapidDocument.findMany({
     where: { documentCode: original.documentCode },
