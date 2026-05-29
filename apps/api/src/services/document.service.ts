@@ -128,16 +128,16 @@ export async function requestChanges(documentId: string, approverId: string, com
   return { ok: true as const, document: updated };
 }
 
-/** Fix 9: creates new version with SAME documentCode, version + 1 */
+/** Fix 9: creates new version with SAME documentCode, version + 1, copies roles AND evidence */
 export async function createDocumentVersion(documentId: string, actorId: string) {
-  const original = await prisma.rapidDocument.findUnique({ where: { id: documentId }, include: { roleAssignments: true } });
+  const original = await prisma.rapidDocument.findUnique({ where: { id: documentId }, include: { roleAssignments: true, evidence: true } });
   if (!original) return { ok: false as const, notFound: true };
-  if (original.status !== "finalized") return { ok: false as const, invalidStatus: original.status };
+  if (original.status !== "finalized" && original.status !== "execution_complete") return { ok: false as const, invalidStatus: original.status };
 
   const newDoc = await prisma.rapidDocument.create({
     data: {
-      documentCode: original.documentCode, // ✅ same code
-      version: original.version + 1,       // ✅ incremented version
+      documentCode: original.documentCode,
+      version: original.version + 1,
       title: original.title, decisionSummary: original.decisionSummary, riskLevel: original.riskLevel,
       complianceImpact: original.complianceImpact, department: original.department, deadline: original.deadline,
       businessContext: original.businessContext, problemStatement: original.problemStatement,
@@ -149,6 +149,10 @@ export async function createDocumentVersion(documentId: string, actorId: string)
 
   for (const role of original.roleAssignments) {
     await prisma.roleAssignment.create({ data: { documentId: newDoc.id, roleType: role.roleType, userId: role.userId } });
+  }
+
+  for (const ev of original.evidence) {
+    await prisma.evidence.create({ data: { documentId: newDoc.id, type: ev.type, title: ev.title, urlOrPath: ev.urlOrPath, description: ev.description, uploadedBy: ev.uploadedBy } });
   }
 
   await createAuditLog(actorId, "document_versioned", "RapidDocument", newDoc.id, { documentCode: original.documentCode, previousVersion: original.version, newVersion: newDoc.version });
