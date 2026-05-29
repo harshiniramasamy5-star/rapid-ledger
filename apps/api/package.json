@@ -18,10 +18,12 @@
   "dependencies": {
     "@elysiajs/cors": "^1.4.2",
     "@elysiajs/node": "^1.1.1",
+    "@types/pdfkit": "^0.17.6",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.6",
     "elysia": "^1.1.25",
     "jsonwebtoken": "^9.0.2",
+    "pdfkit": "^0.18.0",
     "zod": "^3.22.4"
   },
   "devDependencies": {

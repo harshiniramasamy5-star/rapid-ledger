@@ -97,6 +97,22 @@ export default function DocumentDetailPage() {
   const canSubmit   = isCreator && status === "draft";
   const canAgree    = !!myApproval && ["submitted","awaiting_agreement"].includes(status);
   const canFinalize = myRole?.roleType === "decide" && status === "approved";
+
+  async function exportPdf() {
+    const token = localStorage.getItem("rapid_token");
+    if (!token || !doc) return;
+    const res = await fetch(`${API}/documents/${doc.id}/export-pdf`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) { toast.error("Failed to export PDF"); return; }
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${doc.documentCode}-v${doc.version}.pdf`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
   const canComplete = myRole?.roleType === "perform" && status === "finalized";
   const canVersion  = myRole?.roleType === "decide" && ["finalized","execution_complete"].includes(status);
   const isRecommenderWaiting = myRole?.roleType === "recommend" && !!doc?.recommendationNotes && status === "awaiting_agreement";
@@ -141,10 +157,18 @@ export default function DocumentDetailPage() {
               <p className="text-xs text-slate-400 mt-0.5">Decision governance without compromise</p>
             </div>
           </div>
-          <Button variant="ghost" size="sm" className="text-slate-500"
-            onClick={() => router.push("/dashboard")}>
-            Back to Dashboard
-          </Button>
+          <div className="flex items-center gap-2">
+            {doc && ["finalized","execution_complete"].includes(doc.status) && (
+              <Button variant="outline" size="sm" className="text-indigo-600 border-indigo-200 hover:bg-indigo-50"
+                onClick={exportPdf}>
+                ↓ Export PDF
+              </Button>
+            )}
+            <Button variant="ghost" size="sm" className="text-slate-500"
+              onClick={() => router.push("/dashboard")}>
+              Back to Dashboard
+            </Button>
+          </div>
         </div>
       </header>
 

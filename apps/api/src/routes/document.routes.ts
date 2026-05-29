@@ -19,10 +19,32 @@ import {
 import { prisma } from "../lib/prisma";
 import { Errors } from "../lib/errors";
 import { finalizeDocument } from "../services/ledger.service";
+import { generateDocumentPdf } from "../services/pdf.service";
 import type { DocumentStatus } from "@prisma/client";
 
 export const documentRoutes = new Elysia({ prefix: "/documents" })
   .use(authMiddleware)
+
+  // ── GET /documents/:id/export-pdf ────────────────────────────────────────
+  .get("/:id/export-pdf", async ({ user, params, set }) => {
+    requirePermission(user, "document:read", set);
+    const doc = await prisma.rapidDocument.findUnique({
+      where: { id: params.id },
+      include: {
+        roleAssignments: { include: { user: { select: { name: true, email: true } } } },
+        approvals: { include: { approver: { select: { name: true, email: true } } } },
+        evidence: true,
+      },
+    });
+    if (!doc) { set.status = 404; return { error: { code: "NOT_FOUND", message: "Document not found" } }; }
+    const pdf = generateDocumentPdf(doc);
+    set.headers = {
+      "Content-Type": "application/pdf",
+      "Content-Disposition": `attachment; filename="${doc.documentCode}-v${doc.version}.pdf"`,
+      "Content-Length": String(pdf.length),
+    };
+    return pdf;
+  })
 
   // ── GET /documents ────────────────────────────────────────────────────────
   .get("/", async ({ user, query, set }) => {
