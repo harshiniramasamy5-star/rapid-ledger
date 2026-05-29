@@ -2,168 +2,318 @@
 ![TypeScript](https://img.shields.io/badge/TypeScript-strict-blue)
 ![Tests](https://img.shields.io/badge/tests-41%20passing-brightgreen)
 ![License](https://img.shields.io/badge/license-MIT-green)
+![Railway](https://img.shields.io/badge/Railway-deployed-blueviolet)
+![Vercel](https://img.shields.io/badge/Vercel-live-black)
 
-# RAPID Ledger
+<br/>
 
-> Decision governance without compromise.
+<div align="center">
 
-RAPID Ledger is a **production-grade, full-stack governance platform** that enforces the RAPID decision framework across an organisation. Every significant decision gets exactly one accountable owner, mandatory approvals, evidence trails, and an immutable ledger — making governance auditable, structured, and enforceable at the server level, not just the UI.
+# ⚖️ RAPID Ledger
 
-**[Live Demo →](https://rapid-ledger.vercel.app)** | **[API →](https://rapid-ledger-production.up.railway.app/health)** | **[Docs →](docs/)**
+### *Decision governance without compromise.*
 
----
+**A production-grade, full-stack governance platform that enforces the RAPID decision framework — with server-side business rules, role-based access control, an immutable ledger, and a complete audit trail. Built in under 30 days as a first-year CSE internship project.**
 
-## Project Highlights
+**[🚀 Live Demo](https://rapid-ledger.vercel.app)** · **[🔌 API Health](https://rapid-ledger-production.up.railway.app/health)** · **[📚 Docs](docs/)**
 
-| | |
-|---|---|
-| **41 tests** | 31 API (Vitest) · 10 frontend (Jest) · 12 E2E (Playwright) |
-| **0 TypeScript errors** | Strict mode enforced across both apps, zero `any` usage |
-| **0 lint errors** | Zero `eslint-disable` directives anywhere in the codebase |
-| **6 RBAC roles** | Admin · Creator · Recommender · Approver · Performer · Viewer |
-| **5 workflow stages** | Draft → Awaiting Agreement → Approved → Finalised → Execution Complete |
-| **Full audit trail** | Every action logged with actor, timestamp, and metadata |
-| **Live deployment** | Railway (API) + Vercel (frontend) + PostgreSQL |
-| **Green CI** | GitHub Actions: lint → typecheck → API tests → web tests → E2E |
+</div>
 
 ---
 
-## Table of Contents
+## ✨ Project Highlights
+
+| Metric | Value |
+|--------|-------|
+| 🧪 **Total tests** | 41 — 31 API (Vitest) · 10 frontend (Jest) · 12 E2E (Playwright) |
+| 🔷 **TypeScript errors** | **0** — strict mode across both apps, zero `any` usage |
+| 🧹 **Lint errors** | **0** — zero `eslint-disable` directives anywhere in the codebase |
+| 🔐 **RBAC roles** | 6 — Admin · Creator · Recommender · Approver · Performer · Viewer |
+| 📋 **Workflow stages** | 5 — Draft → Awaiting Agreement → Approved → Finalised → Execution Complete |
+| 🔒 **Immutability** | Finalised documents are permanently locked — `PATCH` rejected with 403 |
+| 📜 **Audit trail** | Every action logged with actor, timestamp, and metadata — append-only |
+| 🚀 **Deployment** | Railway (API) + Vercel (frontend) + PostgreSQL — live, always on |
+| ✅ **CI/CD** | GitHub Actions — lint → typecheck → API tests → web tests → E2E |
+
+---
+
+## 📑 Table of Contents
 
 1. [What is RAPID?](#1-what-is-rapid)
 2. [Live Demo](#2-live-demo)
-3. [Tech Stack](#3-tech-stack)
-4. [Architecture](#4-architecture)
-5. [Local Setup](#5-local-setup)
-6. [Environment Variables](#6-environment-variables)
-7. [Database Setup](#7-database-setup)
-8. [Running the App](#8-running-the-app)
-9. [Running Tests](#9-running-tests)
-10. [Demo Credentials](#10-demo-credentials)
-11. [Core Workflows](#11-core-workflows)
-12. [API Overview](#12-api-overview)
-13. [Known Limitations](#13-known-limitations)
-14. [Future Improvements](#14-future-improvements)
+3. [System Architecture](#3-system-architecture)
+4. [Document Lifecycle](#4-document-lifecycle)
+5. [Tech Stack](#5-tech-stack)
+6. [Folder Structure](#6-folder-structure)
+7. [Key Design Decisions](#7-key-design-decisions)
+8. [Local Setup](#8-local-setup)
+9. [Environment Variables](#9-environment-variables)
+10. [Database Setup](#10-database-setup)
+11. [Running the App](#11-running-the-app)
+12. [Running Tests](#12-running-tests)
+13. [Demo Credentials](#13-demo-credentials)
+14. [Core Workflows](#14-core-workflows)
+15. [API Reference](#15-api-reference)
+16. [Known Limitations](#16-known-limitations)
+17. [Future Improvements](#17-future-improvements)
 
 ---
 
 ## 1. What is RAPID?
 
-RAPID is a decision-making framework used by organisations to eliminate ambiguity in high-stakes decisions by assigning explicit, non-overlapping roles:
+RAPID is a battle-tested decision-making framework used by organisations to eliminate ambiguity in high-stakes decisions by assigning explicit, non-overlapping roles to every participant.
 
-| Letter | Role | Responsibility |
-|--------|------|----------------|
-| **R** | Recommend | Proposes the decision with supporting analysis |
-| **A** | Agree | Must approve before the decision proceeds (required for high-risk decisions) |
-| **P** | Perform | Executes the decision once finalised and marks it complete |
-| **I** | Input | Provides information or expertise |
-| **D** | Decide | The single accountable owner — exactly one per document |
+```mermaid
+graph LR
+    R["🔵 R — Recommend\nProposes the decision\nwith analysis"]
+    A["🟠 A — Agree\nMust approve before\nthe decision proceeds"]
+    P["🟢 P — Perform\nExecutes the decision\nonce finalised"]
+    I["🟣 I — Input\nProvides expertise\nor information"]
+    D["🔴 D — Decide\nThe single accountable\nowner — exactly one"]
 
-### Business Rules Enforced Server-Side
+    R --> D
+    A --> D
+    I --> D
+    D --> P
+```
 
-These rules are enforced in `services/validation.service.ts` — not in the frontend, not in middleware. They are validated at the service layer on every state transition:
+### Business Rules Enforced at the Server Layer
+
+These rules live in `services/validation.service.ts` — not in the frontend, not in middleware. Every state transition is validated server-side before any database write occurs:
 
 - **Exactly one Decide owner** required before submission — server rejects without it
 - **High-risk and critical decisions** require at least one Agree approver — server rejects without it
 - **Compliance-impacting decisions** require attached evidence — server rejects without it
-- **Finalised documents are immutable** — PATCH is rejected with 403 once status is `finalised`
+- **Finalised documents are immutable** — `PATCH` is rejected with `403` once status is `finalised`
 - **Ledger entries are permanent** — no delete or mutation endpoints exist
 - **Versioning preserves identity** — new version keeps same `documentCode`, increments version number only
 - **Audit logs are append-only** — no update or delete endpoints on audit records
-- **Execution completion is tracked** — Performers mark finalised documents as `execution_complete`, emitting an audit event
+- **Execution completion is tracked** — Performers mark finalised documents as `execution_complete`, emitting a permanent audit event
+- **Recommendation and Input are active roles** — R and I assignees submit notes, not merely read
 
 ---
 
 ## 2. Live Demo
 
-> **Before demoing:** Wake the Railway server first (free tier sleeps after inactivity):
-> ```
+> ⚠️ **Before demoing:** Wake the Railway server first — the free tier sleeps after inactivity:
+> ```bash
 > curl https://rapid-ledger-production.up.railway.app/health
 > ```
 > Wait for `{"status":"ok"}` before opening the frontend.
 
 | Service | URL |
 |---------|-----|
-| Frontend | https://rapid-ledger.vercel.app |
-| Backend API | https://rapid-ledger-production.up.railway.app |
-| Health check | https://rapid-ledger-production.up.railway.app/health |
+| 🌐 Frontend | https://rapid-ledger.vercel.app |
+| 🔌 Backend API | https://rapid-ledger-production.up.railway.app |
+| 💓 Health check | https://rapid-ledger-production.up.railway.app/health |
 
 ---
 
-## 3. Tech Stack
+## 3. System Architecture
 
-| Layer | Technology |
-|-------|------------|
-| Frontend | Next.js 16, React, TypeScript (strict), shadcn/ui, Tailwind CSS |
-| Backend | Elysia (TypeScript HTTP framework), Node.js |
-| ORM | Prisma 5.22 |
-| Database | PostgreSQL (production via Railway) |
-| Auth | JWT, bcryptjs, in-memory rate limiting on `/auth/login` |
-| Shared types | `packages/shared` — DTOs, enums, ApiError shared across both apps |
-| Monorepo | npm workspaces |
-| Testing | Vitest (API) · Jest + React Testing Library (web) · Playwright (E2E) |
-| Linting | ESLint — 0 errors, 0 `eslint-disable` directives |
-| Type safety | TypeScript strict mode — 0 errors, 0 `any` |
-| CI/CD | GitHub Actions — lint → typecheck → API tests → web tests → E2E |
-| Deployment | Railway (API) · Vercel (frontend) |
+```mermaid
+graph TB
+    subgraph Client["🌐 Client — Vercel"]
+        FE["Next.js 16\nReact + shadcn/ui\nTailwind CSS"]
+    end
+
+    subgraph Backend["🚂 Backend — Railway"]
+        API["Elysia API\nNode.js"]
+        MW["Auth Middleware\nJWT + Rate Limiter"]
+        SVC["Service Layer\nBusiness Rules\nValidation"]
+        REPO["Repository Layer\nPrisma ORM"]
+    end
+
+    subgraph Database["🗄️ Database — Railway PostgreSQL"]
+        DB[("PostgreSQL\nDocuments · Users\nAudit Logs · Ledger")]
+    end
+
+    subgraph Shared["📦 packages/shared"]
+        TYPES["TypeScript Types\nDTOs · Enums\nApiError"]
+    end
+
+    FE -->|"HTTPS REST"| API
+    API --> MW --> SVC --> REPO --> DB
+    FE -.->|"imports types"| TYPES
+    API -.->|"imports types"| TYPES
+```
+
+### Request Flow
+
+```mermaid
+sequenceDiagram
+    participant U as 👤 User
+    participant FE as Next.js
+    participant MW as Auth Middleware
+    participant SVC as Service Layer
+    participant DB as PostgreSQL
+
+    U->>FE: Submit document
+    FE->>MW: POST /documents/:id/submit + JWT
+    MW->>MW: Verify JWT, extract user
+    MW->>SVC: Forward request + user context
+    SVC->>SVC: Validate RAPID rules<br/>(Decide owner, Agree, Evidence)
+    SVC->>DB: Atomic transaction<br/>(update + audit log)
+    DB-->>SVC: Committed
+    SVC-->>FE: 200 + updated document
+    FE-->>U: Status updated ✅
+```
 
 ---
 
-## 4. Architecture
+## 4. Document Lifecycle
+
+```mermaid
+stateDiagram-v2
+    [*] --> draft : Creator creates document
+
+    draft --> awaiting_agreement : Creator submits\n(server validates RAPID rules)
+    awaiting_agreement --> approved : Approver agrees
+    awaiting_agreement --> needs_changes : Approver requests changes
+    awaiting_agreement --> rejected : Approver rejects
+
+    needs_changes --> awaiting_agreement : Creator resubmits
+    rejected --> [*]
+
+    approved --> finalized : Decide owner finalises\n(ledger entry created\ndocument becomes immutable)
+
+    finalized --> execution_complete : Performer marks complete\n(audit event emitted)
+    finalized --> draft : Create new version\n(same documentCode\nversion + 1)
+
+    execution_complete --> [*]
+```
+
+### Role Actions by Stage
+
+```mermaid
+graph TD
+    subgraph DRAFT["📝 Draft"]
+        C1["Creator: Fill details,\nassign RAPID roles,\nattach evidence, submit"]
+        R1["Recommender: Submit\nrecommendation notes"]
+        I1["Input: Submit\nexpertise and input notes"]
+    end
+
+    subgraph AWAITING["⏳ Awaiting Agreement"]
+        A1["Approver: Approve /\nRequest Changes / Reject"]
+    end
+
+    subgraph APPROVED["✅ Approved"]
+        D1["Decide Owner:\nFinalise decision"]
+    end
+
+    subgraph FINALIZED["🔒 Finalised — Immutable"]
+        P1["Performer: Mark\nexecution complete"]
+        AD["Admin: Create\nnew version"]
+    end
+
+    DRAFT --> AWAITING --> APPROVED --> FINALIZED
+```
+
+---
+
+## 5. Tech Stack
+
+| Layer | Technology | Why |
+|-------|-----------|-----|
+| **Frontend** | Next.js 16, React, TypeScript (strict), shadcn/ui, Tailwind CSS | SSR, type safety, polished UI |
+| **Backend** | Elysia (TypeScript HTTP framework), Node.js | Fast, type-safe, schema validation built in |
+| **ORM** | Prisma 5.22 | Type-safe queries, migrations, single schema source |
+| **Database** | PostgreSQL (production via Railway) | ACID transactions, production-grade reliability |
+| **Auth** | JWT, bcryptjs, in-memory rate limiting | Secure, stateless, brute-force protected |
+| **Shared types** | `packages/shared` — DTOs, enums, ApiError | One source of truth across both apps |
+| **Monorepo** | npm workspaces | Single install, shared dependencies |
+| **Testing** | Vitest (API) · Jest + RTL (web) · Playwright (E2E) | Full coverage: unit, integration, end-to-end |
+| **Linting** | ESLint — 0 errors, 0 `eslint-disable` directives | Zero technical debt |
+| **Type safety** | TypeScript strict mode — 0 errors, 0 `any` | No hidden bugs |
+| **CI/CD** | GitHub Actions | Automated quality gate on every push |
+| **Deployment** | Railway (API) · Vercel (frontend) | Zero-config, production-grade hosting |
+
+---
+
+## 6. Folder Structure
 
 ```
 rapid-ledger/
+├── .github/
+│   └── workflows/
+│       └── ci.yml              # GitHub Actions — lint → typecheck → test → E2E
 ├── apps/
-│   ├── api/                  # Elysia backend (port 3001)
+│   ├── api/                    # Elysia backend (port 3001)
 │   │   └── src/
-│   │       ├── routes/       # Thin HTTP handlers — no business logic
-│   │       ├── services/     # All business logic: validation, documents, audit, ledger
-│   │       ├── repositories/ # All Prisma/DB access — routes never touch DB directly
-│   │       ├── validators/   # Zod schemas centralised, reused across routes and tests
-│   │       ├── lib/          # Prisma singleton, JWT helpers, rate limiter
-│   │       └── types/        # Domain types and DTOs
-│   └── web/                  # Next.js 16 frontend (port 3000)
+│   │       ├── routes/         # Thin HTTP handlers — no business logic
+│   │       ├── services/       # Business rules: validation, documents, audit, ledger
+│   │       ├── repositories/   # All Prisma/DB access — never imported by routes directly
+│   │       ├── validators/     # Zod schemas — shared by routes AND tests
+│   │       ├── lib/            # Prisma singleton, JWT helpers, rate limiter
+│   │       └── types/          # Domain types and DTOs
+│   └── web/                    # Next.js 16 frontend (port 3000)
 │       └── app/
-│           ├── (auth)/       # Login page
-│           ├── dashboard/    # Document list, search, stats
-│           ├── documents/    # 3-step new document wizard, document detail
-│           ├── approvals/    # Approval queue
-│           ├── ledger/       # Immutable finalised records
-│           ├── audit-log/    # Append-only audit trail
-│           └── admin/        # User management (admin only)
+│           ├── (auth)/         # Login page
+│           ├── dashboard/      # Document list, search, stats
+│           ├── documents/      # 3-step wizard, document detail with role actions
+│           ├── approvals/      # Approval queue for Agree-role users
+│           ├── ledger/         # Immutable finalised records
+│           ├── audit-log/      # Append-only audit trail
+│           └── admin/          # User management (admin only)
 ├── packages/
-│   └── shared/               # Shared TypeScript types, DTOs, and enums
+│   └── shared/                 # Shared TypeScript types, DTOs, and enums
 │       └── src/types/
-│           ├── models.ts     # RapidDocument, LedgerEntry, AuditLog, ApiError
-│           └── enums.ts      # RiskLevel, DocumentStatus, AuditAction
+│           ├── models.ts       # RapidDocument, LedgerEntry, AuditLog, ApiError
+│           └── enums.ts        # RiskLevel, DocumentStatus, AuditAction
 ├── prisma/
-│   ├── schema.prisma         # Single source of truth — one schema for all apps
-│   ├── migrations/           # 3 versioned migrations
-│   └── seed.ts               # Deterministic seed: 6 users + demo documents
+│   ├── schema.prisma           # Single source of truth — one schema, all apps
+│   ├── migrations/             # 8 versioned migrations — full history preserved
+│   └── seed.ts                 # Deterministic seed: 6 users + demo documents
 ├── docs/
-│   ├── HLD.md                # High-level design
-│   ├── LLD.md                # Low-level design
-│   ├── GHERKIN.md            # BDD scenarios
-│   ├── API.md                # Full API reference
-│   └── TEST_PLAN.md          # Test strategy and coverage matrix
-└── package.json              # Root workspace config
+│   ├── HLD.md                  # High-level design
+│   ├── LLD.md                  # Low-level design: schema, API contracts, interfaces
+│   ├── GHERKIN.md              # BDD scenarios for all workflow paths
+│   ├── API.md                  # Full API reference with examples
+│   └── TEST_PLAN.md            # Test strategy and coverage matrix
+├── .env.example                # Root env example
+└── package.json                # Root workspace config
 ```
-
-### Key Design Decisions
-
-- **Service-layer business rules** — `validation.service.ts` enforces all RAPID constraints. Routes are thin HTTP handlers that delegate immediately to services.
-- **Repository pattern** — all Prisma calls isolated in `repositories/`. No route or service imports `prisma` directly.
-- **Centralised Zod validators** — schemas in `validators/` imported by both routes and tests, eliminating duplication and drift.
-- **Self-contained API tests** — use Elysia's `app.handle()` directly. Zero server startup, zero port conflicts, deterministic.
-- **Single Prisma schema** — one `prisma/schema.prisma` at root. No schema duplication anywhere.
-- **Shared types package** — `packages/shared` imported by both apps. A DTO change propagates everywhere in one edit.
-- **Zero `any` policy** — TypeScript strict mode across both apps. No exceptions, no suppressions.
-- **Rate limiting** — in-memory rate limiter on `/auth/login` prevents brute-force attacks.
-- **Atomic transactions** — submit, approve, and finalise wrapped in Prisma transactions to prevent partial state.
 
 ---
 
-## 5. Local Setup
+## 7. Key Design Decisions
+
+```mermaid
+graph LR
+    subgraph Route["HTTP Route\n(thin handler)"]
+        RT["Receives request\nValidates auth\nDelegates immediately"]
+    end
+
+    subgraph Service["Service Layer\n(business rules)"]
+        SV["Enforces RAPID rules\nDecide owner check\nAgree requirement\nEvidence requirement\nImmutability guard"]
+    end
+
+    subgraph Repo["Repository Layer\n(data access)"]
+        RP["All Prisma queries\nAtomic transactions\nNo SQL in routes/services"]
+    end
+
+    subgraph DB["PostgreSQL"]
+        D[("Single schema\nOne source of truth")]
+    end
+
+    RT --> SV --> RP --> D
+```
+
+| Decision | Rationale |
+|----------|-----------|
+| **Service-layer rules** | Business logic in `validation.service.ts` — routes are thin, testable, replaceable |
+| **Repository pattern** | All Prisma calls isolated — DB implementation swappable without touching business logic |
+| **Centralised Zod validators** | Schemas in `validators/` imported by both routes and tests — no duplication, no drift |
+| **Self-contained API tests** | `app.handle()` — no running server, no ports, no flakiness |
+| **Single Prisma schema** | One `schema.prisma` at root — no duplication, one migration history |
+| **Shared types package** | `packages/shared` — a DTO change propagates to both apps in one edit |
+| **Zero `any` policy** | TypeScript strict mode — bugs surface at compile time, not production |
+| **Rate limiting** | In-memory limiter on `/auth/login` — brute-force protected |
+| **Atomic transactions** | Submit, approve, and finalise wrapped in `prisma.$transaction()` — no partial state |
+
+---
+
+## 8. Local Setup
 
 ### Prerequisites
 
@@ -181,11 +331,11 @@ cd rapid-ledger
 npm install
 ```
 
-`npm install` from root installs all workspace dependencies and runs `prisma generate` via the postinstall hook automatically.
+`npm install` from root installs all workspace dependencies (`apps/api`, `apps/web`, `packages/shared`) and automatically runs `prisma generate` via the postinstall hook.
 
 ---
 
-## 6. Environment Variables
+## 9. Environment Variables
 
 ### API (`apps/api`)
 
@@ -211,7 +361,7 @@ cp apps/web/.env.example apps/web/.env.local
 
 ---
 
-## 7. Database Setup
+## 10. Database Setup
 
 ```bash
 createdb rapid_ledger
@@ -224,13 +374,13 @@ The seed creates 6 users across all RAPID roles and 3 demo documents at differen
 ```bash
 npm run db:generate   # Regenerate Prisma client after schema changes
 npm run db:migrate    # Create and apply a new migration
-npm run db:studio     # Open Prisma Studio
-npm run db:reset      # Reset and reseed (destructive)
+npm run db:studio     # Open Prisma Studio (visual DB browser)
+npm run db:reset      # Reset and reseed (destructive — dev only)
 ```
 
 ---
 
-## 8. Running the App
+## 11. Running the App
 
 ```bash
 npm run dev           # Start both servers from root (recommended)
@@ -240,7 +390,7 @@ API on port 3001 · Web on port 3000. Open http://localhost:3000.
 
 ---
 
-## 9. Running Tests
+## 12. Running Tests
 
 ```bash
 npm test              # All tests from root
@@ -252,19 +402,21 @@ npm test              # All tests from root
 cd apps/api && npm test
 ```
 
-| Suite | Coverage |
-|-------|----------|
-| `validation.test.ts` | Decide owner enforcement, Agree requirement, evidence requirement, invalid transitions |
-| `rbac.test.ts` | Every role/endpoint combination including adversarial cases |
-| `api.test.ts` | Full lifecycle: create → submit → approve → finalise → version; audit emission; ledger creation |
+| Suite | What it proves |
+|-------|----------------|
+| `validation.test.ts` | RAPID business rules: Decide owner, Agree enforcement, evidence requirement, immutability, invalid transitions |
+| `rbac.test.ts` | Every role/endpoint combination — including adversarial cases (wrong role, unauthenticated) |
+| `api.test.ts` | Full document lifecycle: create → submit → approve → finalise → version; audit emission; ledger creation |
 
-All tests use Elysia's `app.handle()` — **no running server required**.
+> All API tests use Elysia's `app.handle()` — **no running server required**, no port conflicts, fully deterministic.
 
-### Frontend tests (Jest) — 10 tests
+### Frontend tests (Jest + RTL) — 10 tests
 
 ```bash
 cd apps/web && npm test
 ```
+
+Covers component rendering, loading states, and user interactions across dashboard, document detail, and approvals.
 
 ### E2E tests (Playwright) — 12 tests
 
@@ -272,142 +424,188 @@ cd apps/web && npm test
 cd apps/web && npx playwright test
 ```
 
-Runs against live Vercel. Covers: auth, redirects, RBAC, adversarial API calls, audit log.
+Runs against the live Vercel deployment. Covers: auth flows, redirect enforcement, RBAC page access, adversarial API calls, audit log verification.
 
 ```bash
-npm run typecheck     # 0 errors — strict mode across both apps
+npm run typecheck     # 0 errors — strict mode, both apps
 npm run lint          # 0 errors, 0 eslint-disable directives
 ```
 
 ---
 
-## 10. Demo Credentials
+## 13. Demo Credentials
 
 All passwords: `password123`
 
-| Name | Email | Role | Capabilities |
-|------|-------|------|--------------|
-| Alice Admin | admin@rapid.dev | admin | Full access — manage users, finalise, audit log |
-| Carol Creator | creator@rapid.dev | creator | Create and submit RAPID documents |
-| Rick Recommender | recommender@rapid.dev | recommender | Add recommendations |
-| Bob Approver | approver@rapid.dev | approver | Approve, reject, request changes |
-| Pam Performer | performer@rapid.dev | performer | Mark execution complete |
-| Vera Viewer | viewer@rapid.dev | viewer | Read-only access |
+| Name | Email | System Role | RAPID Capability |
+|------|-------|-------------|-----------------|
+| 👑 Alice Admin | admin@rapid.dev | Admin | Full access — manage users, finalise documents, view audit log and ledger |
+| ✍️ Carol Creator | creator@rapid.dev | Creator | Create and submit RAPID documents, assign roles, attach evidence |
+| 💬 Rick Recommender | recommender@rapid.dev | Recommender | When assigned the R role — actively submits recommendation notes before a decision is approved |
+| ✅ Bob Approver | approver@rapid.dev | Approver | When assigned the A role — approves, rejects, or requests changes on documents |
+| ⚙️ Pam Performer | performer@rapid.dev | Performer | When assigned the P role — marks finalised documents as execution complete |
+| 📝 Vera Viewer | viewer@rapid.dev | Viewer | Not just a viewer — when assigned the I — Input role, actively submits input notes and expertise before a decision is approved |
+
+> **Key insight:** The system role controls which pages a user can access. The RAPID role (R/A/P/I/D) is assigned per document and controls what actions that user can take on that specific document. A Viewer can be a crucial I — Input contributor on a decision.
 
 ---
 
-## 11. Core Workflows
+## 14. Core Workflows
 
-### A — Standard approval
-1. `creator@rapid.dev` → **+ New Document** → assign all roles → Submit
-2. `approver@rapid.dev` → **Approvals** → Approve
-3. `admin@rapid.dev` → Finalise → **Ledger** → **Audit Log**
+### A — Standard Approval Flow
 
-### B — High-risk (server enforces Agree)
+```mermaid
+sequenceDiagram
+    participant CR as ✍️ Carol Creator
+    participant SV as 🖥️ Server
+    participant BO as ✅ Bob Approver
+    participant AA as 👑 Alice Admin
+    participant PP as ⚙️ Pam Performer
+
+    CR->>SV: Create document, assign roles
+    CR->>SV: Submit (server validates RAPID rules)
+    SV-->>CR: ✅ Status → awaiting_agreement
+
+    BO->>SV: Approve
+    SV-->>BO: ✅ Status → approved
+
+    AA->>SV: Finalise (atomic: update + ledger + audit)
+    SV-->>AA: ✅ Status → finalized, immutable, ledger entry created
+
+    PP->>SV: Mark execution complete
+    SV-->>PP: ✅ Status → execution_complete, audit event emitted
+```
+
+### F — Recommendation and Input
+
+1. `creator@rapid.dev` → create and submit a document → assign Rick as **R**, Vera as **I**
+2. `recommender@rapid.dev` → open document → type notes → click **Submit Recommendation** (purple button)
+3. `viewer@rapid.dev` → open document → type notes → click **Submit Input** (teal button)
+4. Both actions are permanently recorded in the Audit Log with actor, timestamp, and document code
+5. After submission, confirmation messages replace the action buttons — contributions cannot be repeated
+
+### B — High-Risk (Server Enforces Agree)
+
 1. Create document with risk **High** or **Critical**
-2. Submit without Agree role → server rejects
+2. Try submitting without Agree role assigned → server rejects with `422`
 3. Assign Agree role → submit succeeds → approve → finalise
 
-### C — Execution completion
+### C — Execution Completion
+
 1. `admin@rapid.dev` → Finalise document
 2. `performer@rapid.dev` → **Mark Execution Complete**
 3. Audit event emitted → verify in **Audit Log**
 
 ### D — Versioning
-1. `admin@rapid.dev` → open Finalised document → **Create New Version**
-2. Same `documentCode`, incremented version — original locked permanently
 
-### E — Audit trail
+1. `admin@rapid.dev` → open Finalised document → **Create New Version**
+2. Same `documentCode`, incremented version — original locked permanently and cannot be re-finalised
+
+### E — Audit Trail
+
 1. `admin@rapid.dev` → **Audit Log**
-2. Every action recorded: actor, role, timestamp, document code — append-only
+2. Every action — login, creation, submission, recommendation, input, approval, rejection, finalisation, execution completion — recorded with actor, role, timestamp, and metadata
+3. The audit log is append-only — no entries can ever be deleted or modified
 
 ---
 
-## 12. API Overview
+## 15. API Reference
 
-Base URL: `http://localhost:3001` · `https://rapid-ledger-production.up.railway.app`
+Base URL: `http://localhost:3001` (local) · `https://rapid-ledger-production.up.railway.app` (production)
 
 Full reference: [`docs/API.md`](docs/API.md)
 
 ### Auth
+
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| POST | `/auth/login` | JWT + user object. Rate limited. |
-| GET | `/auth/me` | Current user |
+| POST | `/auth/login` | Returns JWT + user object. Rate limited — brute-force protected. |
+| GET | `/auth/me` | Returns current authenticated user |
 
 ### Documents
+
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/documents` | List (role-filtered) |
-| POST | `/documents` | Create |
-| GET | `/documents/:id` | Detail |
-| PATCH | `/documents/:id` | Update draft (403 if finalised) |
-| POST | `/documents/:id/submit` | Submit — validates all RAPID rules |
-| POST | `/documents/:id/approve` | Approve (approver role) |
-| POST | `/documents/:id/reject` | Reject (approver role) |
-| POST | `/documents/:id/finalise` | Finalise — creates ledger entry |
-| POST | `/documents/:id/version` | New version |
-| POST | `/documents/:id/execution-complete` | Mark complete (performer role) |
+| GET | `/documents` | List documents (role-filtered) |
+| POST | `/documents` | Create new RAPID document |
+| GET | `/documents/:id` | Full document detail with role assignments, approvals, evidence |
+| PATCH | `/documents/:id` | Update draft — rejected with 403 if finalised |
+| POST | `/documents/:id/submit` | Submit — validates all RAPID rules server-side |
+| POST | `/documents/:id/recommend` | Submit recommendation notes (R role required) |
+| POST | `/documents/:id/input` | Submit input notes and expertise (I role required) |
+| POST | `/documents/:id/approve` | Approve (A role required) |
+| POST | `/documents/:id/reject` | Reject (A role required) |
+| POST | `/documents/:id/needs-changes` | Request changes (A role required) |
+| POST | `/documents/:id/finalise` | Finalise — creates immutable ledger entry |
+| POST | `/documents/:id/version` | Create new version from finalised document |
+| POST | `/documents/:id/execution-complete` | Mark complete (P role required) |
 
 ### Ledger
+
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/ledger` | All immutable entries |
-| GET | `/ledger/:id` | Single entry |
+| GET | `/ledger` | All immutable finalised entries |
+| GET | `/ledger/:id` | Single ledger entry |
 
 ### Audit Log
+
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/audit` | All events (admin/auditor only) |
+| GET | `/audit` | All audit events (admin/auditor only) |
 
 ### Users (Admin)
+
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/users` | List |
-| POST | `/users` | Create |
-| PATCH | `/users/:id` | Update |
-| PATCH | `/users/:id/deactivate` | Deactivate |
+| GET | `/users` | List all users |
+| POST | `/users` | Create new user |
+| PATCH | `/users/:id` | Update user |
+| PATCH | `/users/:id/deactivate` | Deactivate user |
 
 ---
 
-## 13. Known Limitations
+## 16. Known Limitations
 
-**Multi-actor E2E in CI** — The full create → approve → finalise flow requires three separate authenticated sessions, which is correct RBAC behaviour. A single Playwright session cannot walk this flow. The 12 other E2E tests pass reliably in CI. Details: [`apps/web/e2e/README.md`](apps/web/e2e/README.md)
+**Multi-actor E2E in CI** — The full create → approve → finalise flow requires three separate authenticated sessions — correct RBAC behaviour, not a bug. A single Playwright session cannot walk this flow because a user cannot finalise their own submission. The 12 other E2E tests pass reliably in CI. Full explanation: [`apps/web/e2e/README.md`](apps/web/e2e/README.md)
 
-**Evidence is URL-based** — Direct file upload (S3/R2) not implemented.
+**Evidence is URL-based** — Evidence items store a URL or file reference string. Direct file upload to object storage (S3, Cloudflare R2) is not implemented. Planned future improvement.
 
-**No email notifications** — Approvers are not notified on assignment.
+**No email notifications** — Approvers and decision owners are not notified by email when assigned or when a document is submitted. Notification integration is a future improvement.
 
-**Railway cold start** — Free tier sleeps after inactivity. Hit `/health` before demoing.
+**Railway cold start** — The Railway API server (free tier) sleeps after inactivity. The first request may take 3–5 seconds. Always hit `/health` before demoing.
 
 ---
 
-## 14. Future Improvements
+## 17. Future Improvements
 
-- [ ] HttpOnly cookie auth (XSS hardening)
+- [ ] HttpOnly cookie auth (replace localStorage JWT for XSS hardening)
 - [ ] File upload for evidence (S3 / Cloudflare R2)
-- [ ] Email notifications (SendGrid / Resend)
-- [ ] Dashboard analytics
-- [ ] PDF export of finalised documents
-- [ ] Slack / Teams integration
-- [ ] Multi-organisation support
-- [ ] Two-factor authentication
-- [ ] Pagination on lists
+- [ ] Email notifications for approvals and assignments (SendGrid / Resend)
+- [ ] Dashboard analytics — decisions by risk level, approval times, department
+- [ ] PDF export of finalised RAPID documents
+- [ ] Slack / Teams integration for governance notifications
+- [ ] Multi-organisation support with workspace isolation
+- [ ] Two-factor authentication for admin accounts
+- [ ] Pagination on document and audit log lists
 
 ---
 
-## Documentation
+## 📄 Documentation
 
 | Document | Description |
 |----------|-------------|
-| [HLD](docs/HLD.md) | High-level design |
-| [LLD](docs/LLD.md) | Low-level design: schema, API contracts, service interfaces |
-| [GHERKIN](docs/GHERKIN.md) | BDD scenarios |
-| [API Reference](docs/API.md) | Full API docs with examples |
-| [Test Plan](docs/TEST_PLAN.md) | Test strategy and coverage matrix |
+| [HLD](docs/HLD.md) | High-level system design and component diagram |
+| [LLD](docs/LLD.md) | Low-level design: DB schema, API contracts, service interfaces |
+| [GHERKIN](docs/GHERKIN.md) | BDD scenarios for all RAPID workflow paths |
+| [API Reference](docs/API.md) | Full API endpoint documentation with request/response examples |
+| [Test Plan](docs/TEST_PLAN.md) | Test strategy, coverage matrix, and test environment setup |
 
 ---
 
-*Built by Harshini Ramasamy — First Year CSE, NIT Warangal · Internship Project, May 2026*
+<div align="center">
+
+*Built by **Harshini Ramasamy** — First Year CSE, NIT Warangal · Internship Project, May 2026*
 
 *TypeScript · Next.js 16 · Elysia · Prisma 5 · PostgreSQL · npm workspaces · Vitest · Playwright · GitHub Actions · Railway · Vercel*
+
+</div>
