@@ -243,6 +243,7 @@ export const documentRoutes = new Elysia({ prefix: "/documents" })
   })
 
   // ── DELETE /documents/:id — Admin only, removes draft/corrupted docs ──────────
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
   .delete("/:id", async ({ user, params, set }: any) => {
     if (user.role !== "admin") { set.status = 403; return Errors.forbidden("Admin only"); }
     const doc = await prisma.rapidDocument.findUnique({ where: { id: params.id } });
