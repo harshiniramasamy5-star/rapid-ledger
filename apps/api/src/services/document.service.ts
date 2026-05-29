@@ -142,7 +142,7 @@ export async function createDocumentVersion(documentId: string, actorId: string)
       complianceImpact: original.complianceImpact, department: original.department, deadline: original.deadline,
       businessContext: original.businessContext, problemStatement: original.problemStatement,
       proposedDecision: original.proposedDecision, alternativesConsidered: original.alternativesConsidered,
-      createdById: actorId, status: "draft",
+      createdById: original.createdById, status: "draft",
     },
     include: INCLUDE,
   });
