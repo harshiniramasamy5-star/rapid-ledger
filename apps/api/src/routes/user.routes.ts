@@ -70,4 +70,29 @@ export const userRoutes = new Elysia({ prefix: "/users" })
     await createAuditLog(user.id, "user_updated", "User", params.id, { changes: JSON.stringify(parsed.data) });
 
     return updated;
+  })
+
+  // ── POST /users/:id/unlock ────────────────────────────────────────────────
+  .post("/:id/unlock", async ({ user, params, set }) => {
+    requirePermission(user, "user:update", set);
+
+    const target = await prisma.user.findUnique({ where: { id: params.id } });
+    if (!target) { set.status = 404; return Errors.notFound("User"); }
+
+    if (target.failedLogins === 0 && !target.lockedUntil) {
+      set.status = 400;
+      return Errors.badRequest("Account is not locked");
+    }
+
+    await prisma.user.update({
+      where: { id: params.id },
+      data: { failedLogins: 0, lockedUntil: null },
+    });
+
+    await createAuditLog(user.id, "user_updated", "User", params.id, {
+      action: "account_unlocked",
+      targetEmail: target.email,
+    });
+
+    return { success: true, message: `Account for ${target.email} has been unlocked` };
   });
