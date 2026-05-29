@@ -241,7 +241,7 @@ export default function DocumentDetailPage() {
                         <AlertDialogAction className="bg-emerald-600 hover:bg-emerald-700" onClick={() => handle(async () => {
                           const { res, data } = await apiPost(`/documents/${params.id}/approve`, { comment: approvalNotes });
                           if (res.ok) { toast.success("Approved!"); setMyApproval(null); await load(); }
-                          else toast.error(data?.error?.message ?? "Failed");
+                          else toast.error((data as any)?.error?.message ?? "Failed");
                         })}>Confirm Approve</AlertDialogAction>
                       </AlertDialogFooter>
                     </AlertDialogContent>
@@ -250,7 +250,7 @@ export default function DocumentDetailPage() {
                     onClick={() => handle(async () => {
                       const { res, data } = await apiPost(`/documents/${params.id}/needs-changes`, { comment: approvalNotes });
                       if (res.ok) { toast.success("Changes requested."); setMyApproval(null); await load(); }
-                      else toast.error(data?.error?.message ?? "Failed");
+                      else toast.error((data as any)?.error?.message ?? "Failed");
                     })}>
                     Request Changes
                   </Button>
@@ -266,7 +266,7 @@ export default function DocumentDetailPage() {
                         <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={() => handle(async () => {
                           const { res, data } = await apiPost(`/documents/${params.id}/reject`, { comment: approvalNotes });
                           if (res.ok) { toast.success("Rejected."); setMyApproval(null); await load(); }
-                          else toast.error(data?.error?.message ?? "Failed");
+                          else toast.error((data as any)?.error?.message ?? "Failed");
                         })}>Confirm Reject</AlertDialogAction>
                       </AlertDialogFooter>
                     </AlertDialogContent>
@@ -288,7 +288,7 @@ export default function DocumentDetailPage() {
                     if (!recommendNotes.trim()) { toast.error("Recommendation notes are required"); return; }
                     const { res, data } = await apiPost(`/documents/${params.id}/recommend`, { notes: recommendNotes });
                     if (res.ok) { toast.success("Recommendation submitted!"); setRecommendNotes(""); await load(); }
-                    else toast.error(data?.error?.message ?? "Failed to submit recommendation");
+                    else toast.error((data as any)?.error?.message ?? "Failed to submit recommendation");
                   })}>
                   {acting ? "Submitting..." : "Submit Recommendation"}
                 </Button>
@@ -315,7 +315,7 @@ export default function DocumentDetailPage() {
                     if (!inputNotes.trim()) { toast.error("Input notes are required"); return; }
                     const { res, data } = await apiPost(`/documents/${params.id}/input`, { notes: inputNotes });
                     if (res.ok) { toast.success("Input submitted!"); setInputNotes(""); await load(); }
-                    else toast.error(data?.error?.message ?? "Failed to submit input");
+                    else toast.error((data as any)?.error?.message ?? "Failed to submit input");
                   })}>
                   {acting ? "Submitting..." : "Submit Input"}
                 </Button>
@@ -344,7 +344,7 @@ export default function DocumentDetailPage() {
                     <AlertDialogAction className="bg-indigo-600 hover:bg-indigo-700" onClick={() => handle(async () => {
                       const { res, data } = await apiPost(`/documents/${params.id}/finalize`);
                       if (res.ok) { toast.success("Document finalized and added to Ledger!"); await load(); }
-                      else toast.error(data?.error?.message ?? "Finalize failed");
+                      else toast.error((data as any)?.error?.message ?? "Finalize failed");
                     })}>Confirm Finalize</AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>
@@ -361,7 +361,7 @@ export default function DocumentDetailPage() {
                     if (!execNotes.trim()) { toast.error("Execution notes are required"); return; }
                     const { res, data } = await apiPost(`/documents/${params.id}/execution-complete`, { notes: execNotes });
                     if (res.ok) { toast.success("Execution marked complete!"); await load(); }
-                    else toast.error(data?.error?.message ?? "Failed");
+                    else toast.error((data as any)?.error?.message ?? "Failed");
                   })}>
                   {acting ? "Saving..." : "Mark Execution Complete"}
                 </Button>
@@ -373,7 +373,7 @@ export default function DocumentDetailPage() {
                 onClick={() => handle(async () => {
                   const { res, data } = await apiPost(`/documents/${params.id}/version`);
                   if (res.ok) { toast.success("New version created!"); router.push(`/documents/${data.id}`); }
-                  else toast.error(data?.error?.message ?? "Failed");
+                  else toast.error((data as any)?.error?.message ?? "Failed");
                 })}>
                 {acting ? "Creating..." : `Create New Version (v${(doc.version ?? 1) + 1})`}
               </Button>
