@@ -97,7 +97,7 @@ export default function DocumentDetailPage() {
   const canSubmit   = isCreator && ["draft","needs_changes"].includes(status);
   const canEdit     = isCreator && ["draft","needs_changes"].includes(status); // EDIT_BUTTON_ADDED
   const canAgree    = !!myApproval && ["submitted","awaiting_agreement"].includes(status);
-  const canFinalize = myRole?.roleType === "decide" && status === "approved";
+  const canFinalize = me?.role === "admin" && status === "approved";
 
   async function exportPdf() {
     const token = localStorage.getItem("rapid_token");
@@ -115,7 +115,7 @@ export default function DocumentDetailPage() {
     URL.revokeObjectURL(url);
   }
   const canComplete = myRole?.roleType === "perform" && status === "finalized";
-  const canVersion  = myRole?.roleType === "decide" && ["finalized","execution_complete"].includes(status);
+  const canVersion  = me?.role === "admin" && ["finalized","execution_complete"].includes(status);
   const isRecommenderWaiting = myRole?.roleType === "recommend" && !!doc?.recommendationNotes && status === "awaiting_agreement";
   const canInput        = myRole?.roleType === "input" && !doc?.inputNotes && ["draft","needs_changes","submitted","awaiting_agreement"].includes(status);
   const isInputWaiting  = myRole?.roleType === "input" && !!doc?.inputNotes;

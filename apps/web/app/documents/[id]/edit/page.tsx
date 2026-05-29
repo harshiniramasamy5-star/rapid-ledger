@@ -19,12 +19,30 @@ export default function EditDocumentPage() {
   useEffect(() => {
     (async () => {
       const token = localStorage.getItem("rapid_token");
-      const res = await fetch(`${API}/documents/${params.id}`, { headers: { Authorization: `Bearer ${token}` } });
-      const data = await res.json();
-      setDoc(data?.data ?? data);
+      if (!token) { router.replace("/login"); return; }
+
+      const [docRes, meRes] = await Promise.all([
+        fetch(`${API}/documents/${params.id}`, { headers: { Authorization: `Bearer ${token}` } }),
+        fetch(`${API}/auth/me`,               { headers: { Authorization: `Bearer ${token}` } }),
+      ]);
+      const docData = await docRes.json();
+      const meData  = await meRes.json();
+      const d = docData?.data ?? docData;
+      const myId = meData?.id ?? "";
+
+      const creatorId    = typeof d?.createdBy === "object" ? d?.createdBy?.id : d?.createdBy;
+      const editableStatus = ["draft", "needs_changes"].includes(d?.status ?? "");
+
+      if (!editableStatus || creatorId !== myId) {
+        toast.error("You do not have permission to edit this document");
+        router.replace(`/documents/${params.id}`);
+        return;
+      }
+
+      setDoc(d);
       setLoading(false);
     })();
-  }, [params.id]);
+  }, [params.id, router]);
 
   async function save() {
     setSaving(true);
@@ -49,13 +67,13 @@ export default function EditDocumentPage() {
       toast.success("Document updated");
       router.push(`/documents/${params.id}`);
     } else {
-      const data = await res.json().catch(() => ({}));
-      toast.error(data?.error?.message ?? "Failed to update");
+      const err = await res.json().catch(() => ({}));
+      toast.error(err?.error?.message ?? "Failed to update");
     }
   }
 
-  if (loading) return <div className="p-8">Loading...</div>;
-  if (!doc) return <div className="p-8">Document not found</div>;
+  if (loading) return <div className="p-8 text-slate-500">Loading...</div>;
+  if (!doc)    return <div className="p-8 text-slate-500">Document not found</div>;
 
   return (
     <div className="max-w-3xl mx-auto p-8 space-y-6">
@@ -73,12 +91,22 @@ export default function EditDocumentPage() {
         <div><Label>Department</Label><Input value={doc.department ?? ""} onChange={e => setDoc({...doc, department: e.target.value})} /></div>
         <div><Label>Risk Level</Label>
           <select value={doc.riskLevel ?? "low"} onChange={e => setDoc({...doc, riskLevel: e.target.value})} className="w-full border rounded px-3 py-2">
-            <option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option><option value="critical">Critical</option>
+            <option value="low">Low</option>
+            <option value="medium">Medium</option>
+            <option value="high">High</option>
+            <option value="critical">Critical</option>
           </select>
         </div>
-        <div><label className="flex items-center gap-2"><input type="checkbox" checked={!!doc.complianceImpact} onChange={e => setDoc({...doc, complianceImpact: e.target.checked})} /> Compliance Impact</label></div>
+        <div>
+          <label className="flex items-center gap-2">
+            <input type="checkbox" checked={!!doc.complianceImpact} onChange={e => setDoc({...doc, complianceImpact: e.target.checked})} />
+            Compliance Impact
+          </label>
+        </div>
       </div>
-      <Button onClick={save} disabled={saving} className="w-full">{saving ? "Saving..." : "Save Changes"}</Button>
+      <Button onClick={save} disabled={saving} className="w-full">
+        {saving ? "Saving..." : "Save Changes"}
+      </Button>
     </div>
   );
 }
