@@ -10,6 +10,16 @@ interface DocumentFilters {
   riskLevel?: RiskLevel;
   department?: string;
   search?: string;
+  page?: number;
+  limit?: number;
+}
+
+export interface PaginatedDocuments {
+  data: RapidDocument[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
 }
 
 export function useDocuments(filters?: DocumentFilters) {
@@ -18,11 +28,13 @@ export function useDocuments(filters?: DocumentFilters) {
   if (filters?.riskLevel) params.set("riskLevel", filters.riskLevel);
   if (filters?.department) params.set("department", filters.department);
   if (filters?.search) params.set("search", filters.search);
+  if (filters?.page) params.set("page", String(filters.page));
+  if (filters?.limit) params.set("limit", String(filters.limit));
   const query = params.toString();
 
   return useQuery({
     queryKey: [...DOCUMENTS_KEY, filters],
-    queryFn: () => api.get<RapidDocument[]>(`/documents${query ? `?${query}` : ""}`),
+    queryFn: () => api.get<PaginatedDocuments>(`/documents${query ? `?${query}` : ""}`),
   });
 }
 

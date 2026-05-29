@@ -27,13 +27,14 @@ export const documentRoutes = new Elysia({ prefix: "/documents" })
   // ── GET /documents ────────────────────────────────────────────────────────
   .get("/", async ({ user, query, set }) => {
     requirePermission(user, "document:read", set);
-    const docs = await listDocuments({
+    return listDocuments({
       status: query.status as DocumentStatus | undefined,
       department: query.department,
       riskLevel: query.riskLevel,
       search: query.search,
+      page: query.page ? Number(query.page) : 1,
+      limit: query.limit ? Number(query.limit) : 20,
     });
-    return docs;
   })
 
   // ── POST /documents ───────────────────────────────────────────────────────

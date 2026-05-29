@@ -150,7 +150,11 @@ describe("Documents CRUD", () => {
   it("GET /documents returns 200 with list", async () => {
     const { status, body } = await req("GET", "/documents", { token: creatorToken });
     expect(status).toBe(200);
-    expect(Array.isArray(body)).toBe(true);
+    const paginated = body as { data: unknown[]; total: number; page: number; totalPages: number };
+    expect(Array.isArray(paginated.data)).toBe(true);
+    expect(typeof paginated.total).toBe("number");
+    expect(typeof paginated.page).toBe("number");
+    expect(typeof paginated.totalPages).toBe("number");
   });
 
   it("GET /documents/:id returns 200 for existing doc", async () => {
@@ -175,7 +179,11 @@ describe("GET /ledger", () => {
     if (!adminToken) return;
     const { status, body } = await req("GET", "/ledger", { token: adminToken });
     expect(status).toBe(200);
-    expect(Array.isArray(body)).toBe(true);
+    const paginated = body as { data: unknown[]; total: number; page: number; totalPages: number };
+    expect(Array.isArray(paginated.data)).toBe(true);
+    expect(typeof paginated.total).toBe("number");
+    expect(typeof paginated.page).toBe("number");
+    expect(typeof paginated.totalPages).toBe("number");
   });
 
   it("returns 401 without token", async () => {

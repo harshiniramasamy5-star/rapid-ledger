@@ -25,7 +25,7 @@ export async function finalizeDocument(documentId: string, actorId: string) {
   return { ok: true as const, document: updated, ledgerEntry };
 }
 
-export async function getLedgerEntries(options?: { search?: string; limit?: number; offset?: number }) {
+async function fetchLedgerEntries(options?: { search?: string; limit?: number; offset?: number }) {
   const { search, limit = 100, offset = 0 } = options ?? {};
   return prisma.ledgerEntry.findMany({
     where: search ? { OR: [{ title: { contains: search, mode: "insensitive" } }] } : undefined,
@@ -34,8 +34,24 @@ export async function getLedgerEntries(options?: { search?: string; limit?: numb
   });
 }
 
+export async function getLedgerEntries(options?: { search?: string; page?: number; limit?: number }) {
+  const page = Math.max(1, options?.page ?? 1);
+  const limit = Math.min(100, Math.max(1, options?.limit ?? 20));
+  const skip = (page - 1) * limit;
+  const where = options?.search ? { OR: [{ title: { contains: options.search, mode: "insensitive" as const } }] } : undefined;
+  const [data, total] = await Promise.all([
+    prisma.ledgerEntry.findMany({
+      where,
+      include: { document: { include: { roleAssignments: { include: { user: { select: { id: true, name: true, email: true } } } } } } },
+      orderBy: { finalizedAt: "desc" }, take: limit, skip,
+    }),
+    prisma.ledgerEntry.count({ where }),
+  ]);
+  return { data, total, page, limit, totalPages: Math.ceil(total / limit) };
+}
+
 export async function exportLedgerCsv(): Promise<string> {
-  const entries = await getLedgerEntries({ limit: 10000 });
+  const entries = await fetchLedgerEntries({ limit: 10000 });
   const rows = entries.map((e: { documentCode: string; version: number; title: string; finalizedBy: string; finalizedAt: Date }) => [e.documentCode, e.version, `"${e.title.replace(/"/g, '""')}"`, e.finalizedBy, e.finalizedAt.toISOString()].join(","));
   return ["documentCode,version,title,finalizedBy,finalizedAt", ...rows].join("\n");
 }

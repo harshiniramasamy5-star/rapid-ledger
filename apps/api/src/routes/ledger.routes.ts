@@ -7,7 +7,7 @@ export const ledgerRoutes = new Elysia({ prefix: "/ledger" })
   .use(authMiddleware)
   .get("/", async ({ user, query, set }) => {
     requirePermission(user, "ledger:read", set);
-    return getLedgerEntries({ search: query.search, limit: query.limit ? Number(query.limit) : undefined, offset: query.offset ? Number(query.offset) : undefined });
+    return getLedgerEntries({ search: query.search, limit: query.limit ? Number(query.limit) : undefined, page: query.page ? Number(query.page) : 1 });
   })
   .get("/export.csv", async ({ user, set }) => {
     requirePermission(user, "ledger:read", set);

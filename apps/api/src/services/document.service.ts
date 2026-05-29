@@ -1,4 +1,5 @@
 import { prisma } from "../lib/prisma";
+import type { Prisma } from "@prisma/client";
 import { nextDocumentCode } from "../lib/documentCode";
 import { validateDocument } from "./validation.service";
 import { createAuditLog } from "./audit.service";
@@ -13,17 +14,42 @@ const INCLUDE = {
   ledgerEntries: true,
 } as const;
 
-export const listDocuments = (filters?: { status?: DocumentStatus; department?: string; riskLevel?: string; search?: string }) =>
-  prisma.rapidDocument.findMany({
-    where: {
-      ...(filters?.status ? { status: filters.status } : {}),
-      ...(filters?.department ? { department: filters.department } : {}),
-      ...(filters?.riskLevel ? { riskLevel: filters.riskLevel as "low" | "medium" | "high" | "critical" } : {}),
-      ...(filters?.search ? { OR: [{ title: { contains: filters.search, mode: "insensitive" } }, { documentCode: { contains: filters.search, mode: "insensitive" } }] } : {}),
-    },
-    include: INCLUDE,
-    orderBy: { createdAt: "desc" },
-  });
+export interface ListDocumentsOptions {
+  status?: DocumentStatus;
+  department?: string;
+  riskLevel?: string;
+  search?: string;
+  page?: number;
+  limit?: number;
+}
+
+export interface PaginatedDocuments {
+  data: Awaited<ReturnType<typeof prisma.rapidDocument.findMany>>;
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
+export async function listDocuments(filters?: ListDocumentsOptions): Promise<PaginatedDocuments> {
+  const page = Math.max(1, filters?.page ?? 1);
+  const limit = Math.min(100, Math.max(1, filters?.limit ?? 20));
+  const skip = (page - 1) * limit;
+
+  const where: Prisma.RapidDocumentWhereInput = {
+    ...(filters?.status ? { status: filters.status } : {}),
+    ...(filters?.department ? { department: filters.department } : {}),
+    ...(filters?.riskLevel ? { riskLevel: filters.riskLevel as "low" | "medium" | "high" | "critical" } : {}),
+    ...(filters?.search ? { OR: [{ title: { contains: filters.search, mode: "insensitive" } }, { documentCode: { contains: filters.search, mode: "insensitive" } }] } : {}),
+  };
+
+  const [data, total] = await Promise.all([
+    prisma.rapidDocument.findMany({ where, include: INCLUDE, orderBy: { createdAt: "desc" }, take: limit, skip }),
+    prisma.rapidDocument.count({ where }),
+  ]);
+
+  return { data, total, page, limit, totalPages: Math.ceil(total / limit) };
+}
 
 export const getDocument = (id: string) => prisma.rapidDocument.findUnique({ where: { id }, include: INCLUDE });
 
