@@ -59,8 +59,8 @@ export default function AuditLogPage() {
       .then(r => r.json()).then(setMe).catch(() => {});
 
     const url = filter === "all"
-      ? `${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001"}/audit-log`
-      : `${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001"}/audit-log?action=${filter}`;
+      ? `${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001"}/audit`
+      : `${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001"}/audit?action=${filter}`;
 
     fetch(url, { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.json())
