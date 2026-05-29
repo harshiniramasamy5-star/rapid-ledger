@@ -204,8 +204,8 @@ export default function DocumentDetailPage() {
           <CardContent className="space-y-3">
             {canEdit && (
               <Button
-                variant="outline"
-                className="w-full mb-2"
+                variant="default"
+                className="w-full mb-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold"
                 onClick={() => router.push(`/documents/${params.id}/edit`)}
               >
                 Edit Document
