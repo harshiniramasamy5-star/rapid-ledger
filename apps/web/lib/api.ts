@@ -19,16 +19,49 @@ export async function apiFetch(path: string, options?: RequestInit) {
       ...options?.headers,
     },
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ message: "Request failed" }));
-    throw new Error(err?.error?.message ?? err?.message ?? "Request failed");
+
+  // Safe response parsing
+  let data: any = null;
+
+  const text = await res.text();
+
+  if (text) {
+    try {
+      data = JSON.parse(text);
+    } catch {
+      data = text;
+    }
   }
-  return res.json();
+
+  if (!res.ok) {
+    throw new Error(
+      data?.error?.message ??
+      data?.message ??
+      "Request failed"
+    );
+  }
+
+  return data;
 }
 
 export const api = {
-  get: <T>(path: string) => apiFetch(path) as Promise<T>,
-  post: <T>(path: string, body?: unknown) => apiFetch(path, { method: "POST", body: JSON.stringify(body) }) as Promise<T>,
-  patch: <T>(path: string, body?: unknown) => apiFetch(path, { method: "PATCH", body: JSON.stringify(body) }) as Promise<T>,
-  delete: <T>(path: string) => apiFetch(path, { method: "DELETE" }) as Promise<T>,
+  get: <T>(path: string) =>
+    apiFetch(path) as Promise<T>,
+
+  post: <T>(path: string, body?: unknown) =>
+    apiFetch(path, {
+      method: "POST",
+      body: body ? JSON.stringify(body) : undefined,
+    }) as Promise<T>,
+
+  patch: <T>(path: string, body?: unknown) =>
+    apiFetch(path, {
+      method: "PATCH",
+      body: body ? JSON.stringify(body) : undefined,
+    }) as Promise<T>,
+
+  delete: <T>(path: string) =>
+    apiFetch(path, {
+      method: "DELETE",
+    }) as Promise<T>,
 };

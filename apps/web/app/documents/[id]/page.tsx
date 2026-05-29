@@ -94,7 +94,8 @@ export default function DocumentDetailPage() {
   const isCreator   = (typeof doc?.createdBy === "object" ? (doc?.createdBy as ApiUser)?.id : doc?.createdBy) === myId;
   const status      = doc?.status ?? "";
 
-  const canSubmit   = isCreator && status === "draft";
+  const canSubmit   = isCreator && ["draft","needs_changes"].includes(status);
+  const canEdit     = isCreator && ["draft","needs_changes"].includes(status); // EDIT_BUTTON_ADDED
   const canAgree    = !!myApproval && ["submitted","awaiting_agreement"].includes(status);
   const canFinalize = myRole?.roleType === "decide" && status === "approved";
 
@@ -201,11 +202,21 @@ export default function DocumentDetailPage() {
             <CardTitle className="text-base text-slate-900">Actions</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
+            {canEdit && (
+              <Button
+                variant="outline"
+                className="w-full mb-2"
+                onClick={() => router.push(`/documents/${params.id}/edit`)}
+              >
+                Edit Document
+              </Button>
+            )}
             {canSubmit && (
               <Button className="w-full h-11 font-semibold" disabled={acting}
                 onClick={() => handle(async () => {
                   const { res, data } = await apiPost(`/documents/${params.id}/submit`);
                   if (res.ok) { toast.success("Document submitted for approval!"); await load(); }
+                  else { toast.error(data?.error?.message ?? data?.message ?? "Failed to submit document"); }
                   else toast.error(data?.error?.message ?? "Submit failed");
                 })}>
                 {acting ? "Submitting..." : "Submit Document for Approval"}
@@ -368,7 +379,7 @@ export default function DocumentDetailPage() {
               </Button>
             )}
 
-            {!canSubmit && !canAgree && !canFinalize && !canComplete && !canVersion && !canRecommend && !isRecommenderWaiting && !canInput && !isInputWaiting && (
+            {!canEdit && !canSubmit && !canAgree && !canFinalize && !canComplete && !canVersion && !canRecommend && !isRecommenderWaiting && !canInput && !isInputWaiting && (
               <p className="text-sm text-slate-400 text-center py-2">
                 No actions available for your role at this stage.
               </p>

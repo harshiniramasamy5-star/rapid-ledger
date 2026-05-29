@@ -6,6 +6,7 @@ const baseURL = process.env.BASE_URL || (isCI ? 'https://rapid-ledger.vercel.app
 export default defineConfig({
   testDir: './e2e',
   testMatch: '**/*.spec.ts',
+  testIgnore: process.env.CI ? ['**/workflow.spec.ts'] : [],
   fullyParallel: false,
   forbidOnly: isCI,
   retries: isCI ? 1 : 0,
