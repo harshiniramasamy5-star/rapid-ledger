@@ -95,7 +95,7 @@ export default function DocumentDetailPage() {
   const status      = doc?.status ?? "";
 
   const canSubmit   = isCreator && ["draft","needs_changes"].includes(status);
-  const canEdit     = isCreator && ["draft","needs_changes"].includes(status); // EDIT_BUTTON_ADDED
+  const canEdit = ["draft","needs_changes"].includes(status) && me?.role === "creator";
   const canAgree    = !!myApproval && ["submitted","awaiting_agreement"].includes(status);
   const canFinalize = me?.role === "admin" && status === "approved";
 
