@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState, useCallback } from "react";
+import { AnalyticsCharts } from "@/components/analytics-charts";
 import type { ApiDocument, ApiUser } from "@/lib/types";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -194,6 +195,8 @@ export default function DashboardPage() {
             </Card>
           ))}
         </div>
+
+        <AnalyticsCharts />
 
         <Card className="border-slate-200 shadow-sm">
           <CardHeader className="pb-2">
