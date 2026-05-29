@@ -372,7 +372,7 @@ export default function DocumentDetailPage() {
               <Button className="w-full h-11 bg-purple-600 hover:bg-purple-700 text-white font-semibold" disabled={acting}
                 onClick={() => handle(async () => {
                   const { res, data } = await apiPost(`/documents/${params.id}/version`);
-                  if (res.ok) { toast.success("New version created!"); router.push(`/documents/${data.id}`); }
+                  if (res.ok) { toast.success("New version created!"); router.push(`/documents/${(data as any)?.id}`); }
                   else toast.error((data as any)?.error?.message ?? "Failed");
                 })}>
                 {acting ? "Creating..." : `Create New Version (v${(doc.version ?? 1) + 1})`}
