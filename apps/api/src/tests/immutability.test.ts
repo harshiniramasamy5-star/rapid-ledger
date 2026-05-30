@@ -14,14 +14,14 @@ async function login(email: string) {
 
 describe('Finalized document immutability', () => {
   it('cannot PATCH a finalized document', async () => {
-    const token = await login('admin@rapid.dev');
+    const token = await login('admin@rapid.com');
 
     // Get list of documents and find a finalized one
     const listRes = await fetch(`${API}/documents`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     const docs = await listRes.json();
-    const finalized = (Array.isArray(docs) ? docs : docs.documents ?? [])
+    const finalized = (Array.isArray(docs) ? docs : docs.data ?? [])
       .find((d: any) => d.status === 'finalized');
 
     if (!finalized) {
