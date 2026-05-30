@@ -641,6 +641,8 @@ RAPID Ledger implements multiple layers of authentication and access security:
 ---
 
 ## ⚠️ Known Limitations
+
+- **Document Ownership (canEdit)**: Edit access requires both owning the document AND the document being in draft/needs_changes status. Cross-creator edit attempts return 403 at the API level.
 - **Audit Log Enforcement**: Audit logs are enforced at the service layer. Direct Prisma writes bypass the service layer and would not generate audit records. DB-level triggers would be required for production hardening.
 - **JWT Storage**: Tokens stored in localStorage for development velocity. Production hardening requires httpOnly SameSite=Strict cookies. Deliberate known trade-off.
 - **Rate Limiter**: In-memory rate limiter resets on server restart. Railway free tier cold starts reset brute-force protection. Redis-backed limiter required for production.

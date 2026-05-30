@@ -6,42 +6,97 @@ async function main() {
   console.log("Seeding database...");
   const pw = await bcrypt.hash("password123", 10);
 
-  const creator = await prisma.user.upsert({ where: { email: "creator@rapid.com" }, update: {}, create: { name: "Charlie Creator", email: "creator@rapid.com", passwordHash: pw, role: "creator", department: "Product" } });
-  await prisma.user.upsert({ where: { email: "admin@rapid.com" }, update: {}, create: { name: "Alice Admin", email: "admin@rapid.com", passwordHash: pw, role: "admin", department: "Engineering" } });
-  const approver = await prisma.user.upsert({ where: { email: "approver@rapid.com" }, update: {}, create: { name: "Sarah Security", email: "approver@rapid.com", passwordHash: pw, role: "approver", department: "Security" } });
-  const decider = await prisma.user.upsert({ where: { email: "decider@rapid.com" }, update: {}, create: { name: "Dana Decide", email: "decider@rapid.com", passwordHash: pw, role: "decision_owner", department: "Engineering" } });
-  const performer = await prisma.user.upsert({ where: { email: "performer@rapid.com" }, update: {}, create: { name: "Pete Perform", email: "performer@rapid.com", passwordHash: pw, role: "performer", department: "Platform" } });
-  await prisma.user.upsert({ where: { email: "auditor@rapid.com" }, update: {}, create: { name: "Arthur Audit", email: "auditor@rapid.com", passwordHash: pw, role: "auditor", department: "Compliance" } });
-  console.log("Created 6 users");
+  // Core users — no auditor, admin is the decider
+  const admin = await prisma.user.upsert({
+    where: { email: "admin@rapid.com" }, update: {},
+    create: { name: "Alice Admin", email: "admin@rapid.com", password: pw, role: "admin", department: "Engineering" }
+  });
+  const creator = await prisma.user.upsert({
+    where: { email: "creator@rapid.com" }, update: {},
+    create: { name: "Carol Creator", email: "creator@rapid.com", password: pw, role: "creator", department: "Product" }
+  });
+  const recommender = await prisma.user.upsert({
+    where: { email: "recommender@rapid.com" }, update: {},
+    create: { name: "Ray Recommender", email: "recommender@rapid.com", password: pw, role: "recommender", department: "Strategy" }
+  });
+  const approver = await prisma.user.upsert({
+    where: { email: "approver@rapid.com" }, update: {},
+    create: { name: "Sarah Approver", email: "approver@rapid.com", password: pw, role: "approver", department: "Security" }
+  });
+  const performer = await prisma.user.upsert({
+    where: { email: "performer@rapid.com" }, update: {},
+    create: { name: "Pete Performer", email: "performer@rapid.com", password: pw, role: "performer", department: "Platform" }
+  });
+  const viewer = await prisma.user.upsert({
+    where: { email: "viewer@rapid.com" }, update: {},
+    create: { name: "Victor Viewer", email: "viewer@rapid.com", password: pw, role: "viewer", department: "Operations" }
+  });
 
+  console.log("Created 6 users (no auditor — admin is the decider)");
+
+  // Seed document
   const doc = await prisma.rapidDocument.upsert({
     where: { documentCode_version: { documentCode: "RAPID-001", version: 1 } },
     update: {},
-    create: { documentCode: "RAPID-001", title: "Migrate deployment approvals from Slack to GitHub PRs", decisionSummary: "Replace ad-hoc Slack message approvals with formal GitHub pull request approval gates.", businessContext: "Production deployments approved via Slack are not auditable.", problemStatement: "Lack of formal approval trail creates compliance risk.", proposedDecision: "Implement GitHub required reviewers on the deploy workflow.", alternativesConsidered: "1. Continue Slack (rejected). 2. Third-party tool (rejected).", riskLevel: "high", complianceImpact: true, department: "Engineering", deadline: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000), status: "draft", version: 1, createdBy: creator.id }
+    create: {
+      documentCode: "RAPID-001",
+      title: "Migrate deployment approvals from Slack to GitHub PRs",
+      decisionSummary: "Replace ad-hoc Slack approvals with formal GitHub PR approval gates.",
+      businessContext: "Production deployments approved via Slack are not auditable.",
+      problemStatement: "Lack of formal approval trail creates compliance risk.",
+      proposedDecision: "Implement GitHub required reviewers on the deploy workflow.",
+      alternativesConsidered: "1. Continue Slack (rejected). 2. Third-party tool (rejected).",
+      riskLevel: "high",
+      complianceImpact: true,
+      department: "Engineering",
+      deadline: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
+      status: "draft",
+      version: 1,
+      createdById: creator.id,
+    }
   });
 
-  await prisma.rapidRoleAssignment.createMany({ skipDuplicates: true, data: [
-    { documentId: doc.id, roleType: "recommend", userId: creator.id },
-    { documentId: doc.id, roleType: "agree",     userId: approver.id },
-    { documentId: doc.id, roleType: "perform",   userId: performer.id },
-    { documentId: doc.id, roleType: "decide",    userId: decider.id },
-  ]});
+  // RAPID role assignments — admin as decide, recommender, approver, performer, viewer as input
+  await prisma.roleAssignment.createMany({
+    skipDuplicates: true,
+    data: [
+      { documentId: doc.id, roleType: "recommend", userId: recommender.id },
+      { documentId: doc.id, roleType: "agree",     userId: approver.id },
+      { documentId: doc.id, roleType: "perform",   userId: performer.id },
+      { documentId: doc.id, roleType: "decide",    userId: admin.id },
+      { documentId: doc.id, roleType: "input",     userId: viewer.id },
+    ]
+  });
 
-  await prisma.evidence.createMany({ skipDuplicates: true, data: [
-    { documentId: doc.id, type: "link", title: "Security policy", urlOrPath: "https://example.com/policy", description: "Deployment approval requirements.", uploadedBy: creator.id },
-    { documentId: doc.id, type: "meeting_note", title: "Architecture review March 2026", description: "Team agreed to move to GitHub approvals.", uploadedBy: creator.id },
-  ]});
+  // Evidence
+  await prisma.evidence.createMany({
+    skipDuplicates: true,
+    data: [
+      { documentId: doc.id, type: "link", title: "Security policy", urlOrPath: "https://example.com/policy", description: "Deployment approval requirements.", uploadedBy: creator.id },
+      { documentId: doc.id, type: "meeting_note", title: "Architecture review", urlOrPath: "https://example.com/notes", description: "Team agreed to move to GitHub approvals.", uploadedBy: creator.id },
+    ]
+  });
 
-  await prisma.auditLog.create({ data: { actorId: creator.id, action: "document_created", objectType: "RapidDocument", objectId: doc.id, documentId: doc.id, details: JSON.stringify({ documentCode: "RAPID-001" }) } });
+  // Audit log
+  await prisma.auditLog.create({
+    data: {
+      userId: creator.id,
+      action: "document_created",
+      entityType: "RapidDocument",
+      entityId: doc.id,
+      documentId: doc.id,
+      details: JSON.stringify({ documentCode: "RAPID-001" })
+    }
+  });
 
-  console.log("Created RAPID-001 with roles and evidence");
+  console.log("Created RAPID-001 with RAPID roles and evidence");
   console.log("\nDemo credentials (password: password123)");
-  console.log("  admin@rapid.com     - Admin");
-  console.log("  creator@rapid.com   - Creator");
-  console.log("  approver@rapid.com  - Approver");
-  console.log("  decider@rapid.com   - Decision Owner");
-  console.log("  performer@rapid.com - Performer");
-  console.log("  auditor@rapid.com   - Auditor");
+  console.log("  admin@rapid.com        - Admin (Decider — king)");
+  console.log("  creator@rapid.com      - Creator");
+  console.log("  recommender@rapid.com  - Recommender");
+  console.log("  approver@rapid.com     - Approver");
+  console.log("  performer@rapid.com    - Performer");
+  console.log("  viewer@rapid.com       - Viewer (Input giver)");
 }
 
-main().catch((e) => { console.error(e); process.exit(1); }).finally(() => prisma.$disconnect());
+main().catch(e => { console.error(e); process.exit(1); }).finally(() => prisma.$disconnect());
