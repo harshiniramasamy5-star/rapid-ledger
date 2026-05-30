@@ -5,7 +5,7 @@
     "buildCommand": "cd apps/api && npm install && npx prisma@5.22.0 generate --schema=../../prisma/schema.prisma"
   },
   "deploy": {
-    "startCommand": "cd apps/api && npx tsx src/index.ts",
+    "startCommand": "cd apps/api && npx prisma@5.22.0 migrate deploy --schema=../../prisma/schema.prisma && npx tsx src/index.ts",
     "healthcheckPath": "/health",
     "restartPolicyType": "ON_FAILURE",
     "healthcheckTimeout": 60
