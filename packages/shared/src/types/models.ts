@@ -21,9 +21,8 @@ export enum UserRole {
   creator = "creator",
   recommender = "recommender",
   approver = "approver",
-  decision_owner = "decision_owner",
   performer = "performer",
-  auditor = "auditor",
+  viewer = "viewer",
 }
 
 export enum AuditAction {
