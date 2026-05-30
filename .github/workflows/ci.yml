@@ -70,6 +70,9 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - name: Warm up Railway API
+        run: curl --retry 5 --retry-delay 5 --retry-connrefused -sf https://rapid-ledger-production.up.railway.app/health || true
+
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
       - name: Run E2E tests
