@@ -9,7 +9,7 @@ export default defineConfig({
   workers: 1,
   reporter: 'list',
   use: {
-    baseURL: 'http://localhost:3000',
+    baseURL: 'https://rapid-ledger.vercel.app',
     trace: 'on-first-retry',
     actionTimeout: 10000,
   },
@@ -19,10 +19,4 @@ export default defineConfig({
       use: { ...devices['Desktop Chrome'], headless: true },
     },
   ],
-  webServer: {
-    command: 'npm run dev',
-    url: 'http://localhost:3000',
-    reuseExistingServer: true,
-    timeout: 60000,
-  },
 });

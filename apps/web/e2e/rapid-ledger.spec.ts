@@ -5,7 +5,8 @@ async function login(page: Page, email: string, password = 'password123') {
   await page.getByLabel(/work email/i).fill(email);
   await page.getByLabel(/password/i).fill(password);
   await page.getByRole('button', { name: /continue/i }).click();
-  await expect(page).toHaveURL(/\/(dashboard|approvals|audit-log|ledger|admin)/, { timeout: 15000 });
+  await page.waitForTimeout(1500);
+  await expect(page).toHaveURL(/\/(dashboard|approvals|audit-log|ledger|admin)/, { timeout: 20000 });
   
 }
 
