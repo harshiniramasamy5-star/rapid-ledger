@@ -218,7 +218,7 @@ model AuditLog {
 Request:
 ```json
 {
-  "email": "admin@rapid.dev",
+  "email": "admin@rapid.com",
   "password": "password123"
 }
 ```
@@ -229,7 +229,7 @@ Response 200:
   "user": {
     "id": "clx...",
     "name": "Alice Admin",
-    "email": "admin@rapid.dev",
+    "email": "admin@rapid.com",
     "role": "admin",
     "department": "Engineering"
   }
@@ -248,7 +248,7 @@ Response 200:
 {
   "id": "clx...",
   "name": "Alice Admin",
-  "email": "admin@rapid.dev",
+  "email": "admin@rapid.com",
   "role": "admin"
 }
 ```
@@ -262,7 +262,7 @@ Request:
 ```json
 {
   "name": "John Doe",
-  "email": "john@rapid.dev",
+  "email": "john@rapid.com",
   "password": "securepassword",
   "role": "creator",
   "department": "Product"
@@ -273,7 +273,7 @@ Response 201:
 {
   "id": "clx...",
   "name": "John Doe",
-  "email": "john@rapid.dev",
+  "email": "john@rapid.com",
   "role": "creator",
   "isActive": true
 }
@@ -786,12 +786,12 @@ Six demo users seeded for local development and evaluation:
 
 | Name | Email | Password | Role |
 |------|-------|----------|------|
-| Alice Admin | admin@rapid.dev | password123 | admin |
-| Charlie Creator | creator@rapid.dev | password123 | creator |
-| Bob Recommender | recommender@rapid.dev | password123 | recommender |
-| Aria Approver | approver@rapid.dev | password123 | approver |
-| Dana Decider | decider@rapid.dev | password123 | decision_owner |
-| Dave Performer | performer@rapid.dev | password123 | performer |
+| Alice Admin | admin@rapid.com | password123 | admin |
+| Charlie Creator | creator@rapid.com | password123 | creator |
+| Bob Recommender | recommender@rapid.com | password123 | recommender |
+| Aria Approver | approver@rapid.com | password123 | approver |
+| Dana Decider | decider@rapid.com | password123 | decision_owner |
+| Dave Performer | performer@rapid.com | password123 | performer |
 
 Sample documents seeded: 2 draft, 1 awaiting agreement, 1 finalized, covering all risk levels.
 

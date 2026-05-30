@@ -6,12 +6,12 @@ async function main() {
   console.log("Seeding database...");
   const pw = await bcrypt.hash("password123", 10);
 
-  const creator = await prisma.user.upsert({ where: { email: "creator@rapid.dev" }, update: {}, create: { name: "Charlie Creator", email: "creator@rapid.dev", passwordHash: pw, role: "creator", department: "Product" } });
-  await prisma.user.upsert({ where: { email: "admin@rapid.dev" }, update: {}, create: { name: "Alice Admin", email: "admin@rapid.dev", passwordHash: pw, role: "admin", department: "Engineering" } });
-  const approver = await prisma.user.upsert({ where: { email: "approver@rapid.dev" }, update: {}, create: { name: "Sarah Security", email: "approver@rapid.dev", passwordHash: pw, role: "approver", department: "Security" } });
-  const decider = await prisma.user.upsert({ where: { email: "decider@rapid.dev" }, update: {}, create: { name: "Dana Decide", email: "decider@rapid.dev", passwordHash: pw, role: "decision_owner", department: "Engineering" } });
-  const performer = await prisma.user.upsert({ where: { email: "performer@rapid.dev" }, update: {}, create: { name: "Pete Perform", email: "performer@rapid.dev", passwordHash: pw, role: "performer", department: "Platform" } });
-  await prisma.user.upsert({ where: { email: "auditor@rapid.dev" }, update: {}, create: { name: "Arthur Audit", email: "auditor@rapid.dev", passwordHash: pw, role: "auditor", department: "Compliance" } });
+  const creator = await prisma.user.upsert({ where: { email: "creator@rapid.com" }, update: {}, create: { name: "Charlie Creator", email: "creator@rapid.com", passwordHash: pw, role: "creator", department: "Product" } });
+  await prisma.user.upsert({ where: { email: "admin@rapid.com" }, update: {}, create: { name: "Alice Admin", email: "admin@rapid.com", passwordHash: pw, role: "admin", department: "Engineering" } });
+  const approver = await prisma.user.upsert({ where: { email: "approver@rapid.com" }, update: {}, create: { name: "Sarah Security", email: "approver@rapid.com", passwordHash: pw, role: "approver", department: "Security" } });
+  const decider = await prisma.user.upsert({ where: { email: "decider@rapid.com" }, update: {}, create: { name: "Dana Decide", email: "decider@rapid.com", passwordHash: pw, role: "decision_owner", department: "Engineering" } });
+  const performer = await prisma.user.upsert({ where: { email: "performer@rapid.com" }, update: {}, create: { name: "Pete Perform", email: "performer@rapid.com", passwordHash: pw, role: "performer", department: "Platform" } });
+  await prisma.user.upsert({ where: { email: "auditor@rapid.com" }, update: {}, create: { name: "Arthur Audit", email: "auditor@rapid.com", passwordHash: pw, role: "auditor", department: "Compliance" } });
   console.log("Created 6 users");
 
   const doc = await prisma.rapidDocument.upsert({
@@ -36,12 +36,12 @@ async function main() {
 
   console.log("Created RAPID-001 with roles and evidence");
   console.log("\nDemo credentials (password: password123)");
-  console.log("  admin@rapid.dev     - Admin");
-  console.log("  creator@rapid.dev   - Creator");
-  console.log("  approver@rapid.dev  - Approver");
-  console.log("  decider@rapid.dev   - Decision Owner");
-  console.log("  performer@rapid.dev - Performer");
-  console.log("  auditor@rapid.dev   - Auditor");
+  console.log("  admin@rapid.com     - Admin");
+  console.log("  creator@rapid.com   - Creator");
+  console.log("  approver@rapid.com  - Approver");
+  console.log("  decider@rapid.com   - Decision Owner");
+  console.log("  performer@rapid.com - Performer");
+  console.log("  auditor@rapid.com   - Auditor");
 }
 
 main().catch((e) => { console.error(e); process.exit(1); }).finally(() => prisma.$disconnect());

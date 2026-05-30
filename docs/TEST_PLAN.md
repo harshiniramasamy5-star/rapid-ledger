@@ -144,12 +144,12 @@ All integration tests use the seeded database accounts:
 
 | Email | Password | Role |
 |---|---|---|
-| admin@rapid.dev | password123 | Admin |
-| creator@rapid.dev | password123 | Creator |
-| approver@rapid.dev | password123 | Approver |
-| approver2@rapid.dev | password123 | Approver |
-| decide@rapid.dev | password123 | Decide owner |
-| viewer@rapid.dev | password123 | Viewer |
+| admin@rapid.com | password123 | Admin |
+| creator@rapid.com | password123 | Creator |
+| approver@rapid.com | password123 | Approver |
+| approver2@rapid.com | password123 | Approver |
+| decide@rapid.com | password123 | Decide owner |
+| viewer@rapid.com | password123 | Viewer |
 
 ---
 
