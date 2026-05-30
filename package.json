@@ -18,8 +18,7 @@
     "db:seed": "tsx prisma/seed.ts",
     "db:studio": "prisma studio --schema=prisma/schema.prisma",
     "db:reset": "prisma migrate reset --schema=prisma/schema.prisma --force && npm run db:seed",
-    "setup": "npm install && npm run db:generate && npm run db:push && npm run db:seed",
-    "postinstall": "prisma generate --schema=prisma/schema.prisma"
+    "setup": "npm install && npm run db:generate && npm run db:push && npm run db:seed"
   },
   "devDependencies": {
     "@prisma/client": "^5.22.0",
