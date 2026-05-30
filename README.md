@@ -632,3 +632,15 @@ RAPID Ledger implements multiple layers of authentication and access security:
 *TypeScript · Next.js 16 · Elysia · Prisma 5 · PostgreSQL · npm workspaces · Vitest · Playwright · GitHub Actions · Railway · Vercel*
 
 </div>
+
+---
+
+## ⚠️ Known Limitations
+
+| Area | Current Behaviour | Production Hardening |
+|------|------------------|---------------------|
+| **Auth token storage** | JWT stored in `localStorage` (XSS-susceptible) | Migrate to `httpOnly`, `SameSite=Strict` cookies |
+| **Token refresh** | 7-day access tokens, no silent refresh | Implement refresh token rotation via `/auth/refresh` |
+| **E2E test scope** | Playwright tests target the deployed Vercel instance | Add `baseURL` override in `playwright.config.ts` for local runs |
+
+> These are deliberate trade-offs for development velocity. They do not affect governance correctness, immutability enforcement, or audit integrity.
