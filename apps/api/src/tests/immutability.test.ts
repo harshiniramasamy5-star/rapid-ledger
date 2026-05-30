@@ -14,7 +14,7 @@ async function login(email: string) {
 
 describe('Finalized document immutability', () => {
   it('cannot PATCH a finalized document', async () => {
-    const token = await login('admin@rapid.com');
+    const token = await login('admin@rapid.dev');
 
     // Get list of documents and find a finalized one
     const listRes = await fetch(`${API}/documents`, {
@@ -22,11 +22,11 @@ describe('Finalized document immutability', () => {
     });
     const docs = await listRes.json();
     const finalized = (Array.isArray(docs) ? docs : docs.documents ?? [])
-      .find((d: any) => d.status === 'FINALIZED');
+      .find((d: any) => d.status === 'finalized');
 
     if (!finalized) {
-      console.warn('No finalized document found in seed — skipping immutability check');
-      return;
+      console.error('IMMUTABILITY TEST CANNOT RUN — no finalized document in seed. Add one.');
+      expect(finalized).toBeDefined(); // Fails loudly — do not silently skip
     }
 
     const patchRes = await fetch(`${API}/documents/${finalized.id}`, {
