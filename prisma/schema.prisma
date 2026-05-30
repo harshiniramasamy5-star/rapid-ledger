@@ -12,7 +12,7 @@ model User {
   email           String           @unique
   name            String
   password        String
-  role            UserRole         @default(viewer)
+  role            String  @default("viewer")
   department      String?
   isActive        Boolean          @default(true)
   failedLogins    Int              @default(0)
@@ -33,8 +33,8 @@ model RapidDocument {
   version                Int              @default(1)
   title                  String
   decisionSummary        String
-  riskLevel              RiskLevel        @default(low)
-  status                 DocumentStatus   @default(draft)
+  riskLevel              String  @default("low")
+  status                 String  @default("draft")
   complianceImpact       Boolean          @default(false)
   businessContext        String?
   problemStatement       String?
@@ -62,7 +62,7 @@ model RapidDocument {
 model RoleAssignment {
   id         String        @id @default(cuid())
   documentId String
-  roleType   RoleType
+  roleType   String
   userId     String
   createdAt  DateTime      @default(now())
   document   RapidDocument @relation(fields: [documentId], references: [id])
@@ -109,10 +109,10 @@ model LedgerEntry {
 model AuditLog {
   id         String         @id @default(cuid())
   userId     String
-  action     AuditAction
+  action     String
   entityType String
   entityId   String
-  details    Json?
+  details    String?
   documentId String?
   createdAt  DateTime       @default(now())
   document   RapidDocument? @relation(fields: [documentId], references: [id])
@@ -129,60 +129,7 @@ model RefreshToken {
   user      User      @relation("UserRefreshTokens", fields: [userId], references: [id], onDelete: Cascade)
 }
 
-enum UserRole {
-  admin
-  creator
-  approver
-  viewer
-  recommender
-  performer
-}
 
-enum DocumentStatus {
-  draft
-  submitted
-  awaiting_agreement
-  approved
-  rejected
-  needs_changes
-  finalized
-  execution_complete
-  document_recommended
-  document_input_provided
-  login_failed
-}
 
-enum RiskLevel {
-  low
-  medium
-  high
-  critical
-}
 
-enum RoleType {
-  recommend
-  agree
-  perform
-  input
-  decide
-}
 
-enum AuditAction {
-  document_created
-  document_submitted
-  document_approved
-  document_rejected
-  document_needs_changes
-  document_finalized
-  document_versioned
-  role_assigned
-  evidence_added
-  user_created
-  user_updated
-  ledger_entry_created
-  login
-  execution_complete
-  document_recommended
-  document_input_provided
-  login_failed
-}
