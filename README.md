@@ -720,7 +720,7 @@ All accounts use password: **`password123`**
 
 These are deliberate architectural trade-offs made for development velocity, documented here for full transparency:
 
-- **JWT Storage**: Tokens are stored in `localStorage` for development simplicity. Production hardening would use `httpOnly SameSite=Strict` cookies to prevent XSS token theft.
+- **JWT Storage**: Tokens are stored in `httpOnly` cookies with `SameSite=Lax` and the `Secure` flag on HTTPS. This prevents XSS token theft.
 
 - **Rate Limiter**: The in-memory rate limiter resets on server restart. On Railway free tier, cold starts reset brute-force protection. A Redis-backed limiter (e.g. `rate-limiter-flexible`) would be required for production.
 
