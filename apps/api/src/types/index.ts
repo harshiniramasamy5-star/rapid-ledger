@@ -51,4 +51,3 @@ export interface AuditDetails {
 }
 
 export type { User, RapidDocument, RoleAssignment, Approval, LedgerEntry, AuditLog };
-export type { DocumentStatus, RapidRole, UserRole, LoginResponse } from "@rapid-ledger/shared";

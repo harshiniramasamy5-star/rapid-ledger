@@ -108,9 +108,12 @@ export async function rejectDocument(documentId: string, approverId: string, com
   const doc = await prisma.rapidDocument.findUnique({ where: { id: documentId } });
   if (!doc) return { ok: false as const, notFound: true };
   if (doc.status !== "awaiting_agreement") return { ok: false as const, invalidStatus: doc.status };
-  await prisma.approval.updateMany({ where: { documentId, approverId }, data: { decision: "rejected", comment } });
-  const updated = await prisma.rapidDocument.update({ where: { id: documentId }, data: { status: "rejected" }, include: INCLUDE });
-  await createAuditLog(approverId, "document_rejected", "RapidDocument", documentId, { comment });
+  const updated = await prisma.$transaction(async (tx) => {
+    await tx.approval.updateMany({ where: { documentId, approverId }, data: { decision: "rejected", comment } });
+    const result = await tx.rapidDocument.update({ where: { id: documentId }, data: { status: "rejected" }, include: INCLUDE });
+    await createAuditLog(approverId, "document_rejected", "RapidDocument", documentId, { comment }, tx);
+    return result;
+  });
   return { ok: true as const, document: updated };
 }
 
@@ -118,9 +121,12 @@ export async function requestChanges(documentId: string, approverId: string, com
   const doc = await prisma.rapidDocument.findUnique({ where: { id: documentId } });
   if (!doc) return { ok: false as const, notFound: true };
   if (doc.status !== "awaiting_agreement") return { ok: false as const, invalidStatus: doc.status };
-  await prisma.approval.updateMany({ where: { documentId, approverId }, data: { decision: "needs_changes", comment } });
-  const updated = await prisma.rapidDocument.update({ where: { id: documentId }, data: { status: "needs_changes" }, include: INCLUDE });
-  await createAuditLog(approverId, "document_needs_changes", "RapidDocument", documentId, { comment });
+  const updated = await prisma.$transaction(async (tx) => {
+    await tx.approval.updateMany({ where: { documentId, approverId }, data: { decision: "needs_changes", comment } });
+    const result = await tx.rapidDocument.update({ where: { id: documentId }, data: { status: "needs_changes" }, include: INCLUDE });
+    await createAuditLog(approverId, "document_needs_changes", "RapidDocument", documentId, { comment }, tx);
+    return result;
+  });
   return { ok: true as const, document: updated };
 }
 

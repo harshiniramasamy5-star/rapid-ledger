@@ -1,6 +1,9 @@
 import { prisma } from "../lib/prisma";
+import type { Prisma } from "@prisma/client";
 
 export type AuditDetails = Record<string, unknown>;
+
+type TxClient = Omit<typeof prisma, "$connect" | "$disconnect" | "$on" | "$transaction" | "$use" | "$extends">;
 
 export async function createAuditLog(
   actorId: string,
@@ -8,9 +11,11 @@ export async function createAuditLog(
   objectType: string,
   objectId: string,
   details?: AuditDetails,
+  tx?: TxClient,
 ): Promise<void> {
+  const client = tx ?? prisma;
   try {
-    await prisma.auditLog.create({
+    await client.auditLog.create({
       data: {
         userId: actorId,
         action,
