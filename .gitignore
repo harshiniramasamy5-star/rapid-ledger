@@ -40,3 +40,5 @@ prisma/dev.db
 .env
 AGENTS.md
 CLAUDE.md
+playwright-report/
+test-results/
