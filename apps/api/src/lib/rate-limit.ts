@@ -8,7 +8,7 @@
  */
 
 const attempts = new Map<string, { count: number; windowStart: number }>();
-const MAX = 10;
+const MAX = 100;
 const WINDOW_MS = 15 * 60 * 1000; // 15 min
 
 export function checkRateLimit(ip: string): { allowed: boolean } {
