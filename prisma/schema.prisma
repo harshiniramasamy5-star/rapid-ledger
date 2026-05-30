@@ -12,7 +12,7 @@ model User {
   email           String           @unique
   name            String
   password        String
-  role            String  @default("viewer")
+  role            UserRole @default(viewer)
   department      String?
   isActive        Boolean          @default(true)
   failedLogins    Int              @default(0)
@@ -133,3 +133,12 @@ model RefreshToken {
 
 
 
+
+enum UserRole {
+  admin
+  creator
+  approver
+  recommender
+  performer
+  viewer
+}
