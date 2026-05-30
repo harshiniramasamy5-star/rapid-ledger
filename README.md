@@ -443,12 +443,12 @@ All passwords: `password123`
 
 | Name | Email | System Role | RAPID Capability |
 |------|-------|-------------|-----------------|
-| 👑 Alice Admin | admin@rapid.dev | Admin | Full access — manage users, finalise documents, view audit log and ledger |
-| ✍️ Carol Creator | creator@rapid.dev | Creator | Create and submit RAPID documents, assign roles, attach evidence |
-| 💬 Rick Recommender | recommender@rapid.dev | Recommender | When assigned the R role — actively submits recommendation notes before a decision is approved |
-| ✅ Bob Approver | approver@rapid.dev | Approver | When assigned the A role — approves, rejects, or requests changes on documents |
-| ⚙️ Pam Performer | performer@rapid.dev | Performer | When assigned the P role — marks finalised documents as execution complete |
-| 📝 Vera Viewer | viewer@rapid.dev | Viewer | Not just a viewer — when assigned the I — Input role, actively submits input notes and expertise before a decision is approved |
+| 👑 Alice Admin | admin@rapid.com | Admin | Full access — manage users, finalise documents, view audit log and ledger |
+| ✍️ Carol Creator | creator@rapid.com | Creator | Create and submit RAPID documents, assign roles, attach evidence |
+| 💬 Rick Recommender | recommender@rapid.com | Recommender | When assigned the R role — actively submits recommendation notes before a decision is approved |
+| ✅ Bob Approver | approver@rapid.com | Approver | When assigned the A role — approves, rejects, or requests changes on documents |
+| ⚙️ Pam Performer | performer@rapid.com | Performer | When assigned the P role — marks finalised documents as execution complete |
+| 📝 Vera Viewer | viewer@rapid.com | Viewer | Not just a viewer — when assigned the I — Input role, actively submits input notes and expertise before a decision is approved |
 
 > **Key insight:** The system role controls which pages a user can access. The RAPID role (R/A/P/I/D) is assigned per document and controls what actions that user can take on that specific document. A Viewer can be a crucial I — Input contributor on a decision.
 
@@ -482,9 +482,9 @@ sequenceDiagram
 
 ### F — Recommendation and Input
 
-1. `creator@rapid.dev` → create and submit a document → assign Rick as **R**, Vera as **I**
-2. `recommender@rapid.dev` → open document → type notes → click **Submit Recommendation** (purple button)
-3. `viewer@rapid.dev` → open document → type notes → click **Submit Input** (teal button)
+1. `creator@rapid.com` → create and submit a document → assign Rick as **R**, Vera as **I**
+2. `recommender@rapid.com` → open document → type notes → click **Submit Recommendation** (purple button)
+3. `viewer@rapid.com` → open document → type notes → click **Submit Input** (teal button)
 4. Both actions are permanently recorded in the Audit Log with actor, timestamp, and document code
 5. After submission, confirmation messages replace the action buttons — contributions cannot be repeated
 
@@ -496,18 +496,18 @@ sequenceDiagram
 
 ### C — Execution Completion
 
-1. `admin@rapid.dev` → Finalise document
-2. `performer@rapid.dev` → **Mark Execution Complete**
+1. `admin@rapid.com` → Finalise document
+2. `performer@rapid.com` → **Mark Execution Complete**
 3. Audit event emitted → verify in **Audit Log**
 
 ### D — Versioning
 
-1. `admin@rapid.dev` → open Finalised document → **Create New Version**
+1. `admin@rapid.com` → open Finalised document → **Create New Version**
 2. Same `documentCode`, incremented version — original locked permanently and cannot be re-finalised
 
 ### E — Audit Trail
 
-1. `admin@rapid.dev` → **Audit Log**
+1. `admin@rapid.com` → **Audit Log**
 2. Every action — login, creation, submission, recommendation, input, approval, rejection, finalisation, execution completion — recorded with actor, role, timestamp, and metadata
 3. The audit log is append-only — no entries can ever be deleted or modified
 
