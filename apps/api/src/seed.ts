@@ -9,12 +9,12 @@ async function main() {
   const now = new Date();
 
   const users = [
-    { id: "user_admin_001",     name: "Alice Admin",    email: "admin@rapid.dev",     role: "admin" as UserRole,          department: "Engineering" },
-    { id: "user_creator_001",   name: "Carol Creator",  email: "creator@rapid.dev",   role: "creator" as UserRole,        department: "Product" },
-    { id: "user_approver_001",  name: "Bob Approver",   email: "approver@rapid.dev",  role: "approver" as UserRole,       department: "Finance" },
-    { id: "user_performer_001", name: "Pete Performer", email: "performer@rapid.dev", role: "performer" as UserRole,      department: "Operations" },
-    { id: "user_viewer_001",      name: "Vera Viewer",      email: "viewer@rapid.dev",      role: "viewer" as UserRole,      department: "Compliance" },
-    { id: "user_recommender_001", name: "Rick Recommender", email: "recommender@rapid.dev", role: "recommender" as UserRole, department: "Strategy" },
+    { id: "user_admin_001",     name: "Alice Admin",    email: "admin@rapid.com",     role: "admin",          department: "Engineering" },
+    { id: "user_creator_001",   name: "Carol Creator",  email: "creator@rapid.com",   role: "creator",        department: "Product" },
+    { id: "user_approver_001",  name: "Bob Approver",   email: "approver@rapid.com",  role: "approver",       department: "Finance" },
+    { id: "user_performer_001", name: "Pete Performer", email: "performer@rapid.com", role: "performer",      department: "Operations" },
+    { id: "user_viewer_001",      name: "Vera Viewer",      email: "viewer@rapid.com",      role: "viewer",      department: "Compliance" },
+    { id: "user_recommender_001", name: "Rick Recommender", email: "recommender@rapid.com", role: "recommender", department: "Strategy" },
   ];
 
   for (const u of users) {
@@ -26,12 +26,12 @@ async function main() {
     console.log(`✓ ${u.email}`);
   }
 
-  const creator = await prisma.user.findUniqueOrThrow({ where: { email: "creator@rapid.dev" } });
-  const decider = await prisma.user.findUniqueOrThrow({ where: { email: "admin@rapid.dev" } });
-  const performer = await prisma.user.findUniqueOrThrow({ where: { email: "performer@rapid.dev" } });
-  const approver = await prisma.user.findUniqueOrThrow({ where: { email: "approver@rapid.dev" } });
-  const recommender = await prisma.user.findUniqueOrThrow({ where: { email: "recommender@rapid.dev" } });
-  const viewer = await prisma.user.findUniqueOrThrow({ where: { email: "viewer@rapid.dev" } });
+  const creator = await prisma.user.findUniqueOrThrow({ where: { email: "creator@rapid.com" } });
+  const decider = await prisma.user.findUniqueOrThrow({ where: { email: "admin@rapid.com" } });
+  const performer = await prisma.user.findUniqueOrThrow({ where: { email: "performer@rapid.com" } });
+  const approver = await prisma.user.findUniqueOrThrow({ where: { email: "approver@rapid.com" } });
+  const recommender = await prisma.user.findUniqueOrThrow({ where: { email: "recommender@rapid.com" } });
+  const viewer = await prisma.user.findUniqueOrThrow({ where: { email: "viewer@rapid.com" } });
 
   // Demo Document 1 — FINALIZED (shows in ledger)
   const doc1 = await prisma.rapidDocument.upsert({

@@ -38,7 +38,7 @@ export async function listDocuments(filters?: ListDocumentsOptions): Promise<Pag
     ...(filters?.status ? { status: filters.status } : {}),
     ...(filters?.department ? { department: filters.department } : {}),
     ...(filters?.riskLevel ? { riskLevel: filters.riskLevel as "low" | "medium" | "high" | "critical" } : {}),
-    ...(filters?.search ? { OR: [{ title: { contains: filters.search, mode: "insensitive" } }, { documentCode: { contains: filters.search, mode: "insensitive" } }] } : {}) };
+    ...(filters?.search ? { OR: [{ title: { contains: filters.search } }, { documentCode: { contains: filters.search } }] } : {}) };
 
   const [data, total] = await Promise.all([
     prisma.rapidDocument.findMany({ where, include: INCLUDE, orderBy: { createdAt: "desc" }, take: limit, skip }),
@@ -98,7 +98,7 @@ export async function approveDocument(documentId: string, approverId: string, co
     const result = allApproved
       ? await tx.rapidDocument.update({ where: { id: documentId }, data: { status: "approved" }, include: INCLUDE })
       : await tx.rapidDocument.findUnique({ where: { id: documentId }, include: INCLUDE });
-    await tx.auditLog.create({ data: { userId: approverId, action: "document_approved", entityType: "RapidDocument", entityId: documentId, details: { comment, allApproved } } });
+    await tx.auditLog.create({ data: { userId: approverId, action: "document_approved", entityType: "RapidDocument", entityId: documentId, details: JSON.stringify({ comment, allApproved }) } });
     return result;
   });
   return { ok: true as const, document: updated };

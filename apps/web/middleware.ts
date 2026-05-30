@@ -2,11 +2,11 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 const ROLE_ACCESS: Record<string, string[]> = {
-  "/dashboard":  ["admin", "creator", "recommender", "decision_owner", "performer", "viewer", "approver", "viewer"],
+  "/dashboard":  ["admin", "creator", "recommender", "performer", "viewer", "approver", "viewer"],
   "/approvals":  ["admin", "approver"],
-  "/ledger":     ["admin", "viewer", "recommender", "decision_owner", "creator", "approver", "performer", "viewer"],
+  "/ledger":     ["admin", "viewer", "recommender", "creator", "approver", "performer", "viewer"],
   "/audit-log":  ["admin", "viewer"],
-  "/documents":  ["admin", "creator", "recommender", "decision_owner", "performer", "viewer", "approver", "viewer"],
+  "/documents":  ["admin", "creator", "recommender", "performer", "viewer", "approver", "viewer"],
 };
 
 export function middleware(request: NextRequest) {

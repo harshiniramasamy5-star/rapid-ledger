@@ -26,7 +26,7 @@ export async function finalizeDocument(documentId: string, actorId: string) {
 async function fetchLedgerEntries(options?: { search?: string; limit?: number; offset?: number }) {
   const { search, limit = 100, offset = 0 } = options ?? {};
   return prisma.ledgerEntry.findMany({
-    where: search ? { OR: [{ title: { contains: search, mode: "insensitive" } }] } : undefined,
+    where: search ? { OR: [{ title: { contains: search } }] } : undefined,
     include: { document: { include: { roleAssignments: { include: { user: { select: { id: true, name: true, email: true } } } } } } },
     orderBy: { finalizedAt: "desc" }, take: limit, skip: offset });
 }

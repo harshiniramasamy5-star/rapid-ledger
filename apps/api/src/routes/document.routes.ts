@@ -45,7 +45,7 @@ export const documentRoutes = new Elysia({ prefix: "/documents" })
   .get("/", async ({ user, query, set }) => {
     requirePermission(user, "document:read", set);
     return listDocuments({
-      status: query.status as| undefined,
+      status: query.status as string | undefined,
       department: query.department,
       riskLevel: query.riskLevel,
       search: query.search,
