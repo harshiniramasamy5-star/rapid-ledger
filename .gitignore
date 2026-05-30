@@ -38,3 +38,5 @@ apps/web/playwright-report/
 apps/web/test-results/
 prisma/dev.db
 .env
+AGENTS.md
+CLAUDE.md
