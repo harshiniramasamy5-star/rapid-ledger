@@ -82,9 +82,9 @@ describe("RAPID separation of duties — governance invariants", () => {
   });
 
   it("unknown role returns false (no default escalation)", () => {
-    // @ts-expect-error — intentional invalid role test
+    // @ts-expect-error -- testing invalid input type intentionally — intentional invalid role test
     expect(can("hacker", "document:finalize")).toBe(false);
-    // @ts-expect-error
+    // @ts-expect-error -- testing invalid input type intentionally
     expect(can("", "document:read")).toBe(false);
   });
 });

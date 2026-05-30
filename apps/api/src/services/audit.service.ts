@@ -1,5 +1,5 @@
 import { prisma } from "../lib/prisma";
-import type { Prisma, AuditAction } from "@prisma/client";
+import type { AuditAction } from "@prisma/client";
 
 export type AuditDetails = Record<string, unknown>;
 

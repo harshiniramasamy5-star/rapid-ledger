@@ -22,7 +22,7 @@ describe('Finalized document immutability', () => {
     });
     const docs = await listRes.json();
     const finalized = (Array.isArray(docs) ? docs : docs.data ?? [])
-      .find((d: any) => d.status === 'finalized');
+      .find((d: { id: string; status: string }) => d.status === 'finalized');
 
     if (!finalized) {
       console.warn('IMMUTABILITY TEST SKIPPED — no finalized document on Railway. Verified manually via UI.');
