@@ -1,5 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-"use client";
+"use client"
+
+function getToken(){const m=document.cookie.match(/(?:^|;\s*)rapid_token=([^;]*)/);return m?decodeURIComponent(m[1]):null;};
 import React from "react";
 import { useEffect, useState } from "react";
 import type { ApiDocument, ApiUser, Approval, RoleAssignment } from "@/lib/types";
@@ -49,7 +51,7 @@ export default function DocumentDetailPage() {
   const [loading, setLoading]       = useState(true);
   const [acting, setActing]         = useState(false);
 
-  function token() { return localStorage.getItem("rapid_token") ?? ""; }
+  function token() { return getToken() ?? ""; }
 
   const load = React.useCallback(async () => {
     try {
@@ -101,7 +103,7 @@ export default function DocumentDetailPage() {
   const canFinalize = me?.role === "admin" && status === "approved";
 
   async function exportPdf() {
-    const token = localStorage.getItem("rapid_token");
+    const token = getToken();
     if (!token || !doc) return;
     const res = await fetch(`${API}/documents/${doc.id}/export-pdf`, {
       headers: { Authorization: `Bearer ${token}` },

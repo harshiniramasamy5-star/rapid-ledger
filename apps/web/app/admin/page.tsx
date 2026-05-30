@@ -1,4 +1,6 @@
-"use client";
+"use client"
+
+function getToken(){const m=document.cookie.match(/(?:^|;\s*)rapid_token=([^;]*)/);return m?decodeURIComponent(m[1]):null;};
 import { useEffect, useState } from "react";
 import type { ApiUser } from "@/lib/types";
 import { useRouter } from "next/navigation";
@@ -36,12 +38,17 @@ export default function AdminPage() {
     name: "", email: "", password: "", role: "creator", department: ""
   });
 
-  function token() { return localStorage.getItem("rapid_token"); }
+  function token() { return getToken(); }
 
   useEffect(() => {
-    const me = JSON.parse(localStorage.getItem("rapid_user") ?? "{}");
-    if (me.role !== "admin") { router.replace("/dashboard"); return; }
-    loadUsers();
+    const t = getToken();
+    if (!t) { router.replace("/login"); return; }
+    fetch(`${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001"}/auth/me`, {
+      headers: { Authorization: `Bearer ${t}` }
+    }).then(r => r.json()).then(me => {
+      if (me.role !== "admin") { router.replace("/dashboard"); return; }
+      loadUsers();
+    });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router]);
 

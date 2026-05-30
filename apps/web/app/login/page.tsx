@@ -38,10 +38,6 @@ export default function LoginPage() {
       const data = await res.json();
       if (!res.ok) throw data;
 
-      // Store in localStorage
-      localStorage.setItem("rapid_token", data.token);
-      localStorage.setItem("rapid_user", JSON.stringify(data.user));
-
       // Set cookies for middleware — add Secure flag on HTTPS (production/Vercel)
       const isSecure = window.location.protocol === "https:";
       const secureFlag = isSecure ? "; Secure" : "";

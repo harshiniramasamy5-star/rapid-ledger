@@ -1,7 +1,14 @@
 const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
 
-export function getToken() {
-  return localStorage.getItem("rapid_token");
+export function getToken(): string | null {
+  if (typeof document === "undefined") return null;
+  const m = document.cookie.match(/(?:^|;\s*)rapid_token=([^;]*)/);
+  return m ? decodeURIComponent(m[1]) : null;
+}
+
+export function clearAuth(): void {
+  document.cookie = "rapid_token=; path=/; max-age=0; SameSite=Lax";
+  document.cookie = "rapid_role=; path=/; max-age=0; SameSite=Lax";
 }
 
 export function authHeaders() {

@@ -1,4 +1,6 @@
-"use client";
+"use client"
+
+function getToken(){const m=document.cookie.match(/(?:^|;\s*)rapid_token=([^;]*)/);return m?decodeURIComponent(m[1]):null;};
 import { useEffect, useState, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -41,7 +43,7 @@ export function AnalyticsCharts() {
   const [loading, setLoading] = useState(true);
 
   const fetchAnalytics = useCallback(async () => {
-    const token = localStorage.getItem("rapid_token");
+    const token = getToken();
     if (!token) return;
 
     try {

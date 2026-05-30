@@ -1,5 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-"use client";
+"use client"
+
+function getToken(){const m=document.cookie.match(/(?:^|;\s*)rapid_token=([^;]*)/);return m?decodeURIComponent(m[1]):null;};
 import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -19,7 +21,7 @@ export default function EditDocumentPage() {
 
   useEffect(() => {
     (async () => {
-      const token = localStorage.getItem("rapid_token");
+      const token = getToken();
       if (!token) { router.replace("/login"); return; }
 
       const [docRes, meRes] = await Promise.all([
@@ -47,7 +49,7 @@ export default function EditDocumentPage() {
 
   async function save() {
     setSaving(true);
-    const token = localStorage.getItem("rapid_token");
+    const token = getToken();
     const res = await fetch(`${API}/documents/${params.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },

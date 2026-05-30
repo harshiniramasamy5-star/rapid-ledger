@@ -1,4 +1,5 @@
-"use client";
+"use client"
+import { getToken, clearAuth } from "@/lib/api";;
 import { useEffect, useState, useCallback } from "react";
 import { AnalyticsCharts } from "@/components/analytics-charts";
 import type { ApiDocument, ApiUser } from "@/lib/types";
@@ -87,7 +88,7 @@ export default function DashboardPage() {
   }, []);
 
   useEffect(() => {
-    const token = localStorage.getItem("rapid_token");
+    const token = getToken();
     if (!token) { router.replace("/login"); return; }
     fetch(`${API}/auth/me`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()).then(setMe);
     fetchStats(token);
@@ -95,15 +96,14 @@ export default function DashboardPage() {
   }, [router, fetchDocs, fetchStats]);
 
   useEffect(() => {
-    const token = localStorage.getItem("rapid_token");
+    const token = getToken();
     if (!token) return;
     const t = setTimeout(() => fetchDocs(token, page, search, status, risk), 300);
     return () => clearTimeout(t);
   }, [search, status, risk, page, fetchDocs]);
 
   function logout() {
-    localStorage.removeItem("rapid_token");
-    localStorage.removeItem("rapid_user");
+    clearAuth();
     router.replace("/login");
   }
 

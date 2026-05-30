@@ -1,4 +1,6 @@
-"use client";
+"use client"
+
+function getToken(){const m=document.cookie.match(/(?:^|;\s*)rapid_token=([^;]*)/);return m?decodeURIComponent(m[1]):null;};
 import { useEffect, useState } from "react";
 import type { LedgerEntry } from "@/lib/types";
 import { useRouter } from "next/navigation";
@@ -14,7 +16,7 @@ export default function LedgerPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const token = localStorage.getItem("rapid_token");
+    const token = getToken();
     if (!token) { router.replace("/login"); return; }
     fetch((process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001") + "/ledger", {
       headers: { Authorization: `Bearer ${token}` }
@@ -26,7 +28,7 @@ export default function LedgerPage() {
   }, [router]);
 
   async function exportCSV() {
-    const token = localStorage.getItem("rapid_token");
+    const token = getToken();
     try {
       const res  = await fetch((process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001") + "/ledger/export", {
         headers: { Authorization: `Bearer ${token}` }
