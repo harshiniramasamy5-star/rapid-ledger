@@ -201,7 +201,7 @@ async function main() {
   });
 
   // Audit log entries
-  await prisma.auditLog.createMany({    data: [
+  await prisma.auditLog.createMany({ skipDuplicates: true, data: [
       { id: "audit_001", userId: creator.id, action: "document_created",   documentId: doc1.id, entityType: "RapidDocument", entityId: doc1.id, details: JSON.stringify({ documentCode: "RAPID-DEMO-001" }), createdAt: new Date("2026-04-28") },
       { id: "audit_002", userId: decider.id, action: "document_finalized",  documentId: doc1.id, entityType: "RapidDocument", entityId: doc1.id, details: JSON.stringify({ documentCode: "RAPID-DEMO-001" }), createdAt: new Date("2026-05-10") },
       { id: "audit_003", userId: creator.id, action: "document_created",   documentId: doc2.id, entityType: "RapidDocument", entityId: doc2.id, details: JSON.stringify({ documentCode: "RAPID-DEMO-002" }), createdAt: new Date("2026-05-18") },
