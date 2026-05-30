@@ -45,13 +45,13 @@ describe("GET /health", () => {
 describe("POST /auth/login", () => {
   it("returns 200 with token and lowercase user for valid credentials", async () => {
     const { status, body } = await req("POST", "/auth/login", {
-      body: { email: "admin@rapid.dev", password: "password123" },
+      body: { email: "admin@rapid.com", password: "password123" },
     });
     expect(status).toBe(200);
     const { token, user } = body as { token: string; user: { id: string; email: string; role: string } };
     expect(token).toBeTruthy();
     expect(user).toBeDefined();
-    expect(user.email).toBe("admin@rapid.dev");
+    expect(user.email).toBe("admin@rapid.com");
     expect(user.role).toBe("admin");
     // Fix 4: ensure no uppercase User key
     expect((body as Record<string, unknown>).User).toBeUndefined();
@@ -60,7 +60,7 @@ describe("POST /auth/login", () => {
 
   it("stores creator token for later tests", async () => {
     const { status, body } = await req("POST", "/auth/login", {
-      body: { email: "creator@rapid.dev", password: "password123" },
+      body: { email: "creator@rapid.com", password: "password123" },
     });
     expect(status).toBe(200);
     creatorToken = (body as { token: string }).token;
@@ -69,7 +69,7 @@ describe("POST /auth/login", () => {
 
   it("stores approver token for later tests", async () => {
     const { status, body } = await req("POST", "/auth/login", {
-      body: { email: "approver@rapid.dev", password: "password123" },
+      body: { email: "approver@rapid.com", password: "password123" },
     });
     expect(status).toBe(200);
     approverToken = (body as { token: string }).token;
@@ -78,14 +78,14 @@ describe("POST /auth/login", () => {
 
   it("returns 401 for wrong password", async () => {
     const { status } = await req("POST", "/auth/login", {
-      body: { email: "admin@rapid.dev", password: "wrong-password" },
+      body: { email: "admin@rapid.com", password: "wrong-password" },
     });
     expect(status).toBe(401);
   });
 
   it("returns 401 for unknown email", async () => {
     const { status } = await req("POST", "/auth/login", {
-      body: { email: "nobody@rapid.dev", password: "password123" },
+      body: { email: "nobody@rapid.com", password: "password123" },
     });
     expect(status).toBe(401);
   });
@@ -100,7 +100,7 @@ describe("GET /auth/me", () => {
   beforeAll(async () => {
     if (!adminToken) {
       const { body } = await req("POST", "/auth/login", {
-        body: { email: "admin@rapid.dev", password: "password123" },
+        body: { email: "admin@rapid.com", password: "password123" },
       });
       adminToken = (body as { token: string }).token;
     }
@@ -109,7 +109,7 @@ describe("GET /auth/me", () => {
   it("returns 200 with user profile", async () => {
     const { status, body } = await req("GET", "/auth/me", { token: adminToken });
     expect(status).toBe(200);
-    expect((body as { email: string }).email).toBe("admin@rapid.dev");
+    expect((body as { email: string }).email).toBe("admin@rapid.com");
   });
 
   it("returns 401 without token", async () => {
@@ -124,7 +124,7 @@ describe("Documents CRUD", () => {
   beforeAll(async () => {
     if (!creatorToken) {
       const { body } = await req("POST", "/auth/login", {
-        body: { email: "creator@rapid.dev", password: "password123" },
+        body: { email: "creator@rapid.com", password: "password123" },
       });
       creatorToken = (body as { token: string }).token;
     }
@@ -201,17 +201,18 @@ describe("Immutability — finalized documents cannot be mutated", () => {
 
   beforeAll(async () => {
     // Ensure tokens
-    const a = await req("POST", "/auth/login", { body: { email: "admin@rapid.dev", password: "password123" } });
+    const a = await req("POST", "/auth/login", { body: { email: "admin@rapid.com", password: "password123" } });
     localAdmin = (a.body as { token: string }).token;
-    const c = await req("POST", "/auth/login", { body: { email: "creator@rapid.dev", password: "password123" } });
+    const c = await req("POST", "/auth/login", { body: { email: "creator@rapid.com", password: "password123" } });
     localCreator = (c.body as { token: string }).token;
 
     // Get user IDs
     const users = await req("GET", "/users", { token: localAdmin });
-    const list = users.body as { id: string; email: string }[];
-    // creator@rapid.dev not needed in this flow
-    const decider = list.find(u => u.email === "admin@rapid.dev");
-    const performer = list.find(u => u.email === "approver@rapid.dev");
+    const raw = users.body as { data?: { id: string; email: string }[] } | { id: string; email: string }[];
+    const list: { id: string; email: string }[] = Array.isArray(raw) ? raw : (raw?.data ?? []);
+    // creator@rapid.com not needed in this flow
+    const decider = list.find(u => u.email === "admin@rapid.com");
+    const performer = list.find(u => u.email === "approver@rapid.com");
     deciderId = decider?.id ?? "";
     performerId = performer?.id ?? "";
 
@@ -227,7 +228,7 @@ describe("Immutability — finalized documents cannot be mutated", () => {
     docId = (created.body as { id: string }).id;
 
     // 2. Assign all required RAPID roles: recommend + decide + perform
-    const creatorUser = list.find(u => u.email === "creator@rapid.dev");
+    const creatorUser = list.find(u => u.email === "creator@rapid.com");
     if (creatorUser) {
       await req("POST", `/documents/${docId}/roles`, {
         token: localAdmin,
