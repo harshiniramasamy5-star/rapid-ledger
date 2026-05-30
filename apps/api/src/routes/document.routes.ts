@@ -14,13 +14,11 @@ import {
   createDocumentVersion,
   assignRole,
   addEvidence,
-  runValidation,
-} from "../services/document.service";
+  runValidation } from "../services/document.service";
 import { prisma } from "../lib/prisma";
 import { Errors } from "../lib/errors";
 import { finalizeDocument } from "../services/ledger.service";
 import { generateDocumentPdf } from "../services/pdf.service";
-import type { DocumentStatus } from "@prisma/client";
 
 export const documentRoutes = new Elysia({ prefix: "/documents" })
   .use(authMiddleware)
@@ -33,16 +31,13 @@ export const documentRoutes = new Elysia({ prefix: "/documents" })
       include: {
         roleAssignments: { include: { user: { select: { name: true, email: true } } } },
         approvals: { include: { approver: { select: { name: true, email: true } } } },
-        evidence: true,
-      },
-    });
+        evidence: true } });
     if (!doc) { set.status = 404; return { error: { code: "NOT_FOUND", message: "Document not found" } }; }
     const pdf = generateDocumentPdf(doc);
     set.headers = {
       "Content-Type": "application/pdf",
       "Content-Disposition": `attachment; filename="${doc.documentCode}-v${doc.version}.pdf"`,
-      "Content-Length": String(pdf.length),
-    };
+      "Content-Length": String(pdf.length) };
     return pdf;
   })
 
@@ -50,13 +45,12 @@ export const documentRoutes = new Elysia({ prefix: "/documents" })
   .get("/", async ({ user, query, set }) => {
     requirePermission(user, "document:read", set);
     return listDocuments({
-      status: query.status as DocumentStatus | undefined,
+      status: query.status as| undefined,
       department: query.department,
       riskLevel: query.riskLevel,
       search: query.search,
       page: query.page ? Number(query.page) : 1,
-      limit: query.limit ? Number(query.limit) : 20,
-    });
+      limit: query.limit ? Number(query.limit) : 20 });
   })
 
   // ── POST /documents ───────────────────────────────────────────────────────
@@ -164,8 +158,7 @@ export const documentRoutes = new Elysia({ prefix: "/documents" })
     if (!assignment) { set.status = 403; return Errors.forbidden("You are not assigned the Recommend role on this document"); }
     const updated = await prisma.rapidDocument.update({
       where: { id: params.id },
-      data: { recommendationNotes: (body as { notes?: string }).notes ?? "" },
-    });
+      data: { recommendationNotes: (body as { notes?: string }).notes ?? "" } });
     await createAuditLog(user.id, "document_recommended", "RapidDocument", params.id, { documentCode: updated.documentCode });
     return updated;
   })
@@ -182,8 +175,7 @@ export const documentRoutes = new Elysia({ prefix: "/documents" })
     if (!assignment) { set.status = 403; return Errors.forbidden("You are not assigned the Input role on this document"); }
     const updated = await prisma.rapidDocument.update({
       where: { id: params.id },
-      data: { inputNotes: (body as { notes?: string }).notes ?? "" },
-    });
+      data: { inputNotes: (body as { notes?: string }).notes ?? "" } });
     await createAuditLog(user.id, "document_input_provided", "RapidDocument", params.id, { documentCode: updated.documentCode });
     return updated;
   })
@@ -196,8 +188,7 @@ export const documentRoutes = new Elysia({ prefix: "/documents" })
     if (doc.status !== "finalized") { set.status = 409; return Errors.badRequest("Document must be finalized first"); }
     const updated = await import("../lib/prisma").then(m => m.prisma.rapidDocument.update({
       where: { id: params.id },
-      data: { status: "execution_complete" },
-    }));
+      data: { status: "execution_complete" } }));
     await createAuditLog(user.id, "execution_complete", "RapidDocument", params.id, { documentCode: updated.documentCode });
     return updated;
   })
@@ -236,9 +227,7 @@ export const documentRoutes = new Elysia({ prefix: "/documents" })
         createdBy: true,
         roleAssignments: { include: { user: { select: { id: true, name: true, email: true, role: true } } } },
         evidence: true,
-        approvals: { include: { approver: { select: { id: true, name: true, email: true } } } },
-      },
-    });
+        approvals: { include: { approver: { select: { id: true, name: true, email: true } } } } } });
     return updated;
   })
 

@@ -10,11 +10,11 @@ import { auditRoutes } from "./routes/audit.routes";
 
 export const app = new Elysia()
   .use(cors({
-  origin: ["https://rapid-ledger.vercel.app", "http://localhost:3000"],
-  credentials: true,
-  allowedHeaders: ["Content-Type", "Authorization"],
-  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
-}))
+    origin: ["https://rapid-ledger.vercel.app", "http://localhost:3000"],
+    credentials: true,
+    allowedHeaders: ["Content-Type", "Authorization"],
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
+  }))
   .get("/health", () => ({ status: "ok", timestamp: new Date().toISOString() }))
   .use(authRoutes)
   .use(documentRoutes)
@@ -35,7 +35,9 @@ export const app = new Elysia()
 if (process.env.NODE_ENV !== "test") {
   const port = Number(process.env.PORT) || 3001;
   createServer(async (req, res) => {
-    const url = `http://localhost${req.url}`;
+    const rawUrl = req.url || "/";
+    const strippedUrl = rawUrl.startsWith("/api") ? rawUrl.slice(4) || "/" : rawUrl;
+    const url = "http://localhost" + strippedUrl;
     const chunks: Buffer[] = [];
     for await (const chunk of req) chunks.push(chunk as Buffer);
     const body = chunks.length ? Buffer.concat(chunks) : undefined;
@@ -47,5 +49,5 @@ if (process.env.NODE_ENV !== "test") {
     const response = await app.handle(request);
     res.writeHead(response.status, Object.fromEntries(response.headers));
     res.end(Buffer.from(await response.arrayBuffer()));
-  }).listen(port, () => console.log(`🚀 API running on http://localhost:${port}`));
+  }).listen(port, () => console.log("🚀 API running on http://localhost:" + port));
 }

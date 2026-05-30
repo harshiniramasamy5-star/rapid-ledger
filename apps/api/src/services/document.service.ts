@@ -4,18 +4,16 @@ import { nextDocumentCode } from "../lib/documentCode";
 import { validateDocument } from "./validation.service";
 import { createAuditLog } from "./audit.service";
 import type { CreateDocumentBody } from "../types";
-import type { DocumentStatus } from "@prisma/client";
 
 const INCLUDE = {
   createdBy: { select: { id: true, name: true, email: true, role: true } },
   roleAssignments: { include: { user: { select: { id: true, name: true, email: true, role: true } } } },
   evidence: true,
   approvals: { include: { approver: { select: { id: true, name: true, email: true } } } },
-  ledgerEntries: true,
-} as const;
+  ledgerEntries: true } as const;
 
 export interface ListDocumentsOptions {
-  status?: DocumentStatus;
+  status?: string;
   department?: string;
   riskLevel?: string;
   search?: string;
@@ -40,8 +38,7 @@ export async function listDocuments(filters?: ListDocumentsOptions): Promise<Pag
     ...(filters?.status ? { status: filters.status } : {}),
     ...(filters?.department ? { department: filters.department } : {}),
     ...(filters?.riskLevel ? { riskLevel: filters.riskLevel as "low" | "medium" | "high" | "critical" } : {}),
-    ...(filters?.search ? { OR: [{ title: { contains: filters.search, mode: "insensitive" } }, { documentCode: { contains: filters.search, mode: "insensitive" } }] } : {}),
-  };
+    ...(filters?.search ? { OR: [{ title: { contains: filters.search, mode: "insensitive" } }, { documentCode: { contains: filters.search, mode: "insensitive" } }] } : {}) };
 
   const [data, total] = await Promise.all([
     prisma.rapidDocument.findMany({ where, include: INCLUDE, orderBy: { createdAt: "desc" }, take: limit, skip }),
@@ -57,8 +54,7 @@ export async function createDocument(body: CreateDocumentBody, createdById: stri
   const documentCode = await nextDocumentCode();
   const doc = await prisma.rapidDocument.create({
     data: { documentCode, version: 1, title: body.title, decisionSummary: body.decisionSummary, riskLevel: body.riskLevel, complianceImpact: body.complianceImpact ?? false, department: body.department, deadline: body.deadline ? new Date(body.deadline) : undefined, businessContext: body.businessContext, problemStatement: body.problemStatement, proposedDecision: body.proposedDecision, alternativesConsidered: body.alternativesConsidered, createdById, status: "draft" },
-    include: INCLUDE,
-  });
+    include: INCLUDE });
   await createAuditLog(createdById, "document_created", "RapidDocument", doc.id, { documentCode, title: body.title });
   return doc;
 }
@@ -72,7 +68,7 @@ export async function submitDocument(documentId: string, actorId: string) {
   if (!validation.valid) return { ok: false as const, validationErrors: validation.errors };
 
   const hasAgree = doc.roleAssignments.some((r: { roleType: string }) => r.roleType === "agree");
-  const nextStatus: DocumentStatus = hasAgree ? "awaiting_agreement" : "approved";
+  const nextStatus = hasAgree ? "awaiting_agreement" : "approved";
 
   // Atomic: approval upserts + status update + audit log
   const updated = await prisma.$transaction(async (tx) => {
@@ -84,7 +80,7 @@ export async function submitDocument(documentId: string, actorId: string) {
       }
     }
     const result = await tx.rapidDocument.update({ where: { id: documentId }, data: { status: nextStatus, submittedAt: new Date() }, include: INCLUDE });
-    await tx.auditLog.create({ data: { userId: actorId, action: "document_submitted", entityType: "RapidDocument", entityId: documentId, details: { newStatus: nextStatus } } });
+    await tx.auditLog.create({ data: { userId: actorId, action: "document_submitted", entityType: "RapidDocument", entityId: documentId, details: JSON.stringify({ newStatus: nextStatus }) } });
     return result;
   });
   return { ok: true as const, document: updated };
@@ -139,10 +135,8 @@ export async function createDocumentVersion(documentId: string, actorId: string)
     where: {
       documentCode: original.documentCode,
       status: { notIn: ["finalized", "execution_complete"] },
-      id: { not: original.id },
-    },
-    select: { id: true },
-  });
+      id: { not: original.id } },
+    select: { id: true } });
   for (const stuck of stuckVersions) {
     await prisma.approval.deleteMany({ where: { documentId: stuck.id } });
     await prisma.roleAssignment.deleteMany({ where: { documentId: stuck.id } });
@@ -153,8 +147,7 @@ export async function createDocumentVersion(documentId: string, actorId: string)
   // Find the next available version number (avoid unique constraint collision)
   const existingVersions = await prisma.rapidDocument.findMany({
     where: { documentCode: original.documentCode },
-    select: { version: true },
-  });
+    select: { version: true } });
   const usedVersions = new Set(existingVersions.map(d => d.version));
   let nextVersion = original.version + 1;
   while (usedVersions.has(nextVersion)) nextVersion++;
@@ -167,10 +160,8 @@ export async function createDocumentVersion(documentId: string, actorId: string)
       complianceImpact: original.complianceImpact, department: original.department, deadline: original.deadline,
       businessContext: original.businessContext, problemStatement: original.problemStatement,
       proposedDecision: original.proposedDecision, alternativesConsidered: original.alternativesConsidered,
-      createdById: original.createdById, status: "draft",
-    },
-    include: INCLUDE,
-  });
+      createdById: original.createdById, status: "draft" },
+    include: INCLUDE });
 
   for (const role of original.roleAssignments) {
     await prisma.roleAssignment.create({ data: { documentId: newDoc.id, roleType: role.roleType, userId: role.userId } });

@@ -1,4 +1,4 @@
-import { PrismaClient, UserRole, DocumentStatus, RiskLevel, RoleType, AuditAction } from "@prisma/client";
+import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
@@ -46,11 +46,11 @@ async function main() {
       problemStatement: "Lack of type safety is causing preventable runtime errors in production.",
       proposedDecision: "Enable strict mode in all tsconfig files and fix all resulting errors within one sprint.",
       alternativesConsidered: "Gradual migration per file — rejected due to inconsistent enforcement.",
-      riskLevel: RiskLevel.low,
+      riskLevel: "low",
       complianceImpact: false,
       department: "Engineering",
       deadline: new Date("2026-08-01"),
-      status: DocumentStatus.finalized,
+      status: "finalized",
       version: 1,
       createdById: creator.id,
       submittedAt: new Date("2026-05-01"),
@@ -63,27 +63,27 @@ async function main() {
   await prisma.roleAssignment.upsert({
     where: { id: "role_demo1_recommend" },
     update: {},
-    create: { id: "role_demo1_recommend", documentId: doc1.id, roleType: RoleType.recommend, userId: recommender.id, createdAt: now },
+    create: { id: "role_demo1_recommend", documentId: doc1.id, roleType: "recommend", userId: recommender.id, createdAt: now },
   });
   await prisma.roleAssignment.upsert({
     where: { id: "role_demo1_decide" },
     update: {},
-    create: { id: "role_demo1_decide", documentId: doc1.id, roleType: RoleType.decide, userId: decider.id, createdAt: now },
+    create: { id: "role_demo1_decide", documentId: doc1.id, roleType: "decide", userId: decider.id, createdAt: now },
   });
   await prisma.roleAssignment.upsert({
     where: { id: "role_demo1_perform" },
     update: {},
-    create: { id: "role_demo1_perform", documentId: doc1.id, roleType: RoleType.perform, userId: performer.id, createdAt: now },
+    create: { id: "role_demo1_perform", documentId: doc1.id, roleType: "perform", userId: performer.id, createdAt: now },
   });
   await prisma.roleAssignment.upsert({
     where: { id: "role_demo1_agree" },
     update: {},
-    create: { id: "role_demo1_agree", documentId: doc1.id, roleType: RoleType.agree, userId: approver.id, createdAt: now },
+    create: { id: "role_demo1_agree", documentId: doc1.id, roleType: "agree", userId: approver.id, createdAt: now },
   });
   await prisma.roleAssignment.upsert({
     where: { id: "role_demo1_input" },
     update: {},
-    create: { id: "role_demo1_input", documentId: doc1.id, roleType: RoleType.input, userId: viewer.id, createdAt: now },
+    create: { id: "role_demo1_input", documentId: doc1.id, roleType: "input", userId: viewer.id, createdAt: now },
   });
 
   await prisma.ledgerEntry.upsert({
@@ -115,11 +115,11 @@ async function main() {
       problemStatement: "Current auth system blocks enterprise sales deals.",
       proposedDecision: "Implement OAuth 2.0 with Google and Microsoft providers by Q3 2026.",
       alternativesConsidered: "SAML — considered but OAuth 2.0 has broader library support.",
-      riskLevel: RiskLevel.high,
+      riskLevel: "high",
       complianceImpact: true,
       department: "Engineering",
       deadline: new Date("2026-09-01"),
-      status: DocumentStatus.approved,
+      status: "approved",
       version: 1,
       createdById: creator.id,
       submittedAt: new Date("2026-05-20"),
@@ -131,22 +131,22 @@ async function main() {
   await prisma.roleAssignment.upsert({
     where: { id: "role_demo2_recommend" },
     update: {},
-    create: { id: "role_demo2_recommend", documentId: doc2.id, roleType: RoleType.recommend, userId: recommender.id, createdAt: now },
+    create: { id: "role_demo2_recommend", documentId: doc2.id, roleType: "recommend", userId: recommender.id, createdAt: now },
   });
   await prisma.roleAssignment.upsert({
     where: { id: "role_demo2_agree" },
     update: {},
-    create: { id: "role_demo2_agree", documentId: doc2.id, roleType: RoleType.agree, userId: approver.id, createdAt: now },
+    create: { id: "role_demo2_agree", documentId: doc2.id, roleType: "agree", userId: approver.id, createdAt: now },
   });
   await prisma.roleAssignment.upsert({
     where: { id: "role_demo2_decide" },
     update: {},
-    create: { id: "role_demo2_decide", documentId: doc2.id, roleType: RoleType.decide, userId: decider.id, createdAt: now },
+    create: { id: "role_demo2_decide", documentId: doc2.id, roleType: "decide", userId: decider.id, createdAt: now },
   });
   await prisma.roleAssignment.upsert({
     where: { id: "role_demo2_perform" },
     update: {},
-    create: { id: "role_demo2_perform", documentId: doc2.id, roleType: RoleType.perform, userId: performer.id, createdAt: now },
+    create: { id: "role_demo2_perform", documentId: doc2.id, roleType: "perform", userId: performer.id, createdAt: now },
   });
 
   // Demo Document 3 — DRAFT (shows on dashboard)
@@ -162,11 +162,11 @@ async function main() {
       problemStatement: "Cannot safely test new features with subset of users.",
       proposedDecision: "Integrate LaunchDarkly SDK across all services by Q4 2026.",
       alternativesConsidered: "Build in-house — rejected due to maintenance overhead.",
-      riskLevel: RiskLevel.medium,
+      riskLevel: "medium",
       complianceImpact: false,
       department: "Product",
       deadline: new Date("2026-11-01"),
-      status: DocumentStatus.draft,
+      status: "draft",
       version: 1,
       createdById: creator.id,
       createdAt: new Date("2026-05-27"),
@@ -177,38 +177,36 @@ async function main() {
   await prisma.roleAssignment.upsert({
     where: { id: "role_demo3_recommend" },
     update: {},
-    create: { id: "role_demo3_recommend", documentId: doc3.id, roleType: RoleType.recommend, userId: recommender.id, createdAt: now },
+    create: { id: "role_demo3_recommend", documentId: doc3.id, roleType: "recommend", userId: recommender.id, createdAt: now },
   });
   await prisma.roleAssignment.upsert({
     where: { id: "role_demo3_decide" },
     update: {},
-    create: { id: "role_demo3_decide", documentId: doc3.id, roleType: RoleType.decide, userId: decider.id, createdAt: now },
+    create: { id: "role_demo3_decide", documentId: doc3.id, roleType: "decide", userId: decider.id, createdAt: now },
   });
   await prisma.roleAssignment.upsert({
     where: { id: "role_demo3_perform" },
     update: {},
-    create: { id: "role_demo3_perform", documentId: doc3.id, roleType: RoleType.perform, userId: performer.id, createdAt: now },
+    create: { id: "role_demo3_perform", documentId: doc3.id, roleType: "perform", userId: performer.id, createdAt: now },
   });
   await prisma.roleAssignment.upsert({
     where: { id: "role_demo3_agree" },
     update: {},
-    create: { id: "role_demo3_agree", documentId: doc3.id, roleType: RoleType.agree, userId: approver.id, createdAt: now },
+    create: { id: "role_demo3_agree", documentId: doc3.id, roleType: "agree", userId: approver.id, createdAt: now },
   });
   await prisma.roleAssignment.upsert({
     where: { id: "role_demo3_input" },
     update: {},
-    create: { id: "role_demo3_input", documentId: doc3.id, roleType: RoleType.input, userId: viewer.id, createdAt: now },
+    create: { id: "role_demo3_input", documentId: doc3.id, roleType: "input", userId: viewer.id, createdAt: now },
   });
 
   // Audit log entries
-  await prisma.auditLog.createMany({
-    skipDuplicates: true,
-    data: [
-      { id: "audit_001", userId: creator.id, action: AuditAction.document_created,   documentId: doc1.id, entityType: "RapidDocument", entityId: doc1.id, details: { documentCode: "RAPID-DEMO-001" }, createdAt: new Date("2026-04-28") },
-      { id: "audit_002", userId: decider.id, action: AuditAction.document_finalized,  documentId: doc1.id, entityType: "RapidDocument", entityId: doc1.id, details: { documentCode: "RAPID-DEMO-001" }, createdAt: new Date("2026-05-10") },
-      { id: "audit_003", userId: creator.id, action: AuditAction.document_created,   documentId: doc2.id, entityType: "RapidDocument", entityId: doc2.id, details: { documentCode: "RAPID-DEMO-002" }, createdAt: new Date("2026-05-18") },
-      { id: "audit_004", userId: approver.id, action: AuditAction.document_approved, documentId: doc2.id, entityType: "RapidDocument", entityId: doc2.id, details: { documentCode: "RAPID-DEMO-002" }, createdAt: new Date("2026-05-22") },
-      { id: "audit_005", userId: creator.id, action: AuditAction.document_created,   documentId: doc3.id, entityType: "RapidDocument", entityId: doc3.id, details: { documentCode: "RAPID-DEMO-003" }, createdAt: new Date("2026-05-27") },
+  await prisma.auditLog.createMany({    data: [
+      { id: "audit_001", userId: creator.id, action: "document_created",   documentId: doc1.id, entityType: "RapidDocument", entityId: doc1.id, details: JSON.stringify({ documentCode: "RAPID-DEMO-001" }), createdAt: new Date("2026-04-28") },
+      { id: "audit_002", userId: decider.id, action: "document_finalized",  documentId: doc1.id, entityType: "RapidDocument", entityId: doc1.id, details: JSON.stringify({ documentCode: "RAPID-DEMO-001" }), createdAt: new Date("2026-05-10") },
+      { id: "audit_003", userId: creator.id, action: "document_created",   documentId: doc2.id, entityType: "RapidDocument", entityId: doc2.id, details: JSON.stringify({ documentCode: "RAPID-DEMO-002" }), createdAt: new Date("2026-05-18") },
+      { id: "audit_004", userId: approver.id, action: "document_approved", documentId: doc2.id, entityType: "RapidDocument", entityId: doc2.id, details: JSON.stringify({ documentCode: "RAPID-DEMO-002" }), createdAt: new Date("2026-05-22") },
+      { id: "audit_005", userId: creator.id, action: "document_created",   documentId: doc3.id, entityType: "RapidDocument", entityId: doc3.id, details: JSON.stringify({ documentCode: "RAPID-DEMO-003" }), createdAt: new Date("2026-05-27") },
     ],
   });
 

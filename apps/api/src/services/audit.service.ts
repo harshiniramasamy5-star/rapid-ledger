@@ -1,11 +1,10 @@
-import type { AuditAction } from "@prisma/client";
 import { prisma } from "../lib/prisma";
 
 export type AuditDetails = Record<string, unknown>;
 
 export async function createAuditLog(
   actorId: string,
-  action: AuditAction,
+  action: string,
   objectType: string,
   objectId: string,
   details?: AuditDetails,
@@ -17,7 +16,7 @@ export async function createAuditLog(
         action,
         entityType: objectType,
         entityId: objectId,
-        details: details ? (details as import("@prisma/client").Prisma.InputJsonValue) : undefined,
+        details: details ? JSON.stringify(details) : undefined,
       },
     });
   } catch (err) {
@@ -36,7 +35,7 @@ export async function getAuditLogs(
       ...(actorId    ? { userId: actorId }        : {}),
       ...(objectType ? { entityType: objectType } : {}),
       ...(objectId   ? { entityId: objectId }     : {}),
-      ...(action     ? { action: action as AuditAction } : {}),
+      ...(action     ? { action }                 : {}),
     },
     include: { user: { select: { id: true, name: true, email: true, role: true } } },
     orderBy: { createdAt: "desc" },

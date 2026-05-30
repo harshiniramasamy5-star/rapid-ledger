@@ -33,8 +33,7 @@ export async function loginUser(email: string, password: string): Promise<LoginR
     void createAuditLog(user.id, "login_failed", "User", user.id, {
       email: user.email,
       reason: "account_locked",
-      lockedUntil: user.lockedUntil.toISOString(),
-    });
+      lockedUntil: user.lockedUntil.toISOString() });
     return { success: false, reason: "account_locked", lockedUntil: user.lockedUntil };
   }
 
@@ -48,16 +47,13 @@ export async function loginUser(email: string, password: string): Promise<LoginR
       where: { id: user.id },
       data: {
         failedLogins: newFailedCount,
-        lockedUntil: shouldLock ? new Date(Date.now() + LOCKOUT_DURATION_MS) : null,
-      },
-    });
+        lockedUntil: shouldLock ? new Date(Date.now() + LOCKOUT_DURATION_MS) : null } });
 
     void createAuditLog(user.id, "login_failed", "User", user.id, {
       email: user.email,
       reason: "invalid_password",
       failedAttempts: newFailedCount,
-      locked: shouldLock,
-    });
+      locked: shouldLock });
 
     return { success: false, reason: "invalid_credentials" };
   }
@@ -65,15 +61,13 @@ export async function loginUser(email: string, password: string): Promise<LoginR
   // Successful login — reset failed attempts
   await prisma.user.update({
     where: { id: user.id },
-    data: { failedLogins: 0, lockedUntil: null },
-  });
+    data: { failedLogins: 0, lockedUntil: null } });
 
   const token = signToken({ userId: user.id, email: user.email, role: user.role });
 
   void createAuditLog(user.id, "login", "User", user.id, {
     email: user.email,
-    ip: "server-side",
-  });
+    ip: "server-side" });
 
   return { success: true, data: { token, user: toPublicUser(user) } };
 }

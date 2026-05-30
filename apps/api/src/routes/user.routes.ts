@@ -6,7 +6,6 @@ import { parseBody, createUserSchema, updateUserSchema } from "../validators/sch
 import { prisma } from "../lib/prisma";
 import { Errors } from "../lib/errors";
 import { createAuditLog } from "../services/audit.service";
-import type { UserRole } from "@prisma/client";
 
 export const userRoutes = new Elysia({ prefix: "/users" })
   .use(authMiddleware)
@@ -16,8 +15,7 @@ export const userRoutes = new Elysia({ prefix: "/users" })
     requirePermission(user, "user:read", set);
     return prisma.user.findMany({
       select: { id: true, name: true, email: true, role: true, department: true, isActive: true, createdAt: true },
-      orderBy: { name: "asc" },
-    });
+      orderBy: { name: "asc" } });
   })
 
   // ── POST /users ───────────────────────────────────────────────────────────
@@ -35,11 +33,9 @@ export const userRoutes = new Elysia({ prefix: "/users" })
         name: parsed.data.name,
         email: parsed.data.email,
         password: hashed,
-        role: parsed.data.role as UserRole,
-        department: parsed.data.department,
-      },
-      select: { id: true, name: true, email: true, role: true, department: true, isActive: true },
-    });
+        role: parsed.data.role,
+        department: parsed.data.department },
+      select: { id: true, name: true, email: true, role: true, department: true, isActive: true } });
 
     await createAuditLog(user.id, "user_created", "User", created.id, { email: created.email });
 
@@ -61,11 +57,9 @@ export const userRoutes = new Elysia({ prefix: "/users" })
       data: {
         ...(parsed.data.name !== undefined ? { name: parsed.data.name } : {}),
         ...(parsed.data.isActive !== undefined ? { isActive: parsed.data.isActive } : {}),
-        ...(parsed.data.role !== undefined ? { role: parsed.data.role as UserRole } : {}),
-        ...(parsed.data.department !== undefined ? { department: parsed.data.department } : {}),
-      },
-      select: { id: true, name: true, email: true, role: true, department: true, isActive: true },
-    });
+        ...(parsed.data.role !== undefined ? { role: parsed.data.role} : {}),
+        ...(parsed.data.department !== undefined ? { department: parsed.data.department } : {}) },
+      select: { id: true, name: true, email: true, role: true, department: true, isActive: true } });
 
     await createAuditLog(user.id, "user_updated", "User", params.id, { changes: JSON.stringify(parsed.data) });
 
@@ -86,13 +80,11 @@ export const userRoutes = new Elysia({ prefix: "/users" })
 
     await prisma.user.update({
       where: { id: params.id },
-      data: { failedLogins: 0, lockedUntil: null },
-    });
+      data: { failedLogins: 0, lockedUntil: null } });
 
     await createAuditLog(user.id, "user_updated", "User", params.id, {
       action: "account_unlocked",
-      targetEmail: target.email,
-    });
+      targetEmail: target.email });
 
     return { success: true, message: `Account for ${target.email} has been unlocked` };
   });
