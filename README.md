@@ -11,7 +11,12 @@
 
 # ⚖️ RAPID Ledger
 
-### *Decision governance without compromise.*
+#
+> ⚠️ **Demo Pre-flight**: Wake the Railway container before your demo:
+> `curl https://rapid-ledger-production.up.railway.app/health`
+> Wait for `{"status":"ok"}` before proceeding. Free tier cold-starts take ~25 seconds.
+
+## *Decision governance without compromise.*
 
 **A production-grade, full-stack governance platform that enforces the RAPID decision framework — with server-side business rules, role-based access control, an immutable ledger, and a complete audit trail. Built in under 30 days as a first-year CSE internship project.**
 
@@ -636,6 +641,10 @@ RAPID Ledger implements multiple layers of authentication and access security:
 ---
 
 ## ⚠️ Known Limitations
+- **Audit Log Enforcement**: Audit logs are enforced at the service layer. Direct Prisma writes bypass the service layer and would not generate audit records. DB-level triggers would be required for production hardening.
+- **JWT Storage**: Tokens stored in localStorage for development velocity. Production hardening requires httpOnly SameSite=Strict cookies. Deliberate known trade-off.
+- **Rate Limiter**: In-memory rate limiter resets on server restart. Railway free tier cold starts reset brute-force protection. Redis-backed limiter required for production.
+
 
 | Area | Current Behaviour | Production Hardening |
 |------|------------------|---------------------|

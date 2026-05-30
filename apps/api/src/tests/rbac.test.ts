@@ -1,56 +1,58 @@
+import { describe, it, expect } from 'vitest';
 
-describe("canEdit — document ownership boundary", () => {
-  it("creator cannot edit another creator's draft document", async () => {
-    // Login as creator1
-    const login1 = await app.handle(
-      new Request("http://localhost/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: "creator@rapid.com", password: "password123" }),
-      })
-    );
-    const { token: token1 } = await login1.json();
+const API = 'https://rapid-ledger-production.up.railway.app';
 
-    // Login as admin to create a second creator, or use seeded performer
-    const login2 = await app.handle(
-      new Request("http://localhost/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: "admin@rapid.com", password: "password123" }),
-      })
-    );
-    const { token: adminToken } = await login2.json();
+async function login(email: string) {
+  const res = await fetch(`${API}/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password: 'password123' }),
+  });
+  const data = await res.json();
+  return data.token as string;
+}
 
-    // Creator1 creates a document
-    const createRes = await app.handle(
-      new Request("http://localhost/api/documents", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token1}`,
-        },
-        body: JSON.stringify({ title: "Creator1 Doc", description: "ownership test", riskLevel: "LOW" }),
-      })
-    );
+describe('RBAC — document ownership boundary', () => {
+  it('non-owner cannot PATCH another users draft document', async () => {
+    const creatorToken = await login('creator@rapid.com');
+    const auditorToken = await login('auditor@rapid.com');
+
+    const createRes = await fetch(`${API}/documents`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${creatorToken}`,
+      },
+      body: JSON.stringify({ title: 'Ownership Boundary Test', description: 'rbac ownership test', riskLevel: 'LOW' }),
+    });
+    expect(createRes.status).toBe(201);
     const doc = await createRes.json();
-    const docId = doc.id ?? doc.document?.id;
+    const docId = (doc.id ?? doc.document?.id) as string;
+    expect(docId).toBeTruthy();
 
-    // Admin tries to PATCH the draft (admin should be allowed — skip)
-    // Use a different seeded user who is also creator role but different ID
-    // Attempt edit with admin token — if admin can, check non-owner creator
-    const patchRes = await app.handle(
-      new Request(`http://localhost/api/documents/${docId}`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${adminToken}`,
-        },
-        body: JSON.stringify({ title: "Hijacked Title" }),
-      })
-    );
+    const patchRes = await fetch(`${API}/documents/${docId}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${auditorToken}`,
+      },
+      body: JSON.stringify({ title: 'Hijacked Title' }),
+    });
+    expect(patchRes.status).toBe(403);
+  });
 
-    // Admin may or may not be allowed — the critical check is the status
-    expect([200, 403]).toContain(patchRes.status);
-    console.log("Non-owner PATCH status:", patchRes.status);
+  it('unauthenticated request to documents is rejected with 401', async () => {
+    const res = await fetch(`${API}/documents`);
+    expect(res.status).toBe(401);
+  });
+
+  it('approver cannot create a document', async () => {
+    const token = await login('approver@rapid.com');
+    const res = await fetch(`${API}/documents`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ title: 'Approver Doc Attempt', description: 'should fail', riskLevel: 'LOW' }),
+    });
+    expect(res.status).toBe(403);
   });
 });
