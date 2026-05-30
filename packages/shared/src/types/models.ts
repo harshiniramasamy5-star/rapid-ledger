@@ -146,7 +146,6 @@ export const ROLE_LABELS: Record<UserRole, string> = {
   [UserRole.creator]: "Creator",
   [UserRole.recommender]: "Recommender",
   [UserRole.approver]: "Approver",
-  [UserRole.decision_owner]: "Decision Owner",
   [UserRole.performer]: "Performer",
-  [UserRole.auditor]: "Auditor",
+  [UserRole.viewer]: "Viewer",
 };

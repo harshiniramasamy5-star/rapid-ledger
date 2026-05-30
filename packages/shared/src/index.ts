@@ -1,3 +1,2 @@
+// Shared types used by both apps/api and apps/web
 export * from "./types/models";
-export * from "./schemas/enums";
-export * from "./schemas/models";

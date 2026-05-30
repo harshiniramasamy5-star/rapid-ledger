@@ -1,4 +1,4 @@
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient, UserRole } from "@prisma/client";
 import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
@@ -21,7 +21,7 @@ async function main() {
     await prisma.user.upsert({
       where: { email: u.email },
       update: { password, isActive: true, updatedAt: now },
-      create: { ...u, password, isActive: true, createdAt: now, updatedAt: now },
+      create: { ...u, role: u.role as UserRole, password, isActive: true, createdAt: now, updatedAt: now },
     });
     console.log(`✓ ${u.email}`);
   }

@@ -10,7 +10,6 @@ import { describe, it, expect, beforeAll } from "vitest";
 // increase timeout for integration tests hitting Railway
 import { vi } from "vitest";
 
-import { setDefaultTimeout } from "vitest";
 // @vitest-environment node
 import { app } from "../src/index";
 
