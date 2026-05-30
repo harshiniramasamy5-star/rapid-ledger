@@ -185,7 +185,7 @@ export const documentRoutes = new Elysia({ prefix: "/documents" })
     requirePermission(user, "document:finalize", set);
     const doc = await import("../lib/prisma").then(m => m.prisma.rapidDocument.findUnique({ where: { id: params.id } }));
     if (!doc) { set.status = 404; return Errors.notFound("Document"); }
-    if (doc.status !== "finalized") { set.status = 409; return Errors.badRequest("Document must be finalized first"); }
+    if ((doc.status as string) !== "finalized") { set.status = 409; return Errors.badRequest("Document must be finalized first"); }
     const updated = await import("../lib/prisma").then(m => m.prisma.rapidDocument.update({
       where: { id: params.id },
       data: { status: "execution_complete" } }));

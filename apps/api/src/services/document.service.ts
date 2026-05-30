@@ -1,5 +1,5 @@
 import { prisma } from "../lib/prisma";
-import type { Prisma } from "@prisma/client";
+import type { Prisma, DocumentStatus } from "@prisma/client";
 import { nextDocumentCode } from "../lib/documentCode";
 import { validateDocument } from "./validation.service";
 import { createAuditLog } from "./audit.service";
@@ -35,7 +35,7 @@ export async function listDocuments(filters?: ListDocumentsOptions): Promise<Pag
   const skip = (page - 1) * limit;
 
   const where: Prisma.RapidDocumentWhereInput = {
-    ...(filters?.status ? { status: filters.status } : {}),
+    ...(filters?.status ? { status: filters.status as DocumentStatus } : {}),
     ...(filters?.department ? { department: filters.department } : {}),
     ...(filters?.riskLevel ? { riskLevel: filters.riskLevel as "low" | "medium" | "high" | "critical" } : {}),
     ...(filters?.search ? { OR: [{ title: { contains: filters.search } }, { documentCode: { contains: filters.search } }] } : {}) };

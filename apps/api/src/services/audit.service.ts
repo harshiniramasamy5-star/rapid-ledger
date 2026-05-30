@@ -1,5 +1,5 @@
 import { prisma } from "../lib/prisma";
-import type { Prisma } from "@prisma/client";
+import type { Prisma, AuditAction } from "@prisma/client";
 
 export type AuditDetails = Record<string, unknown>;
 
@@ -18,7 +18,7 @@ export async function createAuditLog(
     await client.auditLog.create({
       data: {
         userId: actorId,
-        action,
+        action: action as AuditAction,
         entityType: objectType,
         entityId: objectId,
         details: details ? JSON.stringify(details) : undefined,
@@ -40,7 +40,7 @@ export async function getAuditLogs(
       ...(actorId    ? { userId: actorId }        : {}),
       ...(objectType ? { entityType: objectType } : {}),
       ...(objectId   ? { entityId: objectId }     : {}),
-      ...(action     ? { action }                 : {}),
+      ...(action     ? { action: action as AuditAction } : {}),
     },
     include: { user: { select: { id: true, name: true, email: true, role: true } } },
     orderBy: { createdAt: "desc" },
