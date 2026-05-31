@@ -1,4 +1,4 @@
-import { app } from "../src/index";
+import { app } from "../index";
 
 export async function req(
   method: string,
