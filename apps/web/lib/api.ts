@@ -28,23 +28,24 @@ export async function apiFetch(path: string, options?: RequestInit) {
   });
 
   // Safe response parsing
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let data: any = null;
+  interface ParsedResponse { error?: { message?: string }; message?: string }
+  let data: ParsedResponse | string | null = null;
 
   const text = await res.text();
 
   if (text) {
     try {
-      data = JSON.parse(text);
+      data = JSON.parse(text) as ParsedResponse;
     } catch {
       data = text;
     }
   }
 
   if (!res.ok) {
+    const parsed = typeof data === "object" && data !== null ? data as ParsedResponse : null;
     throw new Error(
-      data?.error?.message ??
-      data?.message ??
+      parsed?.error?.message ??
+      parsed?.message ??
       "Request failed"
     );
   }

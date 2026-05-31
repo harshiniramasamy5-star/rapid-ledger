@@ -1,8 +1,10 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client"
+
+interface ApiError { error?: { message?: string } }
 
 function getToken(){const m=document.cookie.match(/(?:^|;\s*)rapid_token=([^;]*)/);return m?decodeURIComponent(m[1]):null;};
 import { useEffect, useState } from "react";
+import type { ApiDocument } from "@/lib/types";
 import { useRouter, useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,7 +19,7 @@ export default function EditDocumentPage() {
   const params = useParams() as { id: string };
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [doc, setDoc] = useState<any>(null);
+  const [doc, setDoc] = useState<ApiDocument | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -48,6 +50,7 @@ export default function EditDocumentPage() {
   }, [params.id, router]);
 
   async function save() {
+    if (!doc) return;
     setSaving(true);
     const token = getToken();
     const res = await fetch(`${API}/documents/${params.id}`, {

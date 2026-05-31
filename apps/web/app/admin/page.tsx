@@ -1,7 +1,7 @@
 "use client"
 
 function getToken(){const m=document.cookie.match(/(?:^|;\s*)rapid_token=([^;]*)/);return m?decodeURIComponent(m[1]):null;};
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import type { ApiUser } from "@/lib/types";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -40,19 +40,7 @@ export default function AdminPage() {
 
   function token() { return getToken(); }
 
-  useEffect(() => {
-    const t = getToken();
-    if (!t) { router.replace("/login"); return; }
-    fetch(`${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001"}/auth/me`, {
-      headers: { Authorization: `Bearer ${t}` }
-    }).then(r => r.json()).then(me => {
-      if (me.role !== "admin") { router.replace("/dashboard"); return; }
-      loadUsers();
-    });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [router]);
-
-  async function loadUsers() {
+  const loadUsers = useCallback(async () => {
     setLoading(true);
     try {
       const res = await fetch(`${API}/admin/users`, {
@@ -65,7 +53,18 @@ export default function AdminPage() {
     } finally {
       setLoading(false);
     }
-  }
+  }, []);
+
+  useEffect(() => {
+    const t = getToken();
+    if (!t) { router.replace("/login"); return; }
+    fetch(`${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001"}/auth/me`, {
+      headers: { Authorization: `Bearer ${t}` }
+    }).then(r => r.json()).then(me => {
+      if (me.role !== "admin") { router.replace("/dashboard"); return; }
+      loadUsers();
+    });
+  }, [router, loadUsers]);
 
   async function createUser() {
     if (!form.name || !form.email || !form.password || !form.role) {
