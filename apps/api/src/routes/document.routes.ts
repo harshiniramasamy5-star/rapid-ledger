@@ -61,7 +61,7 @@ export const documentRoutes = new Elysia({ prefix: "/documents" })
       set.status = 400;
       return Errors.badRequest("Invalid document data", parsed.errors);
     }
-    const doc = await createDocument({ ...parsed.data, riskLevel: parsed.data.riskLevel ?? "low" }, user.id);
+    const doc = await createDocument({ ...parsed.data, riskLevel: (parsed.data.riskLevel ?? "low").toUpperCase() as "LOW" | "MEDIUM" | "HIGH" | "CRITICAL" }, user.id);
     set.status = 201;
     return doc;
   })
