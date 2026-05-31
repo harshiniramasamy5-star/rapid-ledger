@@ -42,6 +42,7 @@ export const documentRoutes = new Elysia({ prefix: "/documents" })
   })
 
   // ── GET /documents ────────────────────────────────────────────────────────
+  /** GET /documents — List all documents with optional status/search filters */
   .get("/", async ({ user, query, set }) => {
     requirePermission(user, "document:read", set);
     return listDocuments({
@@ -54,6 +55,7 @@ export const documentRoutes = new Elysia({ prefix: "/documents" })
   })
 
   // ── POST /documents ───────────────────────────────────────────────────────
+  /** POST /documents — Create a new RAPID document (creator role) */
   .post("/", async ({ user, body: _body, set }) => {
     requirePermission(user, "document:create", set);
     const parsed = parseBody(createDocumentSchema, _body);
@@ -69,6 +71,7 @@ export const documentRoutes = new Elysia({ prefix: "/documents" })
 
 
   // ── GET /documents/:id ────────────────────────────────────────────────────
+  /** GET /documents/:id — Get full document detail with roles, approvals, evidence */
   .get("/:id", async ({ user, params, set }) => {
     requirePermission(user, "document:read", set);
     const doc = await getDocument(params.id);
@@ -79,6 +82,7 @@ export const documentRoutes = new Elysia({ prefix: "/documents" })
 
 
   // ── GET /documents/:id/validate ───────────────────────────────────────────
+  /** GET /documents/:id/validate — Run RAPID validation rules against document */
   .get("/:id/validate", async ({ user, params, set }) => {
     requirePermission(user, "document:read", set);
     const result = await runValidation(params.id);
@@ -87,6 +91,7 @@ export const documentRoutes = new Elysia({ prefix: "/documents" })
   })
 
   // ── POST /documents/:id/submit ────────────────────────────────────────────
+  /** POST /documents/:id/submit — Submit document for approval (draft → submitted) */
   .post("/:id/submit", async ({ user, params, set }) => {
     requirePermission(user, "document:submit", set);
     const result = await submitDocument(params.id, user.id);
@@ -99,6 +104,7 @@ export const documentRoutes = new Elysia({ prefix: "/documents" })
   })
 
   // ── POST /documents/:id/approve ───────────────────────────────────────────
+  /** POST /documents/:id/approve — Approve document (approver role, awaiting_agreement → approved) */
   .post("/:id/approve", async ({ user, params, body: _body, set }) => {
     requirePermission(user, "document:approve", set);
     const parsed = parseBody(approvalSchema, _body ?? {});
@@ -111,6 +117,7 @@ export const documentRoutes = new Elysia({ prefix: "/documents" })
   })
 
   // ── POST /documents/:id/reject ────────────────────────────────────────────
+  /** POST /documents/:id/reject — Reject document with comment */
   .post("/:id/reject", async ({ user, params, body: _body, set }) => {
     requirePermission(user, "document:reject", set);
     const parsed = parseBody(approvalSchema, _body ?? {});
@@ -123,6 +130,7 @@ export const documentRoutes = new Elysia({ prefix: "/documents" })
   })
 
   // ── POST /documents/:id/needs-changes ─────────────────────────────────────
+  /** POST /documents/:id/needs-changes — Request changes on document */
   .post("/:id/needs-changes", async ({ user, params, body: _body, set }) => {
     requirePermission(user, "document:reject", set);
     const parsed = parseBody(approvalSchema, _body ?? {});
@@ -135,6 +143,7 @@ export const documentRoutes = new Elysia({ prefix: "/documents" })
   })
 
   // ── POST /documents/:id/finalize ──────────────────────────────────────────
+  /** POST /documents/:id/finalize — Finalize document, creates immutable ledger entry (decision_owner only) */
   .post("/:id/finalize", async ({ user, params, set }) => {
     requirePermission(user, "document:finalize", set);
     const result = await finalizeDocument(params.id, user.id);
@@ -148,6 +157,7 @@ export const documentRoutes = new Elysia({ prefix: "/documents" })
 
 
   // ── POST /documents/:id/recommend ────────────────────────────────────────
+  /** POST /documents/:id/recommend — Submit recommendation notes (recommender role) */
   .post("/:id/recommend", async ({ user, params, body, set }) => {
     const { prisma } = await import("../lib/prisma");
     const doc = await prisma.rapidDocument.findUnique({ where: { id: params.id } });
@@ -165,6 +175,7 @@ export const documentRoutes = new Elysia({ prefix: "/documents" })
 
 
   // ── POST /documents/:id/input ─────────────────────────────────────────────
+  /** POST /documents/:id/input — Provide input notes (input role) */
   .post("/:id/input", async ({ user, params, body, set }) => {
     const { prisma } = await import("../lib/prisma");
     const doc = await prisma.rapidDocument.findUnique({ where: { id: params.id } });
@@ -181,6 +192,7 @@ export const documentRoutes = new Elysia({ prefix: "/documents" })
   })
 
   // ── POST /documents/:id/execution-complete ────────────────────────────────
+  /** POST /documents/:id/execution-complete — Mark execution complete (performer role) */
   .post("/:id/execution-complete", async ({ user, params, body: _body, set }) => {
     requirePermission(user, "document:finalize", set);
     const doc = await import("../lib/prisma").then(m => m.prisma.rapidDocument.findUnique({ where: { id: params.id } }));
@@ -194,6 +206,7 @@ export const documentRoutes = new Elysia({ prefix: "/documents" })
   })
 
   // ── POST /documents/:id/version ───────────────────────────────────────────
+  /** POST /documents/:id/version — Create new version from finalized document */
   .post("/:id/version", async ({ user, params, set }) => {
     requirePermission(user, "document:version", set);
     const result = await createDocumentVersion(params.id, user.id);
@@ -207,6 +220,7 @@ export const documentRoutes = new Elysia({ prefix: "/documents" })
 
 
   // ── PATCH /documents/:id — blocked for finalized documents ────────────────
+  /** PATCH /documents/:id — Update document fields (draft status only) */
   .patch("/:id", async ({ user, params, body: _body, set }) => {
     requirePermission(user, "document:update", set);
     const doc = await prisma.rapidDocument.findUnique({ where: { id: params.id } });
