@@ -1,6 +1,6 @@
 ![CI](https://github.com/harshiniramasamy5-star/rapid-ledger/actions/workflows/ci.yml/badge.svg)
 ![TypeScript](https://img.shields.io/badge/TypeScript-strict%20%E2%9C%93-3178C6?logo=typescript&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-101%20passing-brightgreen?logo=vitest)
+![Tests](https://img.shields.io/badge/tests-130%20passing-brightgreen?logo=vitest)
 ![Railway](https://img.shields.io/badge/Railway-deployed-7B2FBE?logo=railway&logoColor=white)
 ![Vercel](https://img.shields.io/badge/Vercel-live-000000?logo=vercel&logoColor=white)
 ![Prisma](https://img.shields.io/badge/Prisma-ORM-2D3748?logo=prisma&logoColor=white)
@@ -560,9 +560,9 @@ cd apps/api && npx eslint
 |---|---|---|---|
 | API integration tests | Vitest | 80 ✅ | Auth, CRUD, RBAC, workflow, immutability |
 | RBAC permission tests | Vitest | 44 ✅ | All role × permission combinations |
-| Frontend component tests | Jest + RTL | 9 ✅ | LoginPage — render, validation, routing, toasts |
+| Frontend component tests | Jest + RTL | 38 ✅ | LoginPage, ApprovalsPage — render, validation, routing, actions, toasts |
 | E2E workflow tests | Playwright | 12 ✅ | Login, navigation, RBAC gates, adversarial |
-| **Total** | | **101 ✅** | |
+| **Total** | | **130 ✅** | |
 
 ### CI Pipeline
 
@@ -572,7 +572,7 @@ graph LR
     CI --> MIGRATE["prisma migrate\ndeploy"]
     MIGRATE --> SEED["prisma db\nseed"]
     SEED --> VITEST["Vitest\n80 tests"]
-    SEED --> JEST["Jest\n9 tests"]
+    SEED --> JEST["Jest\n38 tests"]
     VITEST --> TSC["tsc --noEmit\nboth apps"]
     JEST --> TSC
     TSC --> LINT["ESLint\n0 errors"]
@@ -745,7 +745,7 @@ Built as a first-year internship project demonstrating:
 - Domain-driven architecture (decision governance)
 - Compliance-grade engineering (immutable records, audit trails)
 - Production deployment (Railway + Vercel + GitHub Actions CI)
-- Comprehensive test coverage (101 tests across 3 frameworks)
+- Comprehensive test coverage (130 tests across 3 frameworks)
 
 ---
 
