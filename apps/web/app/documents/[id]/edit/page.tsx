@@ -1,6 +1,5 @@
 "use client"
 
-interface ApiError { error?: { message?: string } }
 
 function getToken(){const m=document.cookie.match(/(?:^|;\s*)rapid_token=([^;]*)/);return m?decodeURIComponent(m[1]):null;};
 import { useEffect, useState } from "react";
