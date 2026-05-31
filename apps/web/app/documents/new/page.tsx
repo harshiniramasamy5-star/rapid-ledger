@@ -67,7 +67,7 @@ export default function NewDocumentPage() {
       const text = await res.text();
       let data: Record<string, unknown> = {};
       try { data = JSON.parse(text); } catch { throw new Error(text || "Server error"); }
-      if (!res.ok) throw new Error((data.error as { message?: string })?.message ?? text ?? "Failed");
+      if (!res.ok) throw new Error((data['error'] as Record<string,string>|undefined)?.['message'] ?? text ?? "Failed");
       setDocId(data.id as string);
       toast.success("Document created! Now assign roles.");
       setStep(2);

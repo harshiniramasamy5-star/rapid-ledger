@@ -53,7 +53,7 @@ export const getDocument = (id: string) => prisma.rapidDocument.findUnique({ whe
 export async function createDocument(body: CreateDocumentBody, createdById: string) {
   const documentCode = await nextDocumentCode();
   const doc = await prisma.rapidDocument.create({
-    data: { documentCode, version: 1, title: body.title, decisionSummary: body.decisionSummary, riskLevel: body.riskLevel.toUpperCase() as any, complianceImpact: body.complianceImpact ?? false, department: body.department, deadline: body.deadline ? new Date(body.deadline) : undefined, businessContext: body.businessContext, problemStatement: body.problemStatement, proposedDecision: body.proposedDecision, alternativesConsidered: body.alternativesConsidered, createdById, status: "draft" },
+    data: { documentCode, version: 1, title: body.title, decisionSummary: body.decisionSummary, riskLevel: (body.riskLevel as string).toUpperCase() as 'LOW'|'MEDIUM'|'HIGH'|'CRITICAL', complianceImpact: body.complianceImpact ?? false, department: body.department, deadline: body.deadline ? new Date(body.deadline) : undefined, businessContext: body.businessContext, problemStatement: body.problemStatement, proposedDecision: body.proposedDecision, alternativesConsidered: body.alternativesConsidered, createdById, status: "draft" },
     include: INCLUDE });
   await createAuditLog(createdById, "document_created", "RapidDocument", doc.id, { documentCode, title: body.title });
   return doc;
