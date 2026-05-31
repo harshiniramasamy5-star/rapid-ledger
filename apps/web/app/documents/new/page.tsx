@@ -64,8 +64,10 @@ export default function NewDocumentPage() {
         headers: { Authorization: `Bearer ${token()}`, "Content-Type": "application/json" },
         body: JSON.stringify({ ...form, complianceImpact: Boolean(form.complianceImpact), deadline: form.deadline ? new Date(form.deadline).toISOString() : undefined }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error?.message ?? "Failed");
+      const text = await res.text();
+      let data: Record<string, unknown> = {};
+      try { data = JSON.parse(text); } catch { throw new Error(text || "Server error"); }
+      if (!res.ok) throw new Error((data.error as { message?: string })?.message ?? text ?? "Failed");
       setDocId(data.id);
       toast.success("Document created! Now assign roles.");
       setStep(2);
