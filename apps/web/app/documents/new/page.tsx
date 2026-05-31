@@ -41,6 +41,7 @@ export default function NewDocumentPage() {
     title: "", type: "link", urlOrPath: "", description: "",
   });
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     const token = getToken();
     if (!token) { router.replace("/login"); return; }
