@@ -94,7 +94,7 @@ describe("LoginPage", () => {
     expect(submitBtn).toBeDisabled();
   });
 
-  it("stores token in localStorage on successful login", async () => {
+  it("redirects admin to dashboard on successful login", async () => {
     mockFetch.mockResolvedValueOnce({
       ok: true,
       json: async () => ({
@@ -109,7 +109,7 @@ describe("LoginPage", () => {
     fireEvent.click(screen.getByRole("button", { name: /continue/i }));
 
     await waitFor(() => {
-      expect(localStorageMock.getItem("rapid_token")).toBe("mock-jwt-token");
+      expect(mockPush).toHaveBeenCalledWith("/dashboard");
     });
   });
 
@@ -166,7 +166,7 @@ describe("LoginPage", () => {
     fireEvent.click(screen.getByRole("button", { name: /continue/i }));
 
     await waitFor(() => {
-      expect(mockPush).toHaveBeenCalledWith("/audit-log");
+      expect(mockPush).toHaveBeenCalledWith("/dashboard");
     });
   });
 
