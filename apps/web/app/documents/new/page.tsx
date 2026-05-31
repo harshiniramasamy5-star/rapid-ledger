@@ -62,7 +62,7 @@ export default function NewDocumentPage() {
       const res = await fetch(`${API}/documents`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token()}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ ...form, riskLevel: form.riskLevel.toUpperCase(), complianceImpact: Boolean(form.complianceImpact), deadline: form.deadline ? new Date(form.deadline).toISOString() : undefined }),
+        body: JSON.stringify({ ...form, complianceImpact: Boolean(form.complianceImpact), deadline: form.deadline ? new Date(form.deadline).toISOString() : undefined }),
       });
       const text = await res.text();
       let data: Record<string, unknown> = {};
