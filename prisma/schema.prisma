@@ -57,6 +57,9 @@ model RapidDocument {
   roleAssignments        RoleAssignment[]
 
   @@unique([documentCode, version])
+  @@index([status])
+  @@index([createdById])
+  @@index([deadline])
 }
 
 model RoleAssignment {
@@ -117,6 +120,8 @@ model AuditLog {
   createdAt  DateTime       @default(now())
   document   RapidDocument? @relation(fields: [documentId], references: [id])
   user       User           @relation(fields: [userId], references: [id])
+  @@index([documentId])
+  @@index([userId, createdAt])
 }
 
 model RefreshToken {
