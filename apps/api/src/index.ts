@@ -16,27 +16,18 @@ export const app = new Elysia()
     allowedHeaders: ["Content-Type", "Authorization"],
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
   }))
-
-  // ── elysia-logger: logs every request + response automatically ──
   .use(logger({
     level: "debug",
     autoLogging: true,
     transport: {
       target: "pino-pretty",
-      options: {
-        colorize: true,
-        translateTime: "SYS:HH:MM:ss",
-        ignore: "pid,hostname",
-        singleLine: false,
-      }
+      options: { colorize: true, translateTime: "SYS:HH:MM:ss", ignore: "pid,hostname" }
     }
   }))
 
-  .get("/health", ({ log }) => {
-    log.info("Health check");
-    return { status: "ok", timestamp: new Date().toISOString() };
-  })
+  .get("/health", () => ({ status: "ok", timestamp: new Date().toISOString() }))
 
+  // ── original routes (/users, /documents, etc.) ─────────────
   .use(authRoutes)
   .use(documentRoutes)
   .use(ledgerRoutes)
@@ -44,27 +35,24 @@ export const app = new Elysia()
   .use(approvalRoutes)
   .use(auditRoutes)
 
-  // ── Catch unmatched routes ──────────────────────────────────────
-  .all("*", ({ request, set, log }) => {
+  // ── /admin/* aliases → frontend calls /admin/users etc. ────
+  .use(new Elysia({ prefix: "/admin" })
+    .use(userRoutes)
+    .use(documentRoutes)
+    .use(ledgerRoutes)
+    .use(approvalRoutes)
+    .use(auditRoutes)
+  )
+
+  .all("*", ({ request, set }) => {
     const path = new URL(request.url).pathname;
     set.status = 404;
-    log.warn({ method: request.method, path }, `🚫 NO ROUTE: ${request.method} ${path}`);
-    console.warn(`\n🚫 NO ROUTE MATCHED: ${request.method} ${path}\n`);
+    console.warn(`\n🚫 NO ROUTE: ${request.method} ${path}\n`);
     return { error: { code: "NOT_FOUND", message: `No route: ${request.method} ${path}` } };
   })
 
-  // ── Global error handler ────────────────────────────────────────
-  .onError(({ error, set, request, code, log }) => {
+  .onError(({ error, set, request, code }) => {
     const path = new URL(request.url).pathname;
-
-    log.error({
-      code,
-      method: request.method,
-      path,
-      message: error.message,
-      stack: error.stack,
-    }, `❌ ERROR [${code}] ${request.method} ${path}`);
-
     console.error(`\n${"━".repeat(50)}`);
     console.error(`❌ ERROR CODE : ${code}`);
     console.error(`📍 PATH       : ${request.method} ${path}`);
@@ -81,9 +69,8 @@ export const app = new Elysia()
       set.status = 404;
       return { error: { code: "NOT_FOUND", message: `Route not found: ${request.method} ${path}` } };
     }
-
     set.status = 500;
-    return { error: { code: "INTERNAL_ERROR", message: "An unexpected error occurred" } };
+    return { error: { code: "INTERNAL_ERROR", message: error.message } };
   });
 
 if (process.env.NODE_ENV !== "test") {
@@ -105,7 +92,7 @@ if (process.env.NODE_ENV !== "test") {
     res.writeHead(response.status, Object.fromEntries(response.headers));
     res.end(Buffer.from(await response.arrayBuffer()));
   }).listen(port, () => {
-    console.log(`\n🚀 RAPID Ledger API with elysia-logger running on http://localhost:${port}\n`);
+    console.log(`\n🚀 API running on http://localhost:${port}`);
+    console.log(`✅ Routes: /auth /users /admin/users /documents /admin/documents /ledger /approvals /audit\n`);
   });
 }
-// This file has been patched for Railway logging
