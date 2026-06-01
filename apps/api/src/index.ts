@@ -1,7 +1,6 @@
 import { Elysia } from "elysia";
 import { cors } from "@elysiajs/cors";
 import { createServer } from "node:http";
-import { logger } from "@bogeychan/elysia-logger";
 import { authRoutes } from "./routes/auth.routes";
 import { documentRoutes } from "./routes/document.routes";
 import { ledgerRoutes } from "./routes/ledger.routes";
@@ -16,18 +15,21 @@ export const app = new Elysia()
     allowedHeaders: ["Content-Type", "Authorization"],
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
   }))
-  .use(logger({
-    level: "debug",
-    autoLogging: true,
-    transport: {
-      target: "pino-pretty",
-      options: { colorize: true, translateTime: "SYS:HH:MM:ss", ignore: "pid,hostname" }
-    }
-  }))
+
+  .onRequest(({ request }) => {
+    const url = new URL(request.url);
+    console.log(`📥 ${request.method} ${url.pathname}`);
+  })
+
+  .onAfterResponse(({ request, set }) => {
+    const url = new URL(request.url);
+    const status = Number(set.status ?? 200);
+    const icon = status >= 500 ? "💥" : status >= 400 ? "⚠️" : "✅";
+    console.log(`${icon} ${request.method} ${url.pathname} → ${status}`);
+  })
 
   .get("/health", () => ({ status: "ok", timestamp: new Date().toISOString() }))
 
-  // ── original routes (/users, /documents, etc.) ─────────────
   .use(authRoutes)
   .use(documentRoutes)
   .use(ledgerRoutes)
@@ -35,7 +37,7 @@ export const app = new Elysia()
   .use(approvalRoutes)
   .use(auditRoutes)
 
-  // ── /admin/* aliases → frontend calls /admin/users etc. ────
+  // /admin/* aliases — frontend calls /admin/users etc.
   .use(new Elysia({ prefix: "/admin" })
     .use(userRoutes)
     .use(documentRoutes)
@@ -47,18 +49,18 @@ export const app = new Elysia()
   .all("*", ({ request, set }) => {
     const path = new URL(request.url).pathname;
     set.status = 404;
-    console.warn(`\n🚫 NO ROUTE: ${request.method} ${path}\n`);
+    console.warn(`🚫 NO ROUTE: ${request.method} ${path}`);
     return { error: { code: "NOT_FOUND", message: `No route: ${request.method} ${path}` } };
   })
 
   .onError(({ error, set, request, code }) => {
     const path = new URL(request.url).pathname;
-    console.error(`\n${"━".repeat(50)}`);
+    console.error(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
     console.error(`❌ ERROR CODE : ${code}`);
     console.error(`📍 PATH       : ${request.method} ${path}`);
     console.error(`💬 MESSAGE    : ${error.message}`);
-    console.error(`📚 STACK      :\n${error.stack}`);
-    console.error(`${"━".repeat(50)}\n`);
+    console.error(`📚 STACK      : ${error.stack}`);
+    console.error(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
 
     try {
       const parsed = JSON.parse((error as { message?: string }).message ?? "{}") as { error: { code: string; message: string } };
@@ -93,6 +95,6 @@ if (process.env.NODE_ENV !== "test") {
     res.end(Buffer.from(await response.arrayBuffer()));
   }).listen(port, () => {
     console.log(`\n🚀 API running on http://localhost:${port}`);
-    console.log(`✅ Routes: /auth /users /admin/users /documents /admin/documents /ledger /approvals /audit\n`);
+    console.log(`✅ Routes: /auth /users /admin/users /documents /ledger /approvals /audit\n`);
   });
 }
