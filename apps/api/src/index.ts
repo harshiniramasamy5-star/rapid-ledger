@@ -37,7 +37,6 @@ export const app = new Elysia()
   .use(approvalRoutes)
   .use(auditRoutes)
 
-  // /admin/* aliases — frontend calls /admin/users etc.
   .use(new Elysia({ prefix: "/admin" })
     .use(userRoutes)
     .use(documentRoutes)
@@ -55,15 +54,19 @@ export const app = new Elysia()
 
   .onError(({ error, set, request, code }) => {
     const path = new URL(request.url).pathname;
+    const err = error as unknown as { message?: string; stack?: string };
+    const message = err.message ?? "Unknown error";
+    const stack = err.stack ?? "No stack";
+
     console.error(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
     console.error(`❌ ERROR CODE : ${code}`);
     console.error(`📍 PATH       : ${request.method} ${path}`);
-    console.error(`💬 MESSAGE    : ${error.message}`);
-    console.error(`📚 STACK      : ${error.stack}`);
+    console.error(`💬 MESSAGE    : ${message}`);
+    console.error(`📚 STACK      : ${stack}`);
     console.error(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
 
     try {
-      const parsed = JSON.parse((error as { message?: string }).message ?? "{}") as { error: { code: string; message: string } };
+      const parsed = JSON.parse(message) as { error: { code: string; message: string } };
       if (parsed.error) return parsed;
     } catch { /* not structured */ }
 
@@ -72,7 +75,7 @@ export const app = new Elysia()
       return { error: { code: "NOT_FOUND", message: `Route not found: ${request.method} ${path}` } };
     }
     set.status = 500;
-    return { error: { code: "INTERNAL_ERROR", message: error.message } };
+    return { error: { code: "INTERNAL_ERROR", message } };
   });
 
 if (process.env.NODE_ENV !== "test") {
