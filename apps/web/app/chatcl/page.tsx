@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import ReactMarkdown from "react-markdown";
+import { api } from "@/lib/api";
 
 type Message = { role: "user" | "assistant"; content: string };
 
@@ -15,6 +16,12 @@ export default function ChatCLPage() {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
 
+  // Detect a document code like DOC-001 or DEMO-001 in the user's message
+  const findDocCode = (text: string): string | null => {
+    const match = text.match(/\b([A-Z]{2,}-\d{2,})\b/);
+    return match ? match[1] : null;
+  };
+
   const send = async () => {
     const text = input.trim();
     if (!text || loading) return;
@@ -24,11 +31,32 @@ export default function ChatCLPage() {
     setInput("");
     setLoading(true);
 
+    // If the user references a document code, fetch its real data
+    let context = "";
+    const code = findDocCode(text);
+    if (code) {
+      try {
+        const docs = await api.get<{ data?: any[] } | any[]>(`/documents?search=${code}`);
+        const list = Array.isArray(docs) ? docs : docs?.data ?? [];
+        const doc = list.find((d: any) => d.documentCode === code) ?? list[0];
+        if (doc) {
+          context = `\n\n[Real document data for ${code}]:\n${JSON.stringify(doc, null, 2)}`;
+        }
+      } catch {
+        // ignore fetch errors, fall back to general answer
+      }
+    }
+
     try {
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/ai/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: newMessages }),
+        body: JSON.stringify({
+          messages: [
+            ...newMessages.slice(0, -1),
+            { role: "user", content: text + context },
+          ],
+        }),
       });
       const data = await res.json();
       const reply = data.reply ?? "Sorry, something went wrong.";
@@ -41,8 +69,11 @@ export default function ChatCLPage() {
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-4rem)] max-w-3xl mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-4">ChatCL</h1>
+    <div className="flex flex-col h-[calc(100vh-7rem)] max-w-3xl mx-auto p-4">
+      <h1 className="text-2xl font-bold mb-1">ChatCL</h1>
+      <p className="text-sm text-muted-foreground mb-4">
+        Ask about RAPID, or reference a document by code (e.g. &quot;Tell me about DEMO-001&quot;) for real data.
+      </p>
 
       <div className="flex-1 overflow-y-auto space-y-3 border rounded-lg p-4 bg-muted/20">
         {messages.length === 0 && (
@@ -57,11 +88,7 @@ export default function ChatCLPage() {
                   : "bg-background border prose prose-sm max-w-none dark:prose-invert"
               }`}
             >
-              {m.role === "assistant" ? (
-                <ReactMarkdown>{m.content}</ReactMarkdown>
-              ) : (
-                m.content
-              )}
+              {m.role === "assistant" ? <ReactMarkdown>{m.content}</ReactMarkdown> : m.content}
             </div>
           </div>
         ))}
