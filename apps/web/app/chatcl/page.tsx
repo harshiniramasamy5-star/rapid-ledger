@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import ReactMarkdown from "react-markdown";
 
 type Message = { role: "user" | "assistant"; content: string };
 
@@ -48,18 +49,19 @@ export default function ChatCLPage() {
           <p className="text-muted-foreground text-sm">Ask anything about your decisions, documents, or audit logs.</p>
         )}
         {messages.map((m, i) => (
-          <div
-            key={i}
-            className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}
-          >
+          <div key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
             <div
-              className={`rounded-lg px-4 py-2 max-w-[80%] text-sm whitespace-pre-wrap ${
+              className={`rounded-lg px-4 py-2 max-w-[80%] text-sm ${
                 m.role === "user"
                   ? "bg-primary text-primary-foreground"
-                  : "bg-background border"
+                  : "bg-background border prose prose-sm max-w-none dark:prose-invert"
               }`}
             >
-              {m.content}
+              {m.role === "assistant" ? (
+                <ReactMarkdown>{m.content}</ReactMarkdown>
+              ) : (
+                m.content
+              )}
             </div>
           </div>
         ))}
