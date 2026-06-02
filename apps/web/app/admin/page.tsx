@@ -94,8 +94,9 @@ export default function AdminPage() {
   async function toggleUser(userId: string, isActive: boolean) {
     try {
       const res = await fetch(`${API}/admin/users/${userId}`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token()}` },
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${token()}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ isActive: !isActive }),
       });
       if (!res.ok) throw await res.json();
       toast.success(`User ${isActive ? "deactivated" : "activated"} successfully`);
