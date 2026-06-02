@@ -28,7 +28,7 @@ export const aiRoutes = new Elysia()
         messages: [{ role: "system", content: SYSTEM_PROMPT }, ...messages]
       })
     });
-    const data = await response.json() as any;
+    const data = await response.json() as { choices?: { message?: { content?: string } }[]; [key: string]: unknown };
     if (!data?.choices?.[0]?.message?.content) {
       set.status = 500;
       return { error: { code: "GROQ_ERROR", raw: data } };

@@ -36,9 +36,9 @@ export default function ChatCLPage() {
     const code = findDocCode(text);
     if (code) {
       try {
-        const docs = await api.get<{ data?: any[] } | any[]>(`/documents?search=${code}`);
+        const docs = await api.get<{ data?: Record<string, unknown>[] } | Record<string, unknown>[]>(`/documents?search=${code}`);
         const list = Array.isArray(docs) ? docs : docs?.data ?? [];
-        const doc = list.find((d: any) => d.documentCode === code) ?? list[0];
+        const doc = list.find((d: Record<string, unknown>) => d.documentCode === code) ?? list[0];
         if (doc) {
           context = `\n\n[Real document data for ${code}]:\n${JSON.stringify(doc, null, 2)}`;
         }
