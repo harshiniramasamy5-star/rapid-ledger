@@ -128,5 +128,5 @@ export interface DocComment {
   parentId?: string | null;
   createdAt: string;
   author: { id: string; name: string; role: string };
-  replies: Comment[];
+  replies: DocComment[];
 }
