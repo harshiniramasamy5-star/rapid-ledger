@@ -119,3 +119,14 @@ export function getApiError(err: unknown, fallback = 'Something went wrong'): st
   }
   return fallback;
 }
+
+export interface Comment {
+  id: string;
+  content: string;
+  documentId: string;
+  authorId: string;
+  parentId?: string | null;
+  createdAt: string;
+  author: { id: string; name: string; role: string };
+  replies: Comment[];
+}

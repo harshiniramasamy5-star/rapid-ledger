@@ -8,6 +8,7 @@ import { userRoutes } from "./routes/user.routes";
 import { approvalRoutes } from "./routes/approval.routes";
 import { aiRoutes } from "./routes/ai.routes";
 import { auditRoutes } from "./routes/audit.routes";
+import { commentsRoutes } from "./routes/comments.routes";
 
 export const app = new Elysia()
   .use(cors({
@@ -52,6 +53,7 @@ export const app = new Elysia()
   .use(userRoutes)
   .use(approvalRoutes)
   .use(auditRoutes)
+  .use(commentsRoutes)
   .use(new Elysia({ prefix: "/admin" })
     .use(userRoutes)
     .use(documentRoutes)

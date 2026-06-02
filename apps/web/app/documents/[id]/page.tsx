@@ -46,6 +46,11 @@ export default function DocumentDetailPage() {
   const [me, setMe]                 = useState<ApiUser | null>(null);
   const [myApproval, setMyApproval] = useState<Approval | null>(null);
   const [approvalNotes, setApprovalNotes]     = useState("");
+  const [comments, setComments]               = useState<Comment[]>([]);
+  const [commentText, setCommentText]         = useState("");
+  const [replyText, setReplyText]             = useState<Record<string, string>>({});
+  const [replyingTo, setReplyingTo]           = useState<string | null>(null);
+  const [commentsLoading, setCommentsLoading] = useState(false);
   const [execNotes, setExecNotes]             = useState("");
   const [recommendNotes, setRecommendNotes]   = useState("");
   const [inputNotes, setInputNotes]           = useState("");
@@ -75,7 +80,39 @@ export default function DocumentDetailPage() {
     } catch { toast.error("Failed to load document"); setLoading(false); }
   }, [params.id, router]);
 
-  useEffect(() => { void load(); }, [load]);
+  const fetchComments = async () => {
+    const t = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+    if (!t) return;
+    setCommentsLoading(true);
+    const res = await fetch(`${API}/documents/${params.id}/comments`, { headers: { Authorization: `Bearer ${t}` } });
+    if (res.ok) setComments(await res.json());
+    setCommentsLoading(false);
+  };
+
+  useEffect(() => { fetchComments(); }, [params.id]);
+
+  async function postComment() {
+    const t = localStorage.getItem("token");
+    if (!commentText.trim() || !t) return;
+    const res = await fetch(`${API}/documents/${params.id}/comments`, {
+      method: "POST", headers: { Authorization: `Bearer ${t}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ content: commentText.trim() }),
+    });
+    if (res.ok) { setCommentText(""); fetchComments(); }
+  }
+
+  async function postReply(commentId: string) {
+    const t = localStorage.getItem("token");
+    const text = replyText[commentId];
+    if (!text?.trim() || !t) return;
+    const res = await fetch(`${API}/documents/${params.id}/comments/${commentId}/replies`, {
+      method: "POST", headers: { Authorization: `Bearer ${t}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ content: text.trim() }),
+    });
+    if (res.ok) { setReplyText(r => ({ ...r, [commentId]: "" })); setReplyingTo(null); fetchComments(); }
+  }
+
+    useEffect(() => { void load(); }, [load]);
 
   async function apiPost(path: string, body?: Record<string, unknown>) {
     const res = await fetch(`${API}${path}`, {
@@ -492,6 +529,72 @@ export default function DocumentDetailPage() {
             </CardContent>
           </Card>
         )}
+      {/* Comments */}
+      <Card className="border-slate-200 shadow-sm">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base text-slate-900">💬 Discussion ({comments.length})</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex gap-2">
+            <input
+              className="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+              placeholder="Add a comment..."
+              value={commentText}
+              onChange={e => setCommentText(e.target.value)}
+              onKeyDown={e => e.key === "Enter" && postComment()}
+            />
+            <Button size="sm" onClick={postComment} disabled={!commentText.trim()}>Post</Button>
+          </div>
+          {commentsLoading ? (
+            <p className="text-sm text-slate-400">Loading comments...</p>
+          ) : comments.length === 0 ? (
+            <p className="text-sm text-slate-400 text-center py-4">No comments yet. Start the discussion.</p>
+          ) : (
+            <div className="space-y-3">
+              {comments.map(c => (
+                <div key={c.id} className="bg-slate-50 rounded-lg p-3 border border-slate-100">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-xs font-bold text-slate-700">{c.author.name}</span>
+                    <span className="text-[10px] text-slate-400 bg-slate-200 px-1.5 py-0.5 rounded">{c.author.role}</span>
+                    <span className="text-[10px] text-slate-400 ml-auto">{new Date(c.createdAt).toLocaleString()}</span>
+                  </div>
+                  <p className="text-sm text-slate-700">{c.content}</p>
+                  <button className="text-xs text-primary mt-1 hover:underline" onClick={() => setReplyingTo(replyingTo === c.id ? null : c.id)}>
+                    {replyingTo === c.id ? "Cancel" : "Reply"}
+                  </button>
+                  {replyingTo === c.id && (
+                    <div className="flex gap-2 mt-2">
+                      <input
+                        className="flex-1 border border-slate-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                        placeholder="Write a reply..."
+                        value={replyText[c.id] ?? ""}
+                        onChange={e => setReplyText(r => ({ ...r, [c.id]: e.target.value }))}
+                        onKeyDown={e => e.key === "Enter" && postReply(c.id)}
+                      />
+                      <Button size="sm" onClick={() => postReply(c.id)}>Reply</Button>
+                    </div>
+                  )}
+                  {c.replies.length > 0 && (
+                    <div className="mt-2 ml-4 space-y-2 border-l-2 border-slate-200 pl-3">
+                      {c.replies.map(r => (
+                        <div key={r.id} className="bg-white rounded-lg p-2 border border-slate-100">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="text-xs font-bold text-slate-700">{r.author.name}</span>
+                            <span className="text-[10px] text-slate-400 bg-slate-200 px-1.5 py-0.5 rounded">{r.author.role}</span>
+                            <span className="text-[10px] text-slate-400 ml-auto">{new Date(r.createdAt).toLocaleString()}</span>
+                          </div>
+                          <p className="text-sm text-slate-700">{r.content}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       </main>
     </div>
   );

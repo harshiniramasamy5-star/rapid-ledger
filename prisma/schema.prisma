@@ -23,6 +23,7 @@ model User {
   auditLogs       AuditLog[]
   evidence        Evidence[]
   documents       RapidDocument[]  @relation("CreatedBy")
+  comments        Comment[]
   refreshTokens   RefreshToken[]   @relation("UserRefreshTokens")
   roleAssignments RoleAssignment[]
 }
@@ -56,6 +57,7 @@ model RapidDocument {
   ledgerEntries          LedgerEntry[]
   createdBy              User             @relation("CreatedBy", fields: [createdById], references: [id])
   roleAssignments        RoleAssignment[]
+  comments               Comment[]
 
   @@unique([documentCode, version])
   @@index([status])
@@ -157,6 +159,24 @@ enum DocumentStatus {
   needs_changes
   finalized
   execution_complete
+}
+
+
+model Comment {
+  id         String        @id @default(cuid())
+  content    String
+  documentId String
+  authorId   String
+  parentId   String?
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+  document   RapidDocument @relation(fields: [documentId], references: [id])
+  author     User          @relation(fields: [authorId], references: [id])
+  parent     Comment?      @relation("Replies", fields: [parentId], references: [id])
+  replies    Comment[]     @relation("Replies")
+
+  @@index([documentId])
+  @@index([parentId])
 }
 
 enum RoleType {
