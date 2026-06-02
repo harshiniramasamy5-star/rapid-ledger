@@ -38,7 +38,7 @@ export async function listDocuments(filters?: ListDocumentsOptions): Promise<Pag
     ...(filters?.status ? { status: filters.status as DocumentStatus } : {}),
     ...(filters?.department ? { department: filters.department } : {}),
     ...(filters?.riskLevel ? { riskLevel: filters.riskLevel as "low" | "medium" | "high" | "critical" } : {}),
-    ...(filters?.search ? { OR: [{ title: { contains: filters.search } }, { documentCode: { contains: filters.search } }] } : {}) };
+    ...(filters?.search ? { OR: [{ title: { contains: filters.search, mode: "insensitive" } }, { documentCode: { contains: filters.search, mode: "insensitive" } }, { department: { contains: filters.search, mode: "insensitive" } }, { decisionSummary: { contains: filters.search, mode: "insensitive" } }] } : {}) };
 
   const [data, total] = await Promise.all([
     prisma.rapidDocument.findMany({ where, include: INCLUDE, orderBy: { createdAt: "desc" }, take: limit, skip }),
