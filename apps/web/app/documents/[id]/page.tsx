@@ -576,7 +576,7 @@ export default function DocumentDetailPage() {
                   )}
                   {c.replies.length > 0 && (
                     <div className="mt-2 ml-4 space-y-2 border-l-2 border-slate-200 pl-3">
-                      {c.replies.map(r => (
+                      {c.replies.map((r: DocComment) => (
                         <div key={r.id} className="bg-white rounded-lg p-2 border border-slate-100">
                           <div className="flex items-center gap-2 mb-1">
                             <span className="text-xs font-bold text-slate-700">{r.author.name}</span>
