@@ -45,6 +45,10 @@ export const userRoutes = new Elysia({ prefix: "/users" })
 
   // ── PATCH /users/:id ──────────────────────────────────────────────────────
   .patch("/:id", async ({ user, params, body, set }) => {
+    if (params.id === user?.id && (body as Record<string, unknown>)?.isActive === false) {
+      set.status = 403;
+      return Errors.forbidden("You cannot deactivate your own account");
+    }
     requirePermission(user, "user:update", set);
     const parsed = parseBody(updateUserSchema, body);
     if (!parsed.ok) { set.status = 400; return Errors.badRequest("Invalid update data", parsed.errors); }
