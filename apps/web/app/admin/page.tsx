@@ -73,7 +73,8 @@ export default function AdminPage() {
     setSubmitting(true);
     try {
       const res = await fetch(`${API}/admin/users`, {
-        method: "POST",
+        method: "PATCH",
+        body: JSON.stringify({ isActive: !isActive }),
         headers: { Authorization: `Bearer ${token()}`, "Content-Type": "application/json" },
         body: JSON.stringify(form),
       });
@@ -92,7 +93,7 @@ export default function AdminPage() {
 
   async function toggleUser(userId: string, isActive: boolean) {
     try {
-      const res = await fetch(`${API}/admin/users/${userId}/${isActive ? "deactivate" : "activate"}`, {
+      const res = await fetch(`${API}/admin/users/${userId}`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token()}` },
       });
