@@ -73,8 +73,7 @@ export default function AdminPage() {
     setSubmitting(true);
     try {
       const res = await fetch(`${API}/admin/users`, {
-        method: "PATCH",
-        body: JSON.stringify({ isActive: !isActive }),
+        method: "POST",
         headers: { Authorization: `Bearer ${token()}`, "Content-Type": "application/json" },
         body: JSON.stringify(form),
       });
