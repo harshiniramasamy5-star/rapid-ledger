@@ -46,7 +46,7 @@ export default function DocumentDetailPage() {
   const [me, setMe]                 = useState<ApiUser | null>(null);
   const [myApproval, setMyApproval] = useState<Approval | null>(null);
   const [approvalNotes, setApprovalNotes]     = useState("");
-  const [comments, setComments]               = useState<Comment[]>([]);
+  const [comments, setComments]               = useState<DocComment[]>([]);
   const [commentText, setCommentText]         = useState("");
   const [replyText, setReplyText]             = useState<Record<string, string>>({});
   const [replyingTo, setReplyingTo]           = useState<string | null>(null);

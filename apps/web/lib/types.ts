@@ -120,7 +120,7 @@ export function getApiError(err: unknown, fallback = 'Something went wrong'): st
   return fallback;
 }
 
-export interface Comment {
+export interface DocComment {
   id: string;
   content: string;
   documentId: string;
