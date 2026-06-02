@@ -83,6 +83,7 @@ export interface ApiDocument {
   alternativesConsidered?: string | null;
   department?: string | null;
   deadline?: string | null;
+  slaBreached?: boolean;
   createdById: string;
   createdBy?: string;
   roleAssignments?: RoleAssignment[];

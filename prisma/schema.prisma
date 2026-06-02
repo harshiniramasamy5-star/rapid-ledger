@@ -45,6 +45,7 @@ model RapidDocument {
   updatedAt              DateTime         @updatedAt
   alternativesConsidered String?
   deadline               DateTime?
+  slaBreached            Boolean          @default(false)
   submittedAt            DateTime?
   finalizedAt            DateTime?
   recommendationNotes    String?          @default("")

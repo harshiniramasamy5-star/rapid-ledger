@@ -283,7 +283,16 @@ export default function DashboardPage() {
                             ? <span className="text-xs font-medium text-purple-600 bg-purple-50 px-2 py-1 rounded-md">Yes</span>
                             : <span className="text-slate-300">—</span>}
                         </TableCell>
-                        <TableCell className="text-slate-500 text-sm">{doc.deadline ? formatDate(doc.deadline) : "—"}</TableCell>
+                        <TableCell className="text-slate-500 text-sm">
+                          {doc.deadline ? (
+                            <span className="flex items-center gap-1.5">
+                              {formatDate(doc.deadline)}
+                              {doc.slaBreached && (
+                                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-red-100 text-red-600 border border-red-200">OVERDUE</span>
+                              )}
+                            </span>
+                          ) : "—"}
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>

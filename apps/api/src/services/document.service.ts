@@ -40,6 +40,7 @@ export async function listDocuments(filters?: ListDocumentsOptions): Promise<Pag
     ...(filters?.riskLevel ? { riskLevel: filters.riskLevel as "low" | "medium" | "high" | "critical" } : {}),
     ...(filters?.search ? { OR: [{ title: { contains: filters.search, mode: "insensitive" } }, { documentCode: { contains: filters.search, mode: "insensitive" } }, { department: { contains: filters.search, mode: "insensitive" } }, { decisionSummary: { contains: filters.search, mode: "insensitive" } }] } : {}) };
 
+  await checkAndUpdateSlaBreaches();
   const [data, total] = await Promise.all([
     prisma.rapidDocument.findMany({ where, include: INCLUDE, orderBy: { createdAt: "desc" }, take: limit, skip }),
     prisma.rapidDocument.count({ where }),
@@ -202,4 +203,17 @@ export async function runValidation(documentId: string) {
   const doc = await prisma.rapidDocument.findUnique({ where: { id: documentId }, include: { roleAssignments: true, evidence: true } });
   if (!doc) return null;
   return validateDocument({ document: doc, roles: doc.roleAssignments, evidence: doc.evidence });
+}
+
+export async function checkAndUpdateSlaBreaches() {
+  const now = new Date();
+  const result = await prisma.rapidDocument.updateMany({
+    where: {
+      deadline: { lt: now },
+      status: { notIn: ["finalized", "execution_complete"] },
+      slaBreached: false,
+    },
+    data: { slaBreached: true },
+  });
+  return result.count;
 }
