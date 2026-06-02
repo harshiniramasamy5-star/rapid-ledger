@@ -5,7 +5,7 @@ interface ApiError { error?: { message?: string }; id?: string }
 function getToken(){const m=document.cookie.match(/(?:^|;\s*)rapid_token=([^;]*)/);return m?decodeURIComponent(m[1]):null;};
 import React from "react";
 import { useEffect, useState } from "react";
-import type { ApiDocument, ApiUser, Approval, RoleAssignment } from "@/lib/types";
+import type { ApiDocument, ApiUser, Approval, RoleAssignment, DocComment } from "@/lib/types";
 import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
