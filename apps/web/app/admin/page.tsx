@@ -31,6 +31,7 @@ const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
 export default function AdminPage() {
   const router = useRouter();
   const [users, setUsers]       = useState<ApiUser[]>([]);
+  const [myId, setMyId]         = useState<string>("");
   const [loading, setLoading]   = useState(true);
   const [showAdd, setShowAdd]   = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -62,6 +63,7 @@ export default function AdminPage() {
       headers: { Authorization: `Bearer ${t}` }
     }).then(r => r.json()).then(me => {
       if (me.role !== "admin") { router.replace("/dashboard"); return; }
+      setMyId(me.id);
       loadUsers();
     });
   }, [router, loadUsers]);
@@ -212,8 +214,9 @@ export default function AdminPage() {
                           variant="outline"
                           size="sm"
                           className={`text-xs font-semibold ${user.isActive ? "border-red-200 text-red-600 hover:bg-red-50" : "border-emerald-200 text-emerald-600 hover:bg-emerald-50"}`}
-                          onClick={() => toggleUser(user.id, user.isActive)}>
-                          {user.isActive ? "Deactivate" : "Activate"}
+                          onClick={() => toggleUser(user.id, user.isActive)}
+                          disabled={user.id === myId}>
+                          {user.id === myId ? "You" : user.isActive ? "Deactivate" : "Activate"}
                         </Button>
                       </TableCell>
                     </TableRow>
