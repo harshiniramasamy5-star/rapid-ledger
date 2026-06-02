@@ -100,7 +100,7 @@ export default function DocumentDetailPage() {
 
   const canSubmit   = isCreator && ["draft","needs_changes"].includes(status);
   const canEdit = isCreator && ["draft","needs_changes"].includes(status);
-  const canAgree    = !!myApproval && ["submitted","awaiting_agreement"].includes(status);
+  const canAgree    = !isCreator && (!!myApproval || myRole?.roleType === "agree") && status === "awaiting_agreement";
   const canFinalize = me?.role === "admin" && status === "approved";
 
   async function exportPdf() {
