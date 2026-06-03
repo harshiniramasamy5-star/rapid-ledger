@@ -7,6 +7,7 @@ import { ledgerRoutes } from "./routes/ledger.routes";
 import { userRoutes } from "./routes/user.routes";
 import { approvalRoutes } from "./routes/approval.routes";
 import { aiRoutes } from "./routes/ai.routes";
+import { orgRoutes } from "./routes/org.routes";
 import { auditRoutes } from "./routes/audit.routes";
 import { commentsRoutes } from "./routes/comments.routes";
 
@@ -28,25 +29,8 @@ export const app = new Elysia()
     console.log(`${icon} ${request.method} ${url.pathname} → ${status}`);
   })
   .get("/health", () => ({ status: "ok", timestamp: new Date().toISOString() }))
-  .post("/ai/chat", async ({ body, set }) => {
-    const { messages } = body as { messages: { role: string; content: string }[] };
-    const apiKey = process.env.MINIMAX_API_KEY;
-    if (!apiKey) {
-      set.status = 500;
-      return { error: { code: "MISSING_KEY", message: "MINIMAX_API_KEY not set in .env" } };
-    }
-    const response = await fetch("https://api.minimax.chat/v1/text/chatcompletion_v2", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${apiKey}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({ model: "abab6.5s-chat", messages })
-    });
-    const data = await response.json() as { choices: { message: { content: string } }[] };
-    return { reply: data.choices[0].message.content };
-  })
   .use(aiRoutes)
+  .use(orgRoutes)
   .use(authRoutes)
   .use(documentRoutes)
   .use(ledgerRoutes)
@@ -110,6 +94,6 @@ if (process.env.NODE_ENV !== "test") {
     res.end(Buffer.from(await response.arrayBuffer()));
   }).listen(port, () => {
     console.log(`\n🚀 API running on http://localhost:${port}`);
-    console.log(`✅ Routes: /auth /users /admin/users /documents /ledger /approvals /audit /ai/chat\n`);
+    console.log(`✅ Routes: /auth /users /admin/users /documents /ledger /approvals /audit /ai/chat /orgs\n`);
   });
 }

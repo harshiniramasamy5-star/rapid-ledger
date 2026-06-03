@@ -7,16 +7,44 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model Organization {
+  id        String          @id @default(cuid())
+  name      String
+  domain    String?         @unique
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+  users     User[]
+  documents RapidDocument[]
+  auditLogs AuditLog[]
+  invites   Invite[]
+}
+
+model Invite {
+  id        String       @id @default(cuid())
+  email     String
+  orgId     String
+  token     String       @unique @default(cuid())
+  role      UserRole     @default(viewer)
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime     @default(now())
+  org       Organization @relation(fields: [orgId], references: [id])
+
+  @@index([token])
+  @@index([email])
+}
+
 model User {
   id              String           @id @default(cuid())
   email           String           @unique
   name            String
   password        String
-  role            UserRole @default(viewer)
+  role            UserRole         @default(viewer)
   department      String?
   isActive        Boolean          @default(true)
   failedLogins    Int              @default(0)
   lockedUntil     DateTime?
+  orgId           String?
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
   approvals       Approval[]
@@ -26,6 +54,7 @@ model User {
   comments        Comment[]
   refreshTokens   RefreshToken[]   @relation("UserRefreshTokens")
   roleAssignments RoleAssignment[]
+  org             Organization?    @relation(fields: [orgId], references: [id])
 }
 
 model RapidDocument {
@@ -34,14 +63,15 @@ model RapidDocument {
   version                Int              @default(1)
   title                  String
   decisionSummary        String
-  riskLevel              RiskLevel @default(low)
-  status                 DocumentStatus @default(draft)
+  riskLevel              RiskLevel        @default(low)
+  status                 DocumentStatus   @default(draft)
   complianceImpact       Boolean          @default(false)
   businessContext        String?
   problemStatement       String?
   proposedDecision       String?
   department             String?
   createdById            String
+  orgId                  String?
   createdAt              DateTime         @default(now())
   updatedAt              DateTime         @updatedAt
   alternativesConsidered String?
@@ -56,6 +86,7 @@ model RapidDocument {
   evidence               Evidence[]
   ledgerEntries          LedgerEntry[]
   createdBy              User             @relation("CreatedBy", fields: [createdById], references: [id])
+  org                    Organization?    @relation(fields: [orgId], references: [id])
   roleAssignments        RoleAssignment[]
   comments               Comment[]
 
@@ -120,11 +151,15 @@ model AuditLog {
   entityId   String
   details    String?
   documentId String?
+  orgId      String?
   createdAt  DateTime       @default(now())
   document   RapidDocument? @relation(fields: [documentId], references: [id])
   user       User           @relation(fields: [userId], references: [id])
+  org        Organization?  @relation(fields: [orgId], references: [id])
+
   @@index([documentId])
   @@index([userId, createdAt])
+  @@index([orgId])
 }
 
 model RefreshToken {
@@ -137,11 +172,22 @@ model RefreshToken {
   user      User      @relation("UserRefreshTokens", fields: [userId], references: [id], onDelete: Cascade)
 }
 
+model Comment {
+  id         String        @id @default(cuid())
+  content    String
+  documentId String
+  authorId   String
+  parentId   String?
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+  document   RapidDocument @relation(fields: [documentId], references: [id])
+  author     User          @relation(fields: [authorId], references: [id])
+  parent     Comment?      @relation("Replies", fields: [parentId], references: [id])
+  replies    Comment[]     @relation("Replies")
 
-
-
-
-
+  @@index([documentId])
+  @@index([parentId])
+}
 
 enum RiskLevel {
   low
@@ -159,24 +205,6 @@ enum DocumentStatus {
   needs_changes
   finalized
   execution_complete
-}
-
-
-model Comment {
-  id         String        @id @default(cuid())
-  content    String
-  documentId String
-  authorId   String
-  parentId   String?
-  createdAt  DateTime      @default(now())
-  updatedAt  DateTime      @updatedAt
-  document   RapidDocument @relation(fields: [documentId], references: [id])
-  author     User          @relation(fields: [authorId], references: [id])
-  parent     Comment?      @relation("Replies", fields: [parentId], references: [id])
-  replies    Comment[]     @relation("Replies")
-
-  @@index([documentId])
-  @@index([parentId])
 }
 
 enum RoleType {
@@ -205,6 +233,9 @@ enum AuditAction {
   document_recommended
   document_input_provided
   execution_complete
+  org_created
+  invite_sent
+  invite_accepted
 }
 
 enum UserRole {
