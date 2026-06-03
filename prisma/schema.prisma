@@ -46,6 +46,8 @@ model User {
   failedLogins    Int              @default(0)
   lockedUntil     DateTime?
   orgId           String?
+  totpSecret      String?
+  totpEnabled     Boolean          @default(false)
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
   approvals       Approval[]

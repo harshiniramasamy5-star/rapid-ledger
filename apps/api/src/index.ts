@@ -8,6 +8,7 @@ import { userRoutes } from "./routes/user.routes";
 import { approvalRoutes } from "./routes/approval.routes";
 import { aiRoutes } from "./routes/ai.routes";
 import { orgRoutes } from "./routes/org.routes";
+import { totpRoutes, totpPublicRoutes } from "./routes/totp.routes";
 import { auditRoutes } from "./routes/audit.routes";
 import { commentsRoutes } from "./routes/comments.routes";
 
@@ -31,6 +32,8 @@ export const app = new Elysia()
   .get("/health", () => ({ status: "ok", timestamp: new Date().toISOString() }))
   .use(aiRoutes)
   .use(orgRoutes)
+  .use(totpPublicRoutes)
+  .use(totpRoutes)
   .use(authRoutes)
   .use(documentRoutes)
   .use(ledgerRoutes)
@@ -94,6 +97,6 @@ if (process.env.NODE_ENV !== "test") {
     res.end(Buffer.from(await response.arrayBuffer()));
   }).listen(port, () => {
     console.log(`\n🚀 API running on http://localhost:${port}`);
-    console.log(`✅ Routes: /auth /users /admin/users /documents /ledger /approvals /audit /ai/chat /orgs\n`);
+    console.log(`✅ Routes: /auth /users /admin/users /documents /ledger /approvals /audit /ai/chat /orgs /auth/totp\n`);
   });
 }

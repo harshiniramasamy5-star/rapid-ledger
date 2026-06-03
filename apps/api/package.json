@@ -23,7 +23,9 @@
     "cors": "^2.8.6",
     "elysia": "^1.1.25",
     "jsonwebtoken": "^9.0.2",
+    "otplib": "^13.4.1",
     "pdfkit": "^0.18.0",
+    "qrcode": "^1.5.4",
     "zod": "^3.22.4"
   },
   "devDependencies": {
@@ -31,6 +33,7 @@
     "@types/cors": "^2.8.19",
     "@types/jsonwebtoken": "^9.0.5",
     "@types/node": "^20.11.5",
+    "@types/qrcode": "^1.5.6",
     "@vitest/coverage-v8": "^1.2.2",
     "globals": "^14.0.0",
     "tsx": "^4.7.0",
