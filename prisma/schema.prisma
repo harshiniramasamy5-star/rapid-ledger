@@ -87,6 +87,9 @@ model RapidDocument {
   finalizedAt            DateTime?
   recommendationNotes    String?          @default("")
   inputNotes             String?          @default("")
+  mediaUrl               String?
+  transcriptUrl          String?
+  transcriptContent      String?
   approvals              Approval[]
   auditLogs              AuditLog[]
   evidence               Evidence[]
