@@ -33,6 +33,9 @@ export interface CreateDocumentBody {
   problemStatement?: string;
   proposedDecision?: string;
   alternativesConsidered?: string;
+  documentType?: "RAPID" | "PORTAL" | "TRANSCRIPT";
+  visibility?: "PRIVATE" | "ORG" | "PUBLIC";
+  parentDocumentId?: string;
 }
 
 export interface ValidationError {

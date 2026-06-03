@@ -65,6 +65,9 @@ model RapidDocument {
   decisionSummary        String
   riskLevel              RiskLevel        @default(low)
   status                 DocumentStatus   @default(draft)
+  documentType           DocumentType     @default(RAPID)
+  visibility             Visibility       @default(PRIVATE)
+  parentDocumentId       String?
   complianceImpact       Boolean          @default(false)
   businessContext        String?
   problemStatement       String?
@@ -86,6 +89,8 @@ model RapidDocument {
   evidence               Evidence[]
   ledgerEntries          LedgerEntry[]
   createdBy              User             @relation("CreatedBy", fields: [createdById], references: [id])
+  parentDocument         RapidDocument?   @relation("Transcripts", fields: [parentDocumentId], references: [id])
+  transcripts            RapidDocument[]  @relation("Transcripts")
   org                    Organization?    @relation(fields: [orgId], references: [id])
   roleAssignments        RoleAssignment[]
   comments               Comment[]
@@ -234,8 +239,22 @@ enum AuditAction {
   document_input_provided
   execution_complete
   org_created
+  document_type_changed
+  visibility_changed
   invite_sent
   invite_accepted
+}
+
+enum DocumentType {
+  RAPID
+  PORTAL
+  TRANSCRIPT
+}
+
+enum Visibility {
+  PRIVATE
+  ORG
+  PUBLIC
 }
 
 enum UserRole {

@@ -18,6 +18,9 @@ export const createDocumentSchema = z.object({
   problemStatement: z.string().optional(),
   proposedDecision: z.string().optional(),
   alternativesConsidered: z.string().optional(),
+  documentType: z.enum(["RAPID", "PORTAL", "TRANSCRIPT"]).default("RAPID"),
+  visibility: z.enum(["PRIVATE", "ORG", "PUBLIC"]).default("PRIVATE"),
+  parentDocumentId: z.string().optional(),
 });
 
 export const approvalSchema = z.object({
