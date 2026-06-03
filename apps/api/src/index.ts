@@ -10,6 +10,7 @@ import { aiRoutes } from "./routes/ai.routes";
 import { orgRoutes } from "./routes/org.routes";
 import { totpRoutes, totpPublicRoutes } from "./routes/totp.routes";
 import { transcriptRoutes } from "./routes/transcript.routes";
+import { webhookRoutes } from "./routes/webhook.routes";
 import { auditRoutes } from "./routes/audit.routes";
 import { commentsRoutes } from "./routes/comments.routes";
 
@@ -36,6 +37,7 @@ export const app = new Elysia()
   .use(totpPublicRoutes)
   .use(totpRoutes)
   .use(transcriptRoutes)
+  .use(webhookRoutes)
   .use(authRoutes)
   .use(documentRoutes)
   .use(ledgerRoutes)
@@ -99,6 +101,6 @@ if (process.env.NODE_ENV !== "test") {
     res.end(Buffer.from(await response.arrayBuffer()));
   }).listen(port, () => {
     console.log(`\n🚀 API running on http://localhost:${port}`);
-    console.log(`✅ Routes: /auth /users /admin/users /documents /ledger /approvals /audit /ai/chat /orgs /auth/totp /documents/:id/transcript\n`);
+    console.log(`✅ Routes: /auth /users /admin/users /documents /ledger /approvals /audit /ai/chat /orgs /auth/totp /documents/:id/transcript /webhooks\n`);
   });
 }
