@@ -14,7 +14,7 @@ export const totpPublicRoutes = new Elysia({ prefix: "/auth/totp" })
       return { error: "TOTP not enabled for this user" };
     }
     const _res = await verifyTOTP({ token: code, secret: dbUser.totpSecret });
-    const valid = typeof _res === "object" ? (_res as any).valid : _res;
+    const valid = typeof _res === "object" && _res !== null ? (_res as Record<string, unknown>).valid : _res;
     if (!valid) { set.status = 401; return { error: "invalid TOTP code" }; }
     return { valid: true, userId };
   });
@@ -37,7 +37,7 @@ export const totpRoutes = new Elysia({ prefix: "/auth/totp" })
     const dbUser = await prisma.user.findUnique({ where: { id: user.id } });
     if (!dbUser?.totpSecret) { set.status = 400; return { error: "run /setup first" }; }
     const _res = await verifyTOTP({ token: code, secret: dbUser.totpSecret });
-    const valid = typeof _res === "object" ? (_res as any).valid : _res;
+    const valid = typeof _res === "object" && _res !== null ? (_res as Record<string, unknown>).valid : _res;
     if (!valid) { set.status = 401; return { error: "invalid TOTP code" }; }
     await prisma.user.update({ where: { id: user.id }, data: { totpEnabled: true } });
     return { message: "TOTP enabled successfully" };
@@ -49,7 +49,7 @@ export const totpRoutes = new Elysia({ prefix: "/auth/totp" })
     const dbUser = await prisma.user.findUnique({ where: { id: user.id } });
     if (!dbUser?.totpSecret || !dbUser.totpEnabled) { set.status = 400; return { error: "TOTP not enabled" }; }
     const _res = await verifyTOTP({ token: code, secret: dbUser.totpSecret });
-    const valid = typeof _res === "object" ? (_res as any).valid : _res;
+    const valid = typeof _res === "object" && _res !== null ? (_res as Record<string, unknown>).valid : _res;
     if (!valid) { set.status = 401; return { error: "invalid TOTP code" }; }
     await prisma.user.update({ where: { id: user.id }, data: { totpEnabled: false, totpSecret: null } });
     return { message: "TOTP disabled" };

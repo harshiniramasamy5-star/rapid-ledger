@@ -26,7 +26,7 @@ export async function createLinearIssue({
     },
     body: JSON.stringify({ query: mutation, variables: { title, description, teamId } }),
   });
-  const data = await res.json() as any;
+  const data = await res.json() as { errors?: Array<{ message: string }>; data?: { issueCreate: { success: boolean; issue: { id: string; title: string; url: string; identifier: string } } } };
   if (data.errors) throw new Error(data.errors[0].message);
   return data.data.issueCreate;
 }

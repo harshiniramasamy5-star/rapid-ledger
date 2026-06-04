@@ -60,7 +60,7 @@ export const orgRoutes = new Elysia({ prefix: "/orgs" })
     if (!org) { set.status = 404; return { error: "org not found" }; }
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
     const invite = await prisma.invite.create({
-      data: { email, orgId: params.id, role: (role as any) || "viewer", expiresAt },
+      data: { email, orgId: params.id, role: (role as "admin" | "creator" | "approver" | "recommender" | "performer" | "viewer") || "viewer", expiresAt },
     });
     await prisma.auditLog.create({
       data: {
