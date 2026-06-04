@@ -85,6 +85,17 @@ export async function submitDocument(documentId: string, actorId: string) {
     await tx.auditLog.create({ data: { userId: actorId, action: "document_submitted", entityType: "RapidDocument", entityId: documentId, details: JSON.stringify({ newStatus: nextStatus }) } });
     return result;
   });
+
+  // Fire webhook when no agree role — doc goes draft → approved directly
+  if (updated.status === "approved") {
+    void webhookDispatcher.dispatch("document.approved", {
+      documentId,
+      userId: actorId,
+      timestamp: new Date().toISOString(),
+      data: { source: "submit-direct-approval" },
+    });
+  }
+
   return { ok: true as const, document: updated };
 }
 
