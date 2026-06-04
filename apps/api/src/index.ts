@@ -13,6 +13,12 @@ import { transcriptRoutes } from "./routes/transcript.routes";
 import { webhookRoutes } from "./routes/webhook.routes";
 import { auditRoutes } from "./routes/audit.routes";
 import { commentsRoutes } from "./routes/comments.routes";
+import { integrationsRoutes } from "./routes/integrations.routes";
+import { webhookDispatcher } from "./services/webhookDispatcher";
+import { notionSyncService } from "./services/notion.service";
+
+// Register Notion as primary handler for approved documents
+webhookDispatcher.register("document.approved", notionSyncService);
 
 export const app = new Elysia()
   .use(cors({
@@ -38,6 +44,7 @@ export const app = new Elysia()
   .use(totpRoutes)
   .use(transcriptRoutes)
   .use(webhookRoutes)
+  .use(integrationsRoutes)
   .use(authRoutes)
   .use(documentRoutes)
   .use(ledgerRoutes)

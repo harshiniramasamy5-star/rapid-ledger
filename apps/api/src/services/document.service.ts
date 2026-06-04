@@ -4,6 +4,7 @@ import { nextDocumentCode } from "../lib/documentCode";
 import { validateDocument } from "./validation.service";
 import { createAuditLog } from "./audit.service";
 import type { CreateDocumentBody } from "../types";
+import { webhookDispatcher } from "./webhookDispatcher";
 
 const INCLUDE = {
   createdBy: { select: { id: true, name: true, email: true, role: true } },
@@ -102,6 +103,15 @@ export async function approveDocument(documentId: string, approverId: string, co
     await tx.auditLog.create({ data: { userId: approverId, action: "document_approved", entityType: "RapidDocument", entityId: documentId, details: JSON.stringify({ comment, allApproved }) } });
     return result;
   });
+  // Fire webhook after transaction — only when doc fully transitions to approved
+  if (updated?.status === "approved") {
+    void webhookDispatcher.dispatch("document.approved", {
+      documentId,
+      userId: approverId,
+      timestamp: new Date().toISOString(),
+    });
+  }
+
   return { ok: true as const, document: updated };
 }
 

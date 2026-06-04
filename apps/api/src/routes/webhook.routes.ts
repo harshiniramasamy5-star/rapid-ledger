@@ -3,82 +3,59 @@ import { prisma } from "../lib/prisma";
 import { authMiddleware } from "../middleware/auth";
 import { requirePermission } from "../middleware/permissions";
 import { createLinearIssue } from "../services/linear.service";
+import { webhookDispatcher } from "../services/webhookDispatcher";
+
+// Linear is optional — only active if LINEAR_API_KEY + LINEAR_TEAM_ID are set.
+// It is NOT the primary destination for approved documents (Notion is).
+export const linearWebhookHandler = {
+  async handle(_event: string, payload: { documentId: string; userId: string }) {
+    const apiKey = process.env.LINEAR_API_KEY;
+    const teamId = process.env.LINEAR_TEAM_ID;
+    if (!apiKey || !teamId) return;
+
+    const doc = await prisma.rapidDocument.findUnique({ where: { id: payload.documentId } });
+    if (!doc) return;
+
+    try {
+      const result = await createLinearIssue({
+        title: "[RAPID] " + doc.documentCode + ": " + doc.title,
+        description: [
+          "**Decision:** " + doc.decisionSummary,
+          "**Risk Level:** " + doc.riskLevel,
+          "**Status:** " + doc.status,
+          doc.businessContext ? "**Context:** " + doc.businessContext : "",
+        ].filter(Boolean).join("\n\n"),
+        teamId,
+        apiKey,
+      });
+
+      await prisma.auditLog.create({
+        data: {
+          userId: payload.userId,
+          action: "document_approved",
+          entityType: "LinearIssue",
+          entityId: result.issue?.id ?? "unknown",
+          documentId: doc.id,
+          details: JSON.stringify({ linearIssueId: result.issue?.id, url: result.issue?.url }),
+        },
+      });
+    } catch (e) {
+      console.error("[LinearWebhook] Failed:", e);
+    }
+  },
+};
 
 export const webhookRoutes = new Elysia({ prefix: "/webhooks" })
   .use(authMiddleware)
 
-  // POST /webhooks/linear/test — manually trigger Linear issue from a doc
+  // Manual Linear trigger — optional engineering integration only
   .post("/linear/trigger/:documentId", async ({ user, params, set }) => {
     requirePermission(user, "document:approve", set);
-    const apiKey = process.env.LINEAR_API_KEY;
-    const teamId = process.env.LINEAR_TEAM_ID;
-    if (!apiKey || !teamId) {
-      set.status = 500;
-      return { error: "LINEAR_API_KEY or LINEAR_TEAM_ID not configured" };
-    }
-    const doc = await prisma.rapidDocument.findUnique({ where: { id: params.documentId } });
-    if (!doc) { set.status = 404; return { error: "document not found" }; }
-
-    const result = await createLinearIssue({
-      title: `[RAPID] ${doc.documentCode}: ${doc.title}`,
-      description: [
-        `**Decision:** ${doc.decisionSummary}`,
-        `**Risk Level:** ${doc.riskLevel}`,
-        `**Status:** ${doc.status}`,
-        `**Document Code:** ${doc.documentCode} v${doc.version}`,
-        doc.businessContext ? `**Context:** ${doc.businessContext}` : "",
-      ].filter(Boolean).join("\n\n"),
-      teamId,
-      apiKey,
+    await webhookDispatcher.dispatch("document.approved", {
+      documentId: params.documentId,
+      userId: user.id,
+      timestamp: new Date().toISOString(),
+      data: { source: "manual-linear-trigger" },
     });
-
-    await prisma.auditLog.create({
-      data: {
-        userId: user.id,
-        action: "document_approved",
-        entityType: "LinearIssue",
-        entityId: result.issue?.id ?? "unknown",
-        documentId: doc.id,
-        details: JSON.stringify({ linearIssueId: result.issue?.id, url: result.issue?.url, identifier: result.issue?.identifier }),
-      },
-    });
-
-    return { success: result.success, issue: result.issue };
+    return { message: "Webhook dispatched", documentId: params.documentId };
   });
-
-// Standalone function — call this from approval route on approve
-export async function fireLinearWebhook(documentId: string, userId: string) {
-  const apiKey = process.env.LINEAR_API_KEY;
-  const teamId = process.env.LINEAR_TEAM_ID;
-  if (!apiKey || !teamId) return null;
-
-  const doc = await prisma.rapidDocument.findUnique({ where: { id: documentId } });
-  if (!doc) return null;
-
-  try {
-    const result = await createLinearIssue({
-      title: `[RAPID] ${doc.documentCode}: ${doc.title}`,
-      description: [
-        `**Decision:** ${doc.decisionSummary}`,
-        `**Risk Level:** ${doc.riskLevel}`,
-        doc.businessContext ? `**Context:** ${doc.businessContext}` : "",
-      ].filter(Boolean).join("\n\n"),
-      teamId,
-      apiKey,
-    });
-    await prisma.auditLog.create({
-      data: {
-        userId,
-        action: "document_approved",
-        entityType: "LinearIssue",
-        entityId: result.issue?.id ?? "unknown",
-        documentId,
-        details: JSON.stringify({ linearIssueId: result.issue?.id, url: result.issue?.url }),
-      },
-    });
-    return result;
-  } catch (e) {
-    console.error("Linear webhook failed:", e);
-    return null;
-  }
-}

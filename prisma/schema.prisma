@@ -90,6 +90,9 @@ model RapidDocument {
   mediaUrl               String?
   transcriptUrl          String?
   transcriptContent      String?
+  notionPageId           String?
+  syncedAt               DateTime?
+  syncStatus             SyncStatus?
   approvals              Approval[]
   auditLogs              AuditLog[]
   evidence               Evidence[]
@@ -249,6 +252,7 @@ enum AuditAction {
   visibility_changed
   invite_sent
   invite_accepted
+  notion_synced
 }
 
 enum DocumentType {
@@ -261,6 +265,12 @@ enum Visibility {
   PRIVATE
   ORG
   PUBLIC
+}
+
+enum SyncStatus {
+  PENDING
+  SYNCED
+  FAILED
 }
 
 enum UserRole {
