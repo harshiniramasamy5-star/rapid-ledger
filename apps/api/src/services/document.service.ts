@@ -88,7 +88,7 @@ export async function submitDocument(documentId: string, actorId: string) {
 
   // Fire webhook when no agree role — doc goes draft → approved directly
   if (updated.status === "approved") {
-    void webhookDispatcher.dispatch("document.approved", {
+    await webhookDispatcher.dispatch("document.approved", {
       documentId,
       userId: actorId,
       timestamp: new Date().toISOString(),
@@ -116,7 +116,7 @@ export async function approveDocument(documentId: string, approverId: string, co
   });
   // Fire webhook after transaction — only when doc fully transitions to approved
   if (updated?.status === "approved") {
-    void webhookDispatcher.dispatch("document.approved", {
+    await webhookDispatcher.dispatch("document.approved", {
       documentId,
       userId: approverId,
       timestamp: new Date().toISOString(),
