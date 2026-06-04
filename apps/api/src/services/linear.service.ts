@@ -28,5 +28,6 @@ export async function createLinearIssue({
   });
   const data = await res.json() as { errors?: Array<{ message: string }>; data?: { issueCreate: { success: boolean; issue: { id: string; title: string; url: string; identifier: string } } } };
   if (data.errors) throw new Error(data.errors[0].message);
+  if (!data.data) throw new Error("No data returned from Linear");
   return data.data.issueCreate;
 }

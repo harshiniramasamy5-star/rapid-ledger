@@ -16,7 +16,7 @@ export const aiRoutes = new Elysia()
       },
       body: JSON.stringify({ model: "MiniMax-Text-01", messages })
     });
-    const data = await response.json() as { message?: string; content?: Array<{ text: string }> };
+    const data = await response.json() as { choices?: Array<{ message?: { content?: string } }>; error?: { message?: string } };
     console.log("MINIMAX RAW:", JSON.stringify(data));
     if (!data?.choices?.[0]?.message?.content) {
       set.status = 500;
