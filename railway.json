@@ -5,7 +5,7 @@
     "buildCommand": "npm install --include=dev && ./node_modules/.bin/prisma generate --schema=prisma/schema.prisma && cd apps/api && npm install --include=dev && npx tsc --noEmit"
   },
   "deploy": {
-    "startCommand": "cd apps/api && ../../node_modules/.bin/prisma migrate deploy --schema=../../prisma/schema.prisma && bun src/index.ts",
+    "startCommand": "./node_modules/.bin/prisma migrate deploy --schema=prisma/schema.prisma && cd apps/api && bun src/index.ts",
     "healthcheckPath": "/health",
     "restartPolicyType": "ON_FAILURE",
     "healthcheckTimeout": 60
