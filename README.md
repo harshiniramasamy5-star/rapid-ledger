@@ -12,7 +12,17 @@
 
 # ⚖️ RAPID Ledger
 
-### *Decision governance without compromise.*
+#
+## 🌐 Live Links
+
+| | URL |
+|---|---|
+| **App** | https://rapid-ledger.vercel.app |
+| **Portal** | https://portal-beta-bay.vercel.app |
+| **Docs** | https://complyance-e81c9706.mintlify.app |
+| **API** | https://rapid-ledger-production.up.railway.app |
+
+## *Decision governance without compromise.*
 
 A full-stack decision governance platform implementing the **RAPID framework** — structured accountability for high-stakes decisions with immutable audit trails, role-based access control, and compliance-grade record keeping.
 
