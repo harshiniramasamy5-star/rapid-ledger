@@ -1,4 +1,5 @@
-import type { Metadata } from "next";
+import type { Metadata } from "next"
+import { Analytics } from "@vercel/analytics/react";
 import { Providers } from "./providers";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner";
@@ -22,7 +23,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           {children}
         </Providers>
         <Toaster />
-      </body>
+            <Analytics />
+    </body>
     </html>
   );
 }
