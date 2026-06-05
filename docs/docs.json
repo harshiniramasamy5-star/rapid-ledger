@@ -5,13 +5,11 @@
     "dark": "/logo/dark.svg"
   },
   "favicon": "/favicon.svg",
-  "colors": {
-    "primary": "#6366f1",
-    "light": "#818cf8",
-    "dark": "#4338ca"
-  },
   "topbarLinks": [
-    { "name": "GitHub", "url": "https://github.com/harshiniramasamy5-star/rapid-ledger" }
+    {
+      "name": "GitHub",
+      "url": "https://github.com/harshiniramasamy5-star/rapid-ledger"
+    }
   ],
   "topbarCtaButton": {
     "name": "Try Demo",
@@ -20,7 +18,10 @@
   "navigation": [
     {
       "group": "Get Started",
-      "pages": ["introduction", "quickstart"]
+      "pages": [
+        "introduction",
+        "quickstart"
+      ]
     },
     {
       "group": "Core Concepts",
@@ -58,5 +59,6 @@
   ],
   "footerSocials": {
     "github": "https://github.com/harshiniramasamy5-star/rapid-ledger"
-  }
+  },
+  "theme": "mint"
 }
