@@ -56,6 +56,7 @@ export default function DocumentDetailPage() {
   const [inputNotes, setInputNotes]           = useState("");
   const [loading, setLoading]       = useState(true);
   const [acting, setActing]         = useState(false);
+  const [syncing, setSyncing]       = useState(false);
 
   function token() { return getToken() ?? ""; }
 
@@ -155,6 +156,21 @@ export default function DocumentDetailPage() {
     a.click();
     URL.revokeObjectURL(url);
   }
+  async function syncToNotion() {
+    const t = getToken();
+    if (!t || !doc) return;
+    setSyncing(true);
+    try {
+      const res = await fetch(`${API}/integrations/notion/sync/${doc.id}`, {
+        method: "POST", headers: { Authorization: `Bearer ${t}` },
+      });
+      const data = await res.json();
+      if (!res.ok) { toast.error(data?.error?.message ?? "Notion sync failed"); }
+      else { toast.success("Synced to Notion"); await load(); }
+    } catch { toast.error("Notion sync error"); }
+    finally { setSyncing(false); }
+  }
+
   const canComplete = myRole?.roleType === "perform" && status === "finalized";
   const canVersion  = me?.role === "admin" && ["finalized","execution_complete"].includes(status);
   const isRecommenderWaiting = myRole?.roleType === "recommend" && !!doc?.recommendationNotes && status === "awaiting_agreement";
@@ -200,6 +216,39 @@ export default function DocumentDetailPage() {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            {doc && ["approved","finalized","execution_complete"].includes(doc.status) && (() => {
+              const ss = doc.syncStatus;
+              if (ss === "SYNCED") return (
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
+                  <svg className="w-3 h-3" viewBox="0 0 12 12" fill="none"><path d="M2 6.5l2.5 2.5 5.5-5.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  Synced to Notion
+                  {doc.notionPageId && (
+                    <a href={`https://notion.so/${doc.notionPageId.replace(/-/g,"")}`} target="_blank" rel="noreferrer"
+                      className="ml-1 underline text-emerald-600 hover:text-emerald-800">↗</a>
+                  )}
+                </span>
+              );
+              if (ss === "PENDING") return (
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200 animate-pulse">
+                  <svg className="w-3 h-3 animate-spin" viewBox="0 0 12 12" fill="none"><circle cx="6" cy="6" r="4.5" stroke="currentColor" strokeWidth="1.5" strokeDasharray="7 7"/></svg>
+                  Syncing…
+                </span>
+              );
+              if (ss === "FAILED") return (
+                <Button variant="outline" size="sm" disabled={syncing}
+                  className="text-red-600 border-red-200 hover:bg-red-50 text-xs h-7 px-2.5"
+                  onClick={syncToNotion}>
+                  ⚠ Retry Notion sync
+                </Button>
+              );
+              return (
+                <Button variant="outline" size="sm" disabled={syncing}
+                  className="text-indigo-600 border-indigo-200 hover:bg-indigo-50 text-xs h-7 px-2.5"
+                  onClick={syncToNotion}>
+                  {syncing ? "Syncing…" : "↑ Sync to Notion"}
+                </Button>
+              );
+            })()}
             {doc && ["finalized","execution_complete"].includes(doc.status) && (
               <Button variant="outline" size="sm" className="text-indigo-600 border-indigo-200 hover:bg-indigo-50"
                 onClick={exportPdf}>

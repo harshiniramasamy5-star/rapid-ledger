@@ -91,6 +91,9 @@ export interface ApiDocument {
   approvals?: Approval[];
   recommendationNotes?: string | null;
   inputNotes?: string | null;
+  syncStatus?: "PENDING" | "SYNCED" | "FAILED" | null;
+  notionPageId?: string | null;
+  syncedAt?: string | null;
 }
 
 // API-layer AuditEntry
