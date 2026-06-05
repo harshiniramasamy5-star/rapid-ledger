@@ -19,6 +19,9 @@ export async function loginUser(email: string, password: string): Promise<LoginR
   const user = await prisma.user.findUnique({ where: { email } });
 
   // Unknown email — don't reveal whether account exists
+  if (user && !user.emailVerified) {
+    return { success: false, reason: "email_not_verified" };
+  }
   if (!user) {
     return { success: false, reason: "invalid_credentials" };
   }
@@ -76,4 +79,45 @@ export async function getCurrentUser(userId: string): Promise<PublicUser | null>
   const user = await prisma.user.findUnique({ where: { id: userId } });
   if (!user || !user.isActive) return null;
   return toPublicUser(user);
+}
+
+import { generateVerificationToken } from "./email.service";
+
+export async function registerUser(
+  name: string,
+  email: string,
+  password: string
+): Promise<{ success: boolean; message?: string; token?: string }> {
+  const existing = await prisma.user.findUnique({ where: { email } });
+  if (existing) return { success: false, message: "An account with this email already exists." };
+
+  const hashed = await bcrypt.hash(password, 10);
+  const token  = generateVerificationToken();
+
+  await prisma.user.create({
+    data: {
+      name,
+      email,
+      password: hashed,
+      role: "viewer",
+      emailVerified: false,
+      verificationToken: token,
+    },
+  });
+
+  return { success: true, token };
+}
+
+export async function verifyEmail(
+  token: string
+): Promise<{ success: boolean; message?: string; email?: string; name?: string }> {
+  const user = await prisma.user.findFirst({ where: { verificationToken: token } });
+  if (!user) return { success: false, message: "Invalid or expired verification token." };
+
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { emailVerified: true, verificationToken: null },
+  });
+
+  return { success: true, email: user.email, name: user.name };
 }

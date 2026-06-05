@@ -1,6 +1,7 @@
 import { Elysia, t } from "elysia";
 import { authMiddleware } from "../middleware/auth";
-import { loginUser, getCurrentUser } from "../services/auth.service";
+import { loginUser, getCurrentUser, registerUser, verifyEmail } from "../services/auth.service";
+import { sendVerificationEmail, sendWelcomeEmail } from "../services/email.service";
 import { checkRateLimit } from "../lib/rate-limit";
 import { Errors } from "../lib/errors";
 
@@ -21,6 +22,10 @@ export const authRoutes = new Elysia({ prefix: "/auth" })
       const result = await loginUser(email, password);
 
       if (!result.success) {
+        if (result.reason === "email_not_verified") {
+          ctx.set.status = 403;
+          return Errors.custom("EMAIL_NOT_VERIFIED", "Please verify your email before logging in. Check your inbox.");
+        }
         if (result.reason === "account_locked") {
           ctx.set.status = 423;
           const mins = result.lockedUntil
@@ -46,6 +51,41 @@ export const authRoutes = new Elysia({ prefix: "/auth" })
       }),
     }
   )
+  .post(
+    "/register",
+    async (ctx) => {
+      const { name, email, password } = ctx.body as { name: string; email: string; password: string };
+      const result = await registerUser(name, email, password);
+      if (!result.success) {
+        ctx.set.status = 400;
+        return { error: { code: "REGISTER_FAILED", message: result.message } };
+      }
+      await sendVerificationEmail(email, name, result.token!);
+      ctx.set.status = 201;
+      return { message: "Account created. Check your email to verify your account." };
+    },
+    {
+      body: t.Object({
+        name: t.String({ minLength: 1 }),
+        email: t.String({ minLength: 1 }),
+        password: t.String({ minLength: 8 }),
+      }),
+    }
+  )
+  .get("/verify-email", async (ctx) => {
+    const token = (ctx.query as { token?: string }).token;
+    if (!token) {
+      ctx.set.status = 400;
+      return { error: { code: "MISSING_TOKEN", message: "Verification token required" } };
+    }
+    const result = await verifyEmail(token);
+    if (!result.success) {
+      ctx.set.status = 400;
+      return { error: { code: "INVALID_TOKEN", message: result.message } };
+    }
+    await sendWelcomeEmail(result.email!, result.name!);
+    return { message: "Email verified successfully. You can now log in." };
+  })
   .use(authMiddleware)
   .get("/me", async (ctx) => {
     const user = ctx.user as { id: string };
