@@ -47,8 +47,6 @@ model User {
   lockedUntil     DateTime?
   emailVerified          Boolean   @default(false)
   verificationToken      String?
-  emailVerified          Boolean   @default(false)
-  verificationToken      String?
   orgId           String?
   totpSecret      String?
   totpEnabled     Boolean          @default(false)
