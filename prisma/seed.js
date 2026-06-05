@@ -9,27 +9,27 @@ async function main() {
   // Core users — no auditor, admin is the decider
   const admin = await prisma.user.upsert({
     where: { email: "admin@rapid.com" }, update: {},
-    create: { name: "Alice Admin", email: "admin@rapid.com", password: pw, role: "admin", department: "Engineering" }
+    create: { name: "Alice Admin", email: "admin@rapid.com", password: pw, role: "admin", department: "Engineering", emailVerified: true }
   });
   const creator = await prisma.user.upsert({
     where: { email: "creator@rapid.com" }, update: {},
-    create: { name: "Carol Creator", email: "creator@rapid.com", password: pw, role: "creator", department: "Product" }
+    create: { name: "Carol Creator", email: "creator@rapid.com", password: pw, role: "creator", department: "Product", emailVerified: true }
   });
   const recommender = await prisma.user.upsert({
     where: { email: "recommender@rapid.com" }, update: {},
-    create: { name: "Ray Recommender", email: "recommender@rapid.com", password: pw, role: "recommender", department: "Strategy" }
+    create: { name: "Ray Recommender", email: "recommender@rapid.com", password: pw, role: "recommender", department: "Strategy", emailVerified: true }
   });
   const approver = await prisma.user.upsert({
     where: { email: "approver@rapid.com" }, update: {},
-    create: { name: "Sarah Approver", email: "approver@rapid.com", password: pw, role: "approver", department: "Security" }
+    create: { name: "Sarah Approver", email: "approver@rapid.com", password: pw, role: "approver", department: "Security", emailVerified: true }
   });
   const performer = await prisma.user.upsert({
     where: { email: "performer@rapid.com" }, update: {},
-    create: { name: "Pete Performer", email: "performer@rapid.com", password: pw, role: "performer", department: "Platform" }
+    create: { name: "Pete Performer", email: "performer@rapid.com", password: pw, role: "performer", department: "Platform", emailVerified: true }
   });
   const viewer = await prisma.user.upsert({
     where: { email: "viewer@rapid.com" }, update: {},
-    create: { name: "Victor Viewer", email: "viewer@rapid.com", password: pw, role: "viewer", department: "Operations" }
+    create: { name: "Victor Viewer", email: "viewer@rapid.com", password: pw, role: "viewer", department: "Operations", emailVerified: true }
   });
 
   console.log("Created 6 users (no auditor — admin is the decider)");
