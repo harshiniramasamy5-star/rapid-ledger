@@ -57,6 +57,9 @@ export default function DocumentDetailPage() {
   const [loading, setLoading]       = useState(true);
   const [acting, setActing]         = useState(false);
   const [syncing, setSyncing]       = useState(false);
+  const [transcriptText, setTranscriptText] = useState("");
+  const [transcriptUploading, setTranscriptUploading] = useState(false);
+  const [transcriptDoc, setTranscriptDoc] = useState<{id:string;transcriptUrl:string|null}|null>(null);
 
   function token() { return getToken() ?? ""; }
 
@@ -169,6 +172,42 @@ export default function DocumentDetailPage() {
       else { toast.success("Synced to Notion"); await load(); }
     } catch { toast.error("Notion sync error"); }
     finally { setSyncing(false); }
+  }
+
+  async function uploadTranscript() {
+    const t = getToken();
+    if (!t || !doc || !transcriptText.trim()) return;
+    setTranscriptUploading(true);
+    try {
+      // Step 1: create a TRANSCRIPT-type child document
+      const createRes = await fetch(`${API}/documents`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${t}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: `Transcript — ${doc.title}`,
+          decisionSummary: transcriptText.slice(0, 500),
+          riskLevel: doc.riskLevel ?? "LOW",
+          documentType: "TRANSCRIPT",
+          parentDocumentId: doc.id,
+        }),
+      });
+      if (!createRes.ok) { toast.error("Failed to create transcript document"); return; }
+      const created = await createRes.json();
+      const childId = created?.document?.id ?? created?.id;
+      if (!childId) { toast.error("No document ID returned"); return; }
+      // Step 2: attach transcript content
+      const attachRes = await fetch(`${API}/documents/${childId}/transcript`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${t}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ content: transcriptText }),
+      });
+      if (!attachRes.ok) { toast.error("Failed to attach transcript"); return; }
+      const attached = await attachRes.json();
+      setTranscriptDoc({ id: childId, transcriptUrl: attached.transcriptUrl ?? null });
+      toast.success("Transcript attached — document created");
+      setTranscriptText("");
+    } catch { toast.error("Transcript upload error"); }
+    finally { setTranscriptUploading(false); }
   }
 
   const canComplete = myRole?.roleType === "perform" && status === "finalized";
@@ -476,6 +515,49 @@ export default function DocumentDetailPage() {
             )}
           </CardContent>
         </Card>
+
+        {/* Transcript Upload */}
+        {isCreator && ["draft","needs_changes","submitted","awaiting_agreement"].includes(status) && (
+          <Card className="border-slate-200 shadow-sm">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base text-slate-900">🎙 Fathom Transcript</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {transcriptDoc ? (
+                <div className="rounded-lg bg-emerald-50 border border-emerald-200 px-4 py-3 flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-semibold text-emerald-700">✅ Transcript attached</p>
+                    <p className="text-xs text-emerald-600 mt-0.5">Linked as evidence to this decision</p>
+                  </div>
+                  {transcriptDoc.transcriptUrl && (
+                    <a href={`${API}${transcriptDoc.transcriptUrl}`}
+                      className="text-xs text-emerald-700 font-semibold hover:underline border border-emerald-300 px-2 py-1 rounded"
+                      target="_blank" rel="noreferrer">↓ Download .txt</a>
+                  )}
+                </div>
+              ) : (
+                <>
+                  <p className="text-xs text-slate-500">
+                    Paste transcript from Fathom Video (or any meeting recorder). It will be saved as a linked TRANSCRIPT document.
+                  </p>
+                  <textarea
+                    rows={6}
+                    placeholder="Paste meeting transcript here…"
+                    value={transcriptText}
+                    onChange={e => setTranscriptText(e.target.value)}
+                    className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary bg-white text-slate-900 placeholder:text-slate-400 font-mono"
+                  />
+                  <Button
+                    className="w-full h-10 bg-violet-600 hover:bg-violet-700 text-white font-semibold"
+                    disabled={transcriptUploading || !transcriptText.trim()}
+                    onClick={uploadTranscript}>
+                    {transcriptUploading ? "Attaching…" : "📎 Attach Transcript"}
+                  </Button>
+                </>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         {/* Document Details */}
         <Card className="border-slate-200 shadow-sm">
