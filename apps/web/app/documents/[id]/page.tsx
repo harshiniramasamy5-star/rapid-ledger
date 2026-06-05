@@ -538,8 +538,21 @@ export default function DocumentDetailPage() {
               ) : (
                 <>
                   <p className="text-xs text-slate-500">
-                    Paste transcript from Fathom Video (or any meeting recorder). It will be saved as a linked TRANSCRIPT document.
+                    Upload a <span className="font-semibold text-slate-700">.txt</span> transcript exported from Fathom, or paste directly below. Saved as a linked TRANSCRIPT document.
                   </p>
+                  <label className="flex items-center justify-center gap-2 w-full h-10 border-2 border-dashed border-violet-200 rounded-lg cursor-pointer hover:border-violet-400 hover:bg-violet-50 transition-all text-sm text-violet-600 font-medium">
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+                    Upload .txt from Fathom
+                    <input type="file" accept=".txt,text/plain" className="hidden" onChange={e => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      const reader = new FileReader();
+                      reader.onload = ev => setTranscriptText(ev.target?.result as string ?? "");
+                      reader.readAsText(file);
+                      e.target.value = "";
+                    }} />
+                  </label>
+                  <div className="flex items-center gap-2"><div className="flex-1 h-px bg-slate-200"/><span className="text-xs text-slate-400">or paste</span><div className="flex-1 h-px bg-slate-200"/></div>
                   <textarea
                     rows={6}
                     placeholder="Paste meeting transcript here…"
