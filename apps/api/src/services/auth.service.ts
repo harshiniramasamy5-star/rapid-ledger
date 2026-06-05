@@ -44,6 +44,10 @@ export async function loginUser(email: string, password: string): Promise<LoginR
     return { success: false, reason: "email_not_verified" };
   }
 
+  if (!user.emailVerified) {
+    return { success: false, reason: "email_not_verified" };
+  }
+
   if (!passwordMatch) {
     const newFailedCount = user.failedLogins + 1;
     const shouldLock = newFailedCount >= MAX_FAILED_ATTEMPTS;
