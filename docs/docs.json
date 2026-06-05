@@ -5,6 +5,12 @@
     "dark": "/logo/dark.svg"
   },
   "favicon": "/favicon.svg",
+  "theme": "mint",
+  "colors": {
+    "primary": "#6366f1",
+    "light": "#818cf8",
+    "dark": "#4338ca"
+  },
   "topbarLinks": [
     {
       "name": "GitHub",
@@ -15,50 +21,56 @@
     "name": "Try Demo",
     "url": "https://rapid-ledger.vercel.app"
   },
-  "navigation": [
-    {
-      "group": "Get Started",
-      "pages": [
-        "introduction",
-        "quickstart"
-      ]
-    },
-    {
-      "group": "Core Concepts",
-      "pages": [
-        "concepts/rapid-framework",
-        "concepts/roles",
-        "concepts/document-lifecycle"
-      ]
-    },
-    {
-      "group": "Guides",
-      "pages": [
-        "guides/organizations",
-        "guides/totp",
-        "guides/fathom-transcript",
-        "guides/notion-integration",
-        "guides/webhooks",
-        "guides/audit-log"
-      ]
-    },
-    {
-      "group": "API Reference",
-      "pages": [
-        "api-reference/auth",
-        "api-reference/documents",
-        "api-reference/approvals",
-        "api-reference/transcripts",
-        "api-reference/integrations",
-        "api-reference/organizations",
-        "api-reference/ledger",
-        "api-reference/audit",
-        "api-reference/errors"
-      ]
-    }
-  ],
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "quickstart"
+            ]
+          },
+          {
+            "group": "Core Concepts",
+            "pages": [
+              "concepts/rapid-framework",
+              "concepts/roles",
+              "concepts/document-lifecycle"
+            ]
+          },
+          {
+            "group": "Guides",
+            "pages": [
+              "guides/organizations",
+              "guides/totp",
+              "guides/fathom-transcript",
+              "guides/notion-integration",
+              "guides/webhooks",
+              "guides/audit-log"
+            ]
+          },
+          {
+            "group": "API Reference",
+            "pages": [
+              "api-reference/auth",
+              "api-reference/documents",
+              "api-reference/approvals",
+              "api-reference/transcripts",
+              "api-reference/integrations",
+              "api-reference/organizations",
+              "api-reference/ledger",
+              "api-reference/audit",
+              "api-reference/errors"
+            ]
+          }
+        ]
+      }
+    ]
+  },
   "footerSocials": {
     "github": "https://github.com/harshiniramasamy5-star/rapid-ledger"
-  },
-  "theme": "mint"
+  }
 }
