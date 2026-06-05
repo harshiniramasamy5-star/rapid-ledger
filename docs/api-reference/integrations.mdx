@@ -1,0 +1,25 @@
+---
+title: Integrations
+description: Notion sync and Linear integration endpoints
+---
+
+## Check Notion status
+
+    GET /api/integrations/notion/status/:documentId
+    Authorization: Bearer token
+
+Returns { syncStatus, notionPageId, syncedAt, notionConfigured }.
+
+## Manual Notion sync
+
+    POST /api/integrations/notion/sync/:documentId
+    Authorization: Bearer token
+
+Manually triggers sync for an approved document. Auto-fires on approval via webhook dispatcher.
+
+## Linear trigger
+
+    POST /api/webhook/linear/:documentId
+    Authorization: Bearer token
+
+Creates a Linear issue in the Engineering workspace linked to the document.

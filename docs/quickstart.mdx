@@ -1,0 +1,44 @@
+---
+title: Quickstart
+description: Run RAPID Ledger locally in under 5 minutes
+---
+
+## Prerequisites
+
+- Node.js 18+
+- Bun runtime
+- PostgreSQL (or use Railway)
+
+## Clone and install
+
+    git clone https://github.com/harshiniramasamy5-star/rapid-ledger.git
+    cd rapid-ledger
+    npm install
+
+## Configure environment
+
+    DATABASE_URL="postgresql://user:password@localhost:5432/rapidledger"
+    JWT_SECRET="your-secret-key"
+    NEXT_PUBLIC_API_URL="http://localhost:3001/api"
+
+## Run migrations and seed
+
+    cd apps/api
+    npx prisma migrate deploy
+    node prisma/seed.js
+
+## Start development servers
+
+    # Terminal 1 — backend
+    cd apps/api && bun run dev
+
+    # Terminal 2 — frontend
+    cd apps/web && npm run dev
+
+Frontend: http://localhost:3000 — API: http://localhost:3001
+
+## Run the test suite
+
+    cd apps/api && npx vitest run      # 80 tests
+    cd apps/web && npx jest            # 38 tests
+    cd apps/web && npx playwright test # 12 tests

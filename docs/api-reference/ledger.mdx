@@ -1,0 +1,17 @@
+---
+title: Ledger
+description: Immutable compliance ledger
+---
+
+## Get ledger entries
+
+    GET /api/ledger?page=1&limit=20
+    Authorization: Bearer token
+
+Returns paginated ledger entries. Each entry is sealed on document finalisation and cannot be modified.
+
+## Export CSV
+
+    GET /api/ledger/export
+
+Returns compliance-ready CSV of all ledger entries.

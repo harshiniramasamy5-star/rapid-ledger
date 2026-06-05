@@ -1,0 +1,22 @@
+---
+title: Document Lifecycle
+description: Full state machine for RAPID documents
+---
+
+## States
+
+| State | Description |
+|-------|-------------|
+| draft | Initial state — editable by creator |
+| submitted | Sent for review |
+| awaiting_agreement | Pending approver sign-off |
+| approved | Approved — Notion sync fires |
+| finalized | Immutable ledger entry written |
+| execution_complete | Performer has confirmed execution |
+| rejected | Returned — routes to needs_changes |
+| needs_changes | Creator must revise and resubmit |
+
+## Versioning
+
+Admin can version any finalized or execution_complete document.
+A new draft is created with version N+1. The original is preserved.

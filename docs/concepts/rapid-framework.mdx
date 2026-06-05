@@ -1,0 +1,28 @@
+---
+title: The RAPID Framework
+description: How RAPID roles map to document workflow stages
+---
+
+## Document lifecycle
+
+Every RAPID document moves through a fixed state machine:
+
+draft → submitted → awaiting_agreement → approved → finalized → execution_complete
+
+Rejections route back to needs_changes at any stage.
+
+## State transitions
+
+| From | Action | To | Who |
+|------|--------|----|-----|
+| draft | submit | submitted | Creator |
+| submitted | approve | approved | Admin |
+| awaiting_agreement | agree | approved | Approver |
+| approved | finalize | finalized | Admin |
+| finalized | execution-complete | execution_complete | Performer |
+
+## Immutability guarantees
+
+- LedgerEntry is written on finalisation and cannot be modified or deleted
+- AuditLog records every action with timestamp, userId, and document state
+- Notion sync fires on approval via the webhook dispatcher

@@ -1,0 +1,29 @@
+---
+title: Roles
+description: System roles and RAPID roles in RAPID Ledger
+---
+
+## System roles
+
+Six roles control platform access:
+
+| Role | Access |
+|------|--------|
+| admin | Full access — finalize, unlock accounts, all reports |
+| creator | Create and submit documents |
+| recommender | Add recommendation notes |
+| approver | Approve documents in awaiting_agreement state |
+| performer | Mark finalized documents as execution_complete |
+| viewer | Read access + input notes |
+
+## RAPID roles (per-document)
+
+Assigned per document via POST /documents/:id/roles:
+
+| RAPID Role | Maps to | Description |
+|------------|---------|-------------|
+| recommend | recommender | Proposes the decision |
+| agree | approver | High-risk sign-off |
+| perform | performer | Executes the decision |
+| input | viewer | Provides expert input |
+| decide | admin | Final authority |

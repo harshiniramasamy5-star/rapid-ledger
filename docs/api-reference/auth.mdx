@@ -1,0 +1,25 @@
+---
+title: Authentication
+description: Login, register, and token management
+---
+
+## Login
+
+    POST /api/auth/login
+
+    { "email": "admin@rapid.dev", "password": "password123" }
+
+Returns a JWT token. Include it as Authorization: Bearer token on all subsequent requests.
+
+Account lockout triggers after 5 failed attempts.
+
+## Get current user
+
+    GET /api/auth/me
+    Authorization: Bearer token
+
+## Register
+
+    POST /api/auth/register
+
+    { "name": "Alice", "email": "alice@example.com", "password": "securepass" }

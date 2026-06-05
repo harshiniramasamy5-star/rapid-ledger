@@ -1,0 +1,40 @@
+---
+title: Documents
+description: Create, read, and manage RAPID documents
+---
+
+## Create a document
+
+    POST /api/documents
+    Authorization: Bearer token
+
+    {
+      "title": "Migrate to PostgreSQL",
+      "riskLevel": "HIGH",
+      "complianceImpact": true,
+      "decisionSummary": "Replace SQLite with PostgreSQL",
+      "department": "Engineering"
+    }
+
+## List documents
+
+    GET /api/documents?page=1&limit=20
+    Authorization: Bearer token
+
+Returns { data, total, page, limit, totalPages }.
+
+## Submit for approval
+
+    POST /api/documents/:id/submit
+
+## Finalize
+
+    POST /api/documents/:id/finalize
+
+Admin only. Writes an immutable LedgerEntry.
+
+## Export PDF
+
+    GET /api/documents/:id/export-pdf
+
+Returns application/pdf. Available on finalized and execution_complete only.
