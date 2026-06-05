@@ -1,28 +1,55 @@
 ---
-title: The RAPID Framework
-description: How RAPID roles map to document workflow stages
+title: RAPID Framework
+description: How the RAPID decision model works in RAPID Ledger
 ---
 
-## Document lifecycle
+## Overview
 
-Every RAPID document moves through a fixed state machine:
+RAPID is a decision-making framework that eliminates ambiguity by assigning exactly one person to each role for every decision. No shared ownership, no unclear accountability.
 
-draft → submitted → awaiting_agreement → approved → finalized → execution_complete
+```
+R — Recommend   → proposes the decision
+A — Agree       → high-risk sign-off (optional, for critical decisions)
+P — Perform     → executes after approval
+I — Input       → provides expert context (no vote)
+D — Decide      → final authority (always the admin)
+```
 
-Rejections route back to needs_changes at any stage.
+## Role Assignment
 
-## State transitions
+Each role is assigned per-document via the `RoleAssignment` table. One user can hold one role per document. The Decide role is always the document's admin owner.
 
-| From | Action | To | Who |
-|------|--------|----|-----|
-| draft | submit | submitted | Creator |
-| submitted | approve | approved | Admin |
-| awaiting_agreement | agree | approved | Approver |
-| approved | finalize | finalized | Admin |
-| finalized | execution-complete | execution_complete | Performer |
+```json
+{
+  "roleType": "recommend",
+  "userId": "user_recommender_001",
+  "documentId": "doc_abc123"
+}
+```
 
-## Immutability guarantees
+## Document Flow
 
-- LedgerEntry is written on finalisation and cannot be modified or deleted
-- AuditLog records every action with timestamp, userId, and document state
-- Notion sync fires on approval via the webhook dispatcher
+```
+Draft
+  → [Recommender submits notes]
+  → [Input providers add context]
+  → Submitted for Review
+  → [Agree role approves — if assigned]
+  → Approved
+  → [WebhookDispatcher → Notion sync]
+  → [Performer executes]
+  → Execution Complete
+  → [Admin finalizes]
+  → Finalized (immutable ledger entry)
+```
+
+## Risk Levels
+
+| Level | Requires Agree Role |
+|-------|-------------------|
+| LOW | No |
+| MEDIUM | No |
+| HIGH | Yes |
+| CRITICAL | Yes |
+
+When risk is HIGH or CRITICAL and an Agree role is assigned, the document enters `awaiting_agreement` status before it can be approved.

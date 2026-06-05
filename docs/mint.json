@@ -24,11 +24,36 @@
     },
     {
       "group": "Core Concepts",
-      "pages": ["concepts/rapid-framework", "concepts/roles", "concepts/document-lifecycle"]
+      "pages": [
+        "concepts/rapid-framework",
+        "concepts/roles",
+        "concepts/document-lifecycle"
+      ]
+    },
+    {
+      "group": "Guides",
+      "pages": [
+        "guides/organizations",
+        "guides/totp",
+        "guides/fathom-transcript",
+        "guides/notion-integration",
+        "guides/webhooks",
+        "guides/audit-log"
+      ]
     },
     {
       "group": "API Reference",
-      "pages": ["api-reference/auth", "api-reference/documents", "api-reference/approvals", "api-reference/ledger", "api-reference/integrations"]
+      "pages": [
+        "api-reference/auth",
+        "api-reference/documents",
+        "api-reference/approvals",
+        "api-reference/transcripts",
+        "api-reference/integrations",
+        "api-reference/organizations",
+        "api-reference/ledger",
+        "api-reference/audit",
+        "api-reference/errors"
+      ]
     }
   ],
   "footerSocials": {

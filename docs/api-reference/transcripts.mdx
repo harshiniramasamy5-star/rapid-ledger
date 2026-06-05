@@ -1,0 +1,51 @@
+---
+title: Transcripts
+description: Attach and export meeting transcripts
+---
+
+## POST /documents/:id/transcript
+
+Attach transcript content to a TRANSCRIPT-type document.
+
+```bash
+curl -X POST /api/documents/<id>/transcript \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "content": "Full transcript text...",
+    "mediaUrl": "https://fathom.video/recording/abc"
+  }'
+```
+
+Response:
+```json
+{
+  "message": "transcript attached",
+  "documentId": "doc_abc",
+  "transcriptUrl": "/documents/doc_abc/transcript/export"
+}
+```
+
+## GET /documents/:id/transcript
+
+Get transcript metadata and preview.
+
+```json
+{
+  "documentId": "doc_abc",
+  "documentCode": "RAPID-002",
+  "mediaUrl": "https://fathom.video/recording/abc",
+  "preview": "First 300 characters of transcript...",
+  "charCount": 4821
+}
+```
+
+## GET /documents/:id/transcript/export
+
+Download full transcript as `.txt` file. Triggers `transcript_exported` audit log.
+
+```bash
+curl /api/documents/<id>/transcript/export \
+  -H "Authorization: Bearer <token>" \
+  -o transcript.txt
+```

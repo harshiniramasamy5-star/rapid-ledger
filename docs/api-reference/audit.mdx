@@ -1,0 +1,26 @@
+---
+title: Audit Log API
+description: Query the immutable audit trail
+---
+
+## GET /audit/logs
+
+```bash
+curl "/api/audit/logs?limit=20&action=document_approved" \
+  -H "Authorization: Bearer <token>"
+```
+
+Query parameters:
+
+| Param | Type | Description |
+|-------|------|-------------|
+| `action` | string | Filter by AuditAction value |
+| `entityType` | string | `RapidDocument`, `User`, `Organization` |
+| `entityId` | string | Specific entity ID |
+| `orgId` | string | Filter by organisation |
+| `userId` | string | Filter by user |
+| `from` | ISO date | Start date |
+| `to` | ISO date | End date |
+| `limit` | number | Max results (default 50) |
+
+See the [full action list](/guides/audit-log) for all 30 `AuditAction` values.

@@ -1,26 +1,27 @@
 ---
 title: Approvals
-description: Approve, reject, and manage document approvals
+description: Approval queue management
 ---
 
-## Approve a document
+## GET /approvals/pending
 
-    POST /api/documents/:id/approve
-    Authorization: Bearer token
+Returns all documents awaiting the authenticated user's approval.
 
-    { "notes": "Approved after review" }
+```bash
+curl /api/approvals/pending -H "Authorization: Bearer <approver_token>"
+```
 
-## Reject a document
+## GET /approvals/my
 
-    POST /api/documents/:id/reject
+Returns all approval records for the authenticated user.
 
-    { "notes": "Needs more context" }
+## POST /approvals/:documentId/approve
 
-## Request changes
+```bash
+curl -X POST /api/approvals/<docId>/approve \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{"comment": "Approved."}'
+```
 
-    POST /api/documents/:id/request-changes
-
-## Get my approvals
-
-    GET /api/approvals/my
-    Authorization: Bearer token
+When all assigned Agree roles approve, document transitions to `approved` and `document.approved` webhook fires.

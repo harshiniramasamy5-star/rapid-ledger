@@ -1,25 +1,75 @@
 ---
 title: Authentication
-description: Login, register, and token management
+description: Login, register, refresh tokens, email verification
 ---
 
-## Login
+Base URL: `https://rapid-ledger-production.up.railway.app/api`
 
-    POST /api/auth/login
+## POST /auth/register
 
-    { "email": "admin@rapid.dev", "password": "password123" }
+Create a new account.
 
-Returns a JWT token. Include it as Authorization: Bearer token on all subsequent requests.
+```bash
+curl -X POST /api/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Alice Admin",
+    "email": "alice@acme.com",
+    "password": "securepassword123"
+  }'
+```
 
-Account lockout triggers after 5 failed attempts.
+Response `201`:
+```json
+{ "message": "Registration successful. Please verify your email." }
+```
 
-## Get current user
+## POST /auth/login
 
-    GET /api/auth/me
-    Authorization: Bearer token
+```bash
+curl -X POST /api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email": "admin@rapid.com", "password": "password123"}'
+```
 
-## Register
+Response `200`:
+```json
+{
+  "token": "eyJ...",
+  "user": {
+    "id": "user_admin_001",
+    "name": "Alice Admin",
+    "email": "admin@rapid.com",
+    "role": "admin"
+  }
+}
+```
 
-    POST /api/auth/register
+Error `403` — email not verified:
+```json
+{ "error": { "code": "EMAIL_NOT_VERIFIED", "message": "Please verify your email." } }
+```
 
-    { "name": "Alice", "email": "alice@example.com", "password": "securepass" }
+## POST /auth/refresh
+
+```bash
+curl -X POST /api/auth/refresh \
+  -H "Content-Type: application/json" \
+  -d '{"refreshToken": "..."}'
+```
+
+## GET /auth/me
+
+```bash
+curl /api/auth/me -H "Authorization: Bearer <token>"
+```
+
+## GET /auth/verify-email?token=
+
+Verifies email address from link in verification email.
+
+## POST /auth/logout
+
+```bash
+curl -X POST /api/auth/logout -H "Authorization: Bearer <token>"
+```

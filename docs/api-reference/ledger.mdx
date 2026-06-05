@@ -1,17 +1,23 @@
 ---
 title: Ledger
-description: Immutable compliance ledger
+description: Immutable finalized decision records
 ---
 
-## Get ledger entries
+## GET /ledger
 
-    GET /api/ledger?page=1&limit=20
-    Authorization: Bearer token
+Returns all finalized ledger entries visible to the authenticated user.
 
-Returns paginated ledger entries. Each entry is sealed on document finalisation and cannot be modified.
+```json
+[
+  {
+    "id": "ledger_abc",
+    "documentId": "doc_xyz",
+    "documentCode": "RAPID-001",
+    "version": 1,
+    "finalizedAt": "2026-06-05T20:00:00Z",
+    "hash": "sha256_..."
+  }
+]
+```
 
-## Export CSV
-
-    GET /api/ledger/export
-
-Returns compliance-ready CSV of all ledger entries.
+Each entry is immutable. Finalization triggers `document_finalized` and `ledger_entry_created` audit logs.

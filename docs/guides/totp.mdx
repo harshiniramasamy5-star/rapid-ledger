@@ -1,0 +1,63 @@
+---
+title: TOTP Two-Factor Authentication
+description: Set up Google Authenticator or Authy for your account
+---
+
+## Overview
+
+RAPID Ledger supports TOTP 2FA (RFC 6238) via `otplib`. Compatible with Google Authenticator, Authy, and any TOTP app.
+
+## Setup Flow
+
+### 1. Generate QR Code
+
+```bash
+curl -X POST https://rapid-ledger-production.up.railway.app/api/auth/totp/setup \
+  -H "Authorization: Bearer <token>"
+```
+
+Response:
+```json
+{
+  "secret": "JBSWY3DPEHPK3PXP",
+  "qrCode": "data:image/png;base64,...",
+  "otpauth": "otpauth://totp/RAPID%20Ledger:user@email.com?secret=..."
+}
+```
+
+Scan `qrCode` with your authenticator app.
+
+### 2. Enable TOTP
+
+```bash
+curl -X POST https://rapid-ledger-production.up.railway.app/api/auth/totp/verify \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{"code": "123456"}'
+```
+
+### 3. Login With TOTP
+
+After login, if TOTP is enabled:
+
+```bash
+curl -X POST https://rapid-ledger-production.up.railway.app/api/auth/totp/validate \
+  -H "Content-Type: application/json" \
+  -d '{"userId": "user_abc", "code": "123456"}'
+```
+
+### 4. Disable TOTP
+
+```bash
+curl -X POST https://rapid-ledger-production.up.railway.app/api/auth/totp/disable \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{"code": "123456"}'
+```
+
+## Audit Events
+
+| Event | Trigger |
+|-------|---------|
+| `totp_enabled` | Successful /auth/totp/verify |
+| `totp_disabled` | Successful /auth/totp/disable |

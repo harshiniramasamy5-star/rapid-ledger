@@ -1,22 +1,47 @@
 ---
 title: Document Lifecycle
-description: Full state machine for RAPID documents
+description: Every status a RAPID document passes through
 ---
 
-## States
+## Status State Machine
 
-| State | Description |
-|-------|-------------|
-| draft | Initial state — editable by creator |
-| submitted | Sent for review |
-| awaiting_agreement | Pending approver sign-off |
-| approved | Approved — Notion sync fires |
-| finalized | Immutable ledger entry written |
-| execution_complete | Performer has confirmed execution |
-| rejected | Returned — routes to needs_changes |
-| needs_changes | Creator must revise and resubmit |
+```
+draft
+  ↓ submit
+review / awaiting_agreement
+  ↓ approve (all agree roles)
+approved  ←──────── WebhookDispatcher fires here
+  ↓                  └─ NotionSyncService syncs to Notion
+finalized (admin)
+  ↓ perform
+execution_complete
+  ↓ version (creates v2)
+draft (new version)
+```
 
-## Versioning
+Rejection paths:
+```
+awaiting_agreement → rejected
+awaiting_agreement → needs_changes → draft
+```
 
-Admin can version any finalized or execution_complete document.
-A new draft is created with version N+1. The original is preserved.
+## Status Reference
+
+| Status | Description |
+|--------|-------------|
+| `draft` | Initial state. Creator can edit. |
+| `review` | Submitted. Awaiting agree roles. |
+| `awaiting_agreement` | One or more Agree roles must approve. |
+| `approved` | All approvals received. Notion sync triggered. |
+| `needs_changes` | Approver requested revisions. Back to creator. |
+| `rejected` | Document rejected. Terminal state. |
+| `finalized` | Admin locked the document. Added to Ledger. |
+| `execution_complete` | Performer marked execution done. |
+
+## Document Types
+
+| Type | Purpose |
+|------|---------|
+| `RAPID` | Core decision document — full lifecycle |
+| `PORTAL` | Cross-org or public-facing document |
+| `TRANSCRIPT` | Meeting transcript linked to a RAPID doc |

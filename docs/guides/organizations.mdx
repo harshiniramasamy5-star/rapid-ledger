@@ -1,0 +1,54 @@
+---
+title: Organizations & Multi-Tenancy
+description: Create orgs, invite users, manage members
+---
+
+## Overview
+
+Every resource in RAPID Ledger — documents, audit logs, users — is scoped to an Organisation. This provides full tenant isolation.
+
+## Create an Organisation
+
+```bash
+curl -X POST https://rapid-ledger-production.up.railway.app/api/orgs \
+  -H "Authorization: Bearer <admin_token>" \
+  -H "Content-Type: application/json" \
+  -d '{"name": "Acme Corp", "domain": "acme.com"}'
+```
+
+## Invite a User
+
+```bash
+curl -X POST https://rapid-ledger-production.up.railway.app/api/orgs/<orgId>/invite \
+  -H "Authorization: Bearer <admin_token>" \
+  -H "Content-Type: application/json" \
+  -d '{"email": "newuser@acme.com", "role": "creator"}'
+```
+
+Returns an invite token valid for 7 days.
+
+## Accept an Invite
+
+```bash
+curl -X POST https://rapid-ledger-production.up.railway.app/api/orgs/join/<invite_token> \
+  -H "Authorization: Bearer <user_token>"
+```
+
+User is added to the org with the assigned role.
+
+## List Members
+
+```bash
+curl https://rapid-ledger-production.up.railway.app/api/orgs/<orgId>/members \
+  -H "Authorization: Bearer <token>"
+```
+
+## Audit Trail
+
+Every org action is logged:
+
+| Action | Trigger |
+|--------|---------|
+| `org_created` | POST /orgs |
+| `invite_sent` | POST /orgs/:id/invite |
+| `invite_accepted` | POST /orgs/join/:token |

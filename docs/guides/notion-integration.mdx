@@ -1,0 +1,103 @@
+---
+title: Notion Integration
+description: Auto-sync approved documents to your Notion database
+---
+
+## Overview
+
+When a RAPID document reaches `approved` status, the WebhookDispatcher automatically fires `NotionSyncService`, which creates a page in your Notion database.
+
+## Setup
+
+### 1. Create a Notion Integration
+
+1. Go to https://www.notion.so/my-integrations
+2. Click **+ New integration**
+3. Name it `RAPID Ledger`, select your workspace
+4. Copy the **Internal Integration Token** (`ntn_...`)
+
+### 2. Share Your Database
+
+1. Open your Notion database
+2. Click **...** → **Add connections** → select `RAPID Ledger`
+3. Copy the database ID from the URL:
+   `https://notion.so/<workspace>/<DATABASE_ID>?v=...`
+
+### 3. Set Environment Variables on Railway
+
+In Railway dashboard → rapid-ledger service → Variables:
+
+```
+NOTION_API_KEY      = ntn_your_token_here
+NOTION_DATABASE_ID  = your_database_id_here
+```
+
+## How It Works
+
+```
+Document approved
+  → WebhookDispatcher.dispatch("document.approved")
+  → NotionSyncService.sync(documentId, userId)
+  → POST https://api.notion.com/v1/pages
+  → notionPageId stored in DB
+  → syncStatus: SYNCED
+  → AuditLog: notion_synced
+```
+
+## Notion Page Fields
+
+| Field | Source |
+|-------|--------|
+| Title | `[RAPID-001] Document Title` |
+| Organization | org.name |
+| Owner | createdBy.name |
+| Approval Date | finalizedAt |
+| Status | document.status |
+| Document Type | RAPID / PORTAL / TRANSCRIPT |
+| Risk Level | LOW / MEDIUM / HIGH / CRITICAL |
+| Document Code | RAPID-001 v1 |
+| Audit Reference | document.id |
+| Evidence Links | evidence[].title: url |
+| Parent Document | parentDocument.documentCode |
+
+## Manual Sync
+
+```bash
+curl -X POST https://rapid-ledger-production.up.railway.app/api/integrations/notion/sync/<docId> \
+  -H "Authorization: Bearer <token>"
+```
+
+## Force Resync
+
+```bash
+curl -X POST https://rapid-ledger-production.up.railway.app/api/integrations/notion/resync/<docId> \
+  -H "Authorization: Bearer <token>"
+```
+
+## Check Status
+
+```bash
+curl https://rapid-ledger-production.up.railway.app/api/integrations/notion/status/<docId> \
+  -H "Authorization: Bearer <token>"
+```
+
+Response:
+```json
+{
+  "syncStatus": "SYNCED",
+  "notionPageId": "3767c231-7617-8183-b002-d94926308467",
+  "syncedAt": "2026-06-05T19:12:42.874Z",
+  "notionConfigured": true
+}
+```
+
+## Sync Status Badge
+
+The document detail page shows a live badge:
+
+| State | Appearance |
+|-------|-----------|
+| Not synced | Indigo "↑ Sync to Notion" button |
+| PENDING | Amber pulsing spinner |
+| SYNCED | Green "Synced to Notion ↗" link |
+| FAILED | Red "⚠ Retry Notion sync" button |

@@ -6,39 +6,78 @@ description: Run RAPID Ledger locally in under 5 minutes
 ## Prerequisites
 
 - Node.js 18+
-- Bun runtime
-- PostgreSQL (or use Railway)
+- Bun runtime (`curl -fsSL https://bun.sh/install | bash`)
+- PostgreSQL (or use Railway for hosted DB)
 
-## Clone and install
+## 1. Clone and Install
 
-    git clone https://github.com/harshiniramasamy5-star/rapid-ledger.git
-    cd rapid-ledger
-    npm install
+```bash
+git clone https://github.com/harshiniramasamy5-star/rapid-ledger.git
+cd rapid-ledger
+npm install
+```
 
-## Configure environment
+## 2. Environment Variables
 
-    DATABASE_URL="postgresql://user:password@localhost:5432/rapidledger"
-    JWT_SECRET="your-secret-key"
-    NEXT_PUBLIC_API_URL="http://localhost:3001/api"
+Create `apps/api/.env`:
 
-## Run migrations and seed
+```bash
+DATABASE_URL="postgresql://user:password@localhost:5432/rapidledger"
+JWT_SECRET="your-secret-key-min-32-chars"
+REFRESH_TOKEN_SECRET="another-secret-key"
+NOTION_API_KEY="ntn_..."          # optional
+NOTION_DATABASE_ID="..."          # optional
+```
 
-    cd apps/api
-    npx prisma migrate deploy
-    node prisma/seed.js
+Create `apps/web/.env.local`:
 
-## Start development servers
+```bash
+NEXT_PUBLIC_API_URL="http://localhost:3001/api"
+```
 
-    # Terminal 1 — backend
-    cd apps/api && bun run dev
+## 3. Migrate and Seed
 
-    # Terminal 2 — frontend
-    cd apps/web && npm run dev
+```bash
+cd apps/api
+npx prisma migrate deploy --schema=../../prisma/schema.prisma
+node ../../prisma/seed.js
+```
 
-Frontend: http://localhost:3000 — API: http://localhost:3001
+## 4. Start Dev Servers
 
-## Run the test suite
+```bash
+# Terminal 1 — API (Bun + Elysia)
+cd apps/api && bun src/index.ts
 
-    cd apps/api && npx vitest run      # 80 tests
-    cd apps/web && npx jest            # 38 tests
-    cd apps/web && npx playwright test # 12 tests
+# Terminal 2 — Frontend (Next.js 15)
+cd apps/web && npm run dev
+```
+
+| Service | URL |
+|---------|-----|
+| Frontend | http://localhost:3000 |
+| API | http://localhost:3001 |
+
+## 5. First API Call
+
+```bash
+curl -X POST http://localhost:3001/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"admin@rapid.com","password":"password123"}'
+```
+
+Response:
+```json
+{
+  "token": "eyJ...",
+  "user": { "id": "...", "email": "admin@rapid.com", "role": "admin" }
+}
+```
+
+## 6. Run Tests
+
+```bash
+cd apps/api && npx vitest run        # 80 Vitest tests
+cd apps/web && npx jest              # 9 Jest tests
+cd apps/web && npx playwright test   # 12 E2E tests
+```

@@ -1,40 +1,101 @@
 ---
 title: Documents
-description: Create, read, and manage RAPID documents
+description: Create, update, submit, and manage RAPID documents
 ---
 
-## Create a document
+## POST /documents
 
-    POST /api/documents
-    Authorization: Bearer token
+Create a document.
 
-    {
-      "title": "Migrate to PostgreSQL",
-      "riskLevel": "HIGH",
-      "complianceImpact": true,
-      "decisionSummary": "Replace SQLite with PostgreSQL",
-      "department": "Engineering"
-    }
+```bash
+curl -X POST /api/documents \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "title": "Migrate to PostgreSQL",
+    "decisionSummary": "Switch from SQLite to PostgreSQL for production.",
+    "riskLevel": "HIGH",
+    "documentType": "RAPID"
+  }'
+```
 
-## List documents
+Response `201`:
+```json
+{
+  "document": {
+    "id": "doc_abc",
+    "documentCode": "RAPID-001",
+    "version": 1,
+    "status": "draft",
+    "documentType": "RAPID"
+  }
+}
+```
 
-    GET /api/documents?page=1&limit=20
-    Authorization: Bearer token
+## GET /documents
 
-Returns { data, total, page, limit, totalPages }.
+List all documents visible to the authenticated user.
 
-## Submit for approval
+## GET /documents/:id
 
-    POST /api/documents/:id/submit
+Get full document detail including roles, approvals, evidence.
 
-## Finalize
+## PATCH /documents/:id
 
-    POST /api/documents/:id/finalize
+Update document fields (creator only, draft/needs_changes status).
 
-Admin only. Writes an immutable LedgerEntry.
+## POST /documents/:id/submit
 
-## Export PDF
+Submit document for approval.
 
-    GET /api/documents/:id/export-pdf
+## POST /documents/:id/recommend
 
-Returns application/pdf. Available on finalized and execution_complete only.
+```json
+{ "notes": "I recommend proceeding based on..." }
+```
+
+## POST /documents/:id/input
+
+```json
+{ "notes": "From a security perspective..." }
+```
+
+## POST /documents/:id/approve
+
+Approver agrees.
+
+```json
+{ "comment": "Approved — meets all compliance requirements." }
+```
+
+## POST /documents/:id/reject
+
+```json
+{ "comment": "Rejected — missing risk assessment." }
+```
+
+## POST /documents/:id/needs-changes
+
+```json
+{ "comment": "Please add alternatives considered section." }
+```
+
+## POST /documents/:id/finalize
+
+Admin only. Locks document and writes to Ledger.
+
+## POST /documents/:id/execution-complete
+
+Performer marks execution done.
+
+```json
+{ "notes": "Migration completed successfully on 2026-06-05." }
+```
+
+## POST /documents/:id/version
+
+Creates a new draft version (v2, v3...).
+
+## GET /documents/:id/export-pdf
+
+Downloads a compliance-ready PDF.

@@ -1,29 +1,44 @@
 ---
-title: Roles
-description: System roles and RAPID roles in RAPID Ledger
+title: Roles & Permissions
+description: System roles and what each can do
 ---
 
-## System roles
+## System Roles
 
-Six roles control platform access:
+RAPID Ledger has two role layers: **system roles** (user-level) and **RAPID roles** (document-level).
 
-| Role | Access |
-|------|--------|
-| admin | Full access — finalize, unlock accounts, all reports |
-| creator | Create and submit documents |
-| recommender | Add recommendation notes |
-| approver | Approve documents in awaiting_agreement state |
-| performer | Mark finalized documents as execution_complete |
-| viewer | Read access + input notes |
+### System Roles
 
-## RAPID roles (per-document)
+| Role | Description |
+|------|-------------|
+| `admin` | Full access — create orgs, finalize docs, manage users |
+| `creator` | Creates and submits documents |
+| `approver` | Agrees or rejects documents in awaiting_agreement |
+| `recommender` | Provides recommendations on documents |
+| `performer` | Executes approved decisions |
+| `viewer` | Read-only access, can provide input notes |
 
-Assigned per document via POST /documents/:id/roles:
+### RAPID Document Roles
 
-| RAPID Role | Maps to | Description |
-|------------|---------|-------------|
-| recommend | recommender | Proposes the decision |
-| agree | approver | High-risk sign-off |
-| perform | performer | Executes the decision |
-| input | viewer | Provides expert input |
-| decide | admin | Final authority |
+Assigned per-document via `POST /documents/:id/roles`:
+
+| RAPID Role | Maps To | Permission |
+|------------|---------|------------|
+| `recommend` | Recommender | Submit recommendation notes |
+| `agree` | Approver | Approve / reject / request changes |
+| `perform` | Performer | Mark execution complete |
+| `input` | Viewer | Submit input notes |
+| `decide` | Admin | Final authority, finalize |
+
+## Permission Matrix
+
+| Action | admin | creator | approver | recommender | performer | viewer |
+|--------|-------|---------|----------|-------------|-----------|--------|
+| Create document | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Submit document | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Approve document | ✅ | ❌ | ✅ | ❌ | ❌ | ❌ |
+| Finalize document | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Provide input | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| View audit log | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Manage users | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Invite to org | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
