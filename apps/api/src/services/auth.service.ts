@@ -19,9 +19,7 @@ export async function loginUser(email: string, password: string): Promise<LoginR
   const user = await prisma.user.findUnique({ where: { email } });
 
   // Unknown email — don't reveal whether account exists
-  if (user && !user.emailVerified) {
-    return { success: false, reason: "email_not_verified" };
-  }
+  // emailVerified checked after password validation
   if (!user) {
     return { success: false, reason: "invalid_credentials" };
   }
@@ -41,6 +39,10 @@ export async function loginUser(email: string, password: string): Promise<LoginR
   }
 
   const passwordMatch = await bcrypt.compare(password, user.password);
+
+  if (!user.emailVerified) {
+    return { success: false, reason: "email_not_verified" };
+  }
 
   if (!passwordMatch) {
     const newFailedCount = user.failedLogins + 1;
