@@ -1,4 +1,5 @@
 import type { Metadata } from "next"
+import Script from "next/script"
 import { Analytics } from "@vercel/analytics/react";
 import { Providers } from "./providers";
 import { Geist, Geist_Mono } from "next/font/google";
@@ -24,6 +25,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         </Providers>
         <Toaster />
             <Analytics />
+        {process.env.NEXT_PUBLIC_FATHOM_SITE_ID && (
+          <Script src="https://cdn.usefathom.com/script.js"
+            data-site={process.env.NEXT_PUBLIC_FATHOM_SITE_ID}
+            strategy="afterInteractive" />
+        )}
+        {process.env.NEXT_PUBLIC_FATHOM_SITE_ID && (
+          <Script src="https://cdn.usefathom.com/script.js"
+            data-site={process.env.NEXT_PUBLIC_FATHOM_SITE_ID}
+            strategy="afterInteractive" />
+        )}
     </body>
     </html>
   );

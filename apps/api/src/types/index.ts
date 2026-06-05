@@ -20,6 +20,7 @@ export interface PublicUser {
   email: string;
   role: string;
   department: string | null;
+  totpEnabled?: boolean;
 }
 
 export interface CreateDocumentBody {
