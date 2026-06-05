@@ -55,4 +55,39 @@ export const integrationsRoutes = new Elysia({ prefix: "/integrations" })
       notionConfigured: Boolean(process.env.NOTION_API_KEY) && Boolean(process.env.NOTION_DATABASE_ID),
       notionDatabaseId: process.env.NOTION_DATABASE_ID ?? null,
     };
+  })
+
+  .post("/notion/resync/:documentId", async ({ user, params, set }) => {
+    requirePermission(user, "document:approve", set);
+    const doc = await prisma.rapidDocument.findUnique({
+      where: { id: params.documentId },
+      select: { id: true, documentCode: true, status: true, syncStatus: true, notionPageId: true },
+    });
+    if (!doc) { set.status = 404; return { error: "document not found" }; }
+    if (doc.status !== "approved" && doc.status !== "finalized" && doc.status !== "execution_complete") {
+      set.status = 400;
+      return { error: "document must be approved, finalized, or execution_complete to resync" };
+    }
+    await prisma.rapidDocument.update({ where: { id: params.documentId }, data: { syncStatus: "PENDING" } });
+    await prisma.auditLog.create({
+      data: {
+        userId: user.id,
+        action: "webhook_retried",
+        entityType: "RapidDocument",
+        entityId: params.documentId,
+        documentId: params.documentId,
+        details: JSON.stringify({ previousNotionPageId: doc.notionPageId }),
+      },
+    });
+    let syncError: string | null = null;
+    try {
+      await notionSyncService.sync(params.documentId, user.id);
+    } catch (err) {
+      syncError = err instanceof Error ? err.message : String(err);
+    }
+    const updated = await prisma.rapidDocument.findUnique({
+      where: { id: params.documentId },
+      select: { id: true, documentCode: true, syncStatus: true, notionPageId: true, syncedAt: true },
+    });
+    return { ...updated, ...(syncError ? { syncError } : {}) };
   });

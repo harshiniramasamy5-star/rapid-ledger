@@ -257,6 +257,13 @@ enum AuditAction {
   notion_synced
   email_verification_sent
   email_verified
+  totp_enabled
+  totp_disabled
+  transcript_exported
+  webhook_failed
+  webhook_retried
+  sync_failed
+  sync_recovered
 }
 
 enum DocumentType {

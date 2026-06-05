@@ -63,6 +63,18 @@ export const transcriptRoutes = new Elysia({ prefix: "/documents" })
       "Content-Type": "text/plain; charset=utf-8",
       "Content-Disposition": `attachment; filename="${filename}"`,
     };
+
+    await prisma.auditLog.create({
+      data: {
+        userId: user.id,
+        action: "transcript_exported",
+        entityType: "RapidDocument",
+        entityId: params.id,
+        documentId: params.id,
+        details: JSON.stringify({ filename, documentCode: doc.documentCode }),
+      },
+    });
+
     return txtContent;
   })
 

@@ -114,6 +114,19 @@ export class NotionSyncService implements WebhookHandler {
       const message = err instanceof Error ? err.message : String(err);
       console.error("[NotionSync] Failed: " + message);
       await prisma.rapidDocument.update({ where: { id: documentId }, data: { syncStatus: "FAILED" } });
+      try {
+        await prisma.auditLog.create({
+          data: {
+            userId,
+            action: "sync_failed",
+            entityType: "RapidDocument",
+            entityId: documentId,
+            documentId,
+            orgId: (doc as any).orgId ?? undefined,
+            details: JSON.stringify({ error: message, documentCode: doc.documentCode }),
+          },
+        });
+      } catch (_) { /* best-effort */ }
       throw err;
     }
   }

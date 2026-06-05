@@ -3,6 +3,7 @@ import { verify as verifyTOTP, generateURI, generateSecret } from "otplib";
 import QRCode from "qrcode";
 import { prisma } from "../lib/prisma";
 import { authMiddleware } from "../middleware/auth";
+import { createAuditLog } from "../services/audit.service";
 
 export const totpPublicRoutes = new Elysia({ prefix: "/auth/totp" })
   .post("/validate", async ({ body, set }) => {
@@ -40,6 +41,7 @@ export const totpRoutes = new Elysia({ prefix: "/auth/totp" })
     const valid = typeof _res === "object" && _res !== null ? (_res as Record<string, unknown>).valid : _res;
     if (!valid) { set.status = 401; return { error: "invalid TOTP code" }; }
     await prisma.user.update({ where: { id: user.id }, data: { totpEnabled: true } });
+    await createAuditLog(user.id, "totp_enabled", "User", user.id, {});
     return { message: "TOTP enabled successfully" };
   })
 
@@ -52,5 +54,6 @@ export const totpRoutes = new Elysia({ prefix: "/auth/totp" })
     const valid = typeof _res === "object" && _res !== null ? (_res as Record<string, unknown>).valid : _res;
     if (!valid) { set.status = 401; return { error: "invalid TOTP code" }; }
     await prisma.user.update({ where: { id: user.id }, data: { totpEnabled: false, totpSecret: null } });
+    await createAuditLog(user.id, "totp_disabled", "User", user.id, {});
     return { message: "TOTP disabled" };
   });

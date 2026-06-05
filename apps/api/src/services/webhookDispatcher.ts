@@ -1,3 +1,5 @@
+import { prisma } from "../lib/prisma";
+
 export type WebhookEvent =
   | "document.approved"
   | "document.rejected"
@@ -38,6 +40,20 @@ class WebhookDispatcher {
     for (const result of results) {
       if (result.status === "rejected") {
         console.error("[WebhookDispatcher] Handler error:", result.reason);
+        try {
+          await prisma.auditLog.create({
+            data: {
+              userId: payload.userId,
+              action: "webhook_failed",
+              entityType: "RapidDocument",
+              entityId: payload.documentId,
+              documentId: payload.documentId,
+              details: JSON.stringify({ event, error: String(result.reason) }),
+            },
+          });
+        } catch (logErr) {
+          console.error("[WebhookDispatcher] Failed to log failure:", logErr);
+        }
       }
     }
   }
