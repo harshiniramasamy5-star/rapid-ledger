@@ -13,7 +13,7 @@ export function toPublicUser(user: { id: string; name: string; email: string; ro
 
 export type LoginResult =
   | { success: true; data: LoginResponse }
-  | { success: false; reason: "invalid_credentials" | "account_locked" | "account_inactive"; lockedUntil?: Date };
+  | { success: false; reason: "invalid_credentials" | "account_locked" | "account_inactive" | "email_not_verified"; lockedUntil?: Date };
 
 export async function loginUser(email: string, password: string): Promise<LoginResult> {
   const user = await prisma.user.findUnique({ where: { email } });
