@@ -45,6 +45,8 @@ model User {
   isActive        Boolean          @default(true)
   failedLogins    Int              @default(0)
   lockedUntil     DateTime?
+  emailVerified          Boolean   @default(false)
+  verificationToken      String?
   orgId           String?
   totpSecret      String?
   totpEnabled     Boolean          @default(false)
