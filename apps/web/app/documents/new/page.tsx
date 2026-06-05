@@ -32,7 +32,7 @@ export default function NewDocumentPage() {
   const [form, setForm]     = useState({
     title: "", decisionSummary: "", businessContext: "",
     problemStatement: "", proposedDecision: "", alternativesConsidered: "",
-    riskLevel: "low", complianceImpact: false, department: "", deadline: "",
+    riskLevel: "low", complianceImpact: false, department: "", deadline: "", documentType: "RAPID", visibility: "PRIVATE",
   });
   const [roles, setRoles] = useState<Record<string,string>>({
     recommend: "", agree: "", perform: "", input: "", decide: "",
@@ -206,6 +206,35 @@ export default function NewDocumentPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <Label className="text-slate-700 font-semibold text-sm">Risk Level <span className="text-red-500">*</span></Label>
+                <div className="space-y-1.5">
+                  <Label className="text-slate-700 text-[13px] font-semibold tracking-wide">Document Type</Label>
+                  <Select value={form.documentType} onValueChange={v => { setF("documentType", v); if (v === "PORTAL") setF("visibility", "PUBLIC"); else setF("visibility", "PRIVATE"); }}>
+                    <SelectTrigger className="h-10 bg-white border-slate-200 text-sm">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="RAPID">RAPID — Internal governance document</SelectItem>
+                      <SelectItem value="PORTAL">Portal — Public / cross-org document</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {form.documentType === "PORTAL" && (
+                    <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-50 border border-blue-200">
+                      <svg className="w-4 h-4 text-blue-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 004 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064"/></svg>
+                      <div className="flex-1">
+                        <p className="text-xs font-semibold text-blue-700">Portal document — visible outside your org</p>
+                        <Select value={form.visibility} onValueChange={v => setF("visibility", v)}>
+                          <SelectTrigger className="h-8 mt-1 bg-white border-blue-200 text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="ORG">Org — visible to org members</SelectItem>
+                            <SelectItem value="PUBLIC">Public — visible to everyone</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  )}
+                </div>
                   <Select value={form.riskLevel} onValueChange={v => setF("riskLevel", v)}>
                     <SelectTrigger className="border-slate-200"><SelectValue /></SelectTrigger>
                     <SelectContent>
