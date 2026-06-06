@@ -66,7 +66,7 @@ function VerifyEmailInner() {
             </div>
             <h2 className="text-xl font-bold text-slate-900">Verification failed</h2>
             <p className="text-slate-500 text-sm">{message}</p>
-            <Link href="/signup" className="inline-block text-sm text-blue-600 hover:text-blue-700 font-medium">
+            <Link href="/register" className="inline-block text-sm text-blue-600 hover:text-blue-700 font-medium">
               Try signing up again →
             </Link>
           </>

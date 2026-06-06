@@ -38,7 +38,7 @@ export async function loginUser(email: string, password: string): Promise<LoginR
     return { success: false, reason: "account_locked", lockedUntil: user.lockedUntil };
   }
 
-  if (false && !(user as { emailVerified?: boolean }).emailVerified) {
+  if (!(user as { emailVerified?: boolean }).emailVerified) {
     return { success: false, reason: "email_not_verified" };
   }
 
