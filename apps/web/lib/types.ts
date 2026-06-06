@@ -94,6 +94,13 @@ export interface ApiDocument {
   syncStatus?: "PENDING" | "SYNCED" | "FAILED" | null;
   notionPageId?: string | null;
   syncedAt?: string | null;
+  createdAt?: string | null;
+  updatedAt?: string | null;
+  documentType?: string | null;
+  parentDocumentId?: string | null;
+  transcriptContent?: string | null;
+  mediaUrl?: string | null;
+  transcriptUrl?: string | null;
 }
 
 // API-layer AuditEntry
