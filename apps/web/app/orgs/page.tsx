@@ -143,7 +143,40 @@ export default function OrgsPage() {
                           <p className="text-sm font-semibold text-slate-800">{m.name}</p>
                           <p className="text-xs text-slate-400">{m.email}</p>
                         </div>
-                        <Badge variant="outline" className="capitalize text-xs">{m.role}</Badge>
+                        <div className="flex items-center gap-2">
+                          {me?.role === "admin" && m.id !== me?.id && (
+                            <>
+                              <select
+                                className="text-xs border border-slate-200 rounded px-2 py-1 bg-white"
+                                value={m.role}
+                                onChange={async e => {
+                                  const res = await fetch(`${API}/orgs/${org!.id}/members/${m.id}`, {
+                                    method: "PATCH",
+                                    headers: { Authorization: `Bearer ${token()}`, "Content-Type": "application/json" },
+                                    body: JSON.stringify({ role: e.target.value }),
+                                  });
+                                  if (res.ok) { toast.success("Role updated"); await load(); }
+                                  else toast.error("Failed to update role");
+                                }}>
+                                {ROLES.map(r => <option key={r} value={r}>{r}</option>)}
+                              </select>
+                              <button
+                                className="text-xs text-red-500 hover:text-red-700 font-medium px-2 py-1 rounded hover:bg-red-50"
+                                onClick={async () => {
+                                  if (!confirm(`Remove ${m.name} from org?`)) return;
+                                  const res = await fetch(`${API}/orgs/${org!.id}/members/${m.id}`, {
+                                    method: "DELETE",
+                                    headers: { Authorization: `Bearer ${token()}` },
+                                  });
+                                  if (res.ok) { toast.success("Member removed"); await load(); }
+                                  else toast.error("Failed to remove member");
+                                }}>
+                                Remove
+                              </button>
+                            </>
+                          )}
+                          <Badge variant="outline" className="capitalize text-xs">{m.role}</Badge>
+                        </div>
                       </div>
                     ))}
                   </div>

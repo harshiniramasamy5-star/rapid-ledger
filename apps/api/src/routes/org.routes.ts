@@ -117,4 +117,53 @@ export const orgRoutes = new Elysia({ prefix: "/orgs" })
       },
     });
     return { message: "joined org successfully", orgId: invite.orgId };
+  })
+  // PATCH /orgs/:id/members/:userId — promote/demote member
+  .patch("/:id/members/:userId", async ({ user, params, body, set }) => {
+    requirePermission(user, "user:create", set);
+    const { role } = body as { role: string };
+    const validRoles = ["admin","creator","approver","recommender","performer","viewer"];
+    if (!validRoles.includes(role)) { set.status = 400; return { error: "invalid role" }; }
+    const target = await prisma.user.findUnique({ where: { id: params.userId } });
+    if (!target) { set.status = 404; return { error: "user not found" }; }
+    if (target.orgId !== params.id) { set.status = 403; return { error: "user not in this org" }; }
+    const updated = await prisma.user.update({
+      where: { id: params.userId },
+      data: { role: role as "admin"|"creator"|"approver"|"recommender"|"performer"|"viewer" },
+      select: { id: true, name: true, email: true, role: true },
+    });
+    await prisma.auditLog.create({
+      data: {
+        userId: user.id,
+        action: "role_changed",
+        entityType: "User",
+        entityId: params.userId,
+        orgId: params.id,
+        details: JSON.stringify({ newRole: role, changedBy: user.email }),
+      },
+    });
+    return { user: updated };
+  })
+
+  // DELETE /orgs/:id/members/:userId — remove member
+  .delete("/:id/members/:userId", async ({ user, params, set }) => {
+    requirePermission(user, "user:create", set);
+    const target = await prisma.user.findUnique({ where: { id: params.userId } });
+    if (!target) { set.status = 404; return { error: "user not found" }; }
+    if (target.orgId !== params.id) { set.status = 403; return { error: "user not in this org" }; }
+    await prisma.user.update({
+      where: { id: params.userId },
+      data: { orgId: null, role: "viewer" },
+    });
+    await prisma.auditLog.create({
+      data: {
+        userId: user.id,
+        action: "member_removed",
+        entityType: "User",
+        entityId: params.userId,
+        orgId: params.id,
+        details: JSON.stringify({ removedEmail: target.email }),
+      },
+    });
+    return { message: "member removed" };
   });
