@@ -5,6 +5,7 @@ import { validateDocument } from "./validation.service";
 import { createAuditLog } from "./audit.service";
 import type { CreateDocumentBody } from "../types";
 import { webhookDispatcher } from "./webhookDispatcher";
+import { notionSyncService } from "./notion.service";
 
 const INCLUDE = {
   createdBy: { select: { id: true, name: true, email: true, role: true } },
@@ -116,6 +117,8 @@ export async function approveDocument(documentId: string, approverId: string, co
   });
   // Fire webhook after transaction — only when doc fully transitions to approved
   if (updated?.status === "approved") {
+    // Direct sync — guaranteed regardless of dispatcher handler registration timing
+    try { await notionSyncService.sync(documentId, approverId); } catch (e) { console.error("[DirectSync] Notion sync failed:", e); }
     await webhookDispatcher.dispatch("document.approved", {
       documentId,
       userId: approverId,
