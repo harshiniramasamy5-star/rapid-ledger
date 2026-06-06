@@ -673,6 +673,46 @@ export default function DocumentDetailPage() {
             </CardContent>
           </Card>
         )}
+      {/* Document Timeline */}
+      <Card className="border-slate-200 shadow-sm">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base text-slate-900">📋 Timeline</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="relative pl-6 space-y-5">
+            {(() => {
+              const events: { label: string; ts: string | null | undefined; dot: string; icon: string }[] = [
+                { label: "Document Created",   ts: doc.createdAt,  dot: "bg-slate-400",   icon: "📝" },
+                ...( ["submitted","awaiting_agreement","approved","finalized","execution_complete"].includes(status)
+                  ? [{ label: "Submitted for Review", ts: doc.updatedAt, dot: "bg-blue-400", icon: "📤" }] : []),
+                ...( ["awaiting_agreement","approved","finalized","execution_complete"].includes(status)
+                  ? [{ label: "Awaiting Agreement",   ts: doc.updatedAt, dot: "bg-amber-400", icon: "🤝" }] : []),
+                ...( ["approved","finalized","execution_complete"].includes(status)
+                  ? [{ label: "Approved",             ts: doc.updatedAt, dot: "bg-emerald-500", icon: "✅" }] : []),
+                ...( (doc as { syncedAt?: string | null }).syncedAt
+                  ? [{ label: "Synced to Notion",     ts: (doc as { syncedAt?: string | null }).syncedAt, dot: "bg-indigo-500", icon: "↑" }] : []),
+                ...( ["finalized","execution_complete"].includes(status)
+                  ? [{ label: "Finalized — Ledger Entry Written", ts: doc.updatedAt, dot: "bg-purple-500", icon: "🔒" }] : []),
+                ...( status === "execution_complete"
+                  ? [{ label: "Execution Complete",   ts: doc.updatedAt, dot: "bg-emerald-600", icon: "🏁" }] : []),
+              ];
+              return events.map((ev, i) => (
+                <div key={i} className="flex items-start gap-3 relative">
+                  <div className={`absolute -left-[22px] top-1 w-3 h-3 rounded-full ${ev.dot} border-2 border-white shadow-sm z-10`} />
+                  {i < events.length - 1 && <div className="absolute -left-4 top-4 w-px bg-slate-200" style={{ height: "calc(100% + 8px)" }} />}
+                  <div>
+                    <p className="text-sm font-semibold text-slate-800">{ev.icon} {ev.label}</p>
+                    <p className="text-xs text-slate-400 mt-0.5">
+                      {ev.ts ? new Date(ev.ts).toLocaleString("en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "—"}
+                    </p>
+                  </div>
+                </div>
+              ));
+            })()}
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Comments */}
       <Card className="border-slate-200 shadow-sm">
         <CardHeader className="pb-3">
