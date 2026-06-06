@@ -85,7 +85,7 @@ export default function DocumentDetailPage() {
   }, [params.id, router]);
 
   const fetchComments = async () => {
-    const t = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+    const t = getToken();
     if (!t) return;
     setCommentsLoading(true);
     const res = await fetch(`${API}/documents/${params.id}/comments`, { headers: { Authorization: `Bearer ${t}` } });
@@ -96,7 +96,7 @@ export default function DocumentDetailPage() {
   useEffect(() => { fetchComments(); }, [params.id]);
 
   async function postComment() {
-    const t = localStorage.getItem("token");
+    const t = getToken();
     if (!commentText.trim() || !t) return;
     const res = await fetch(`${API}/documents/${params.id}/comments`, {
       method: "POST", headers: { Authorization: `Bearer ${t}`, "Content-Type": "application/json" },
@@ -106,7 +106,7 @@ export default function DocumentDetailPage() {
   }
 
   async function postReply(commentId: string) {
-    const t = localStorage.getItem("token");
+    const t = getToken();
     const text = replyText[commentId];
     if (!text?.trim() || !t) return;
     const res = await fetch(`${API}/documents/${params.id}/comments/${commentId}/replies`, {
