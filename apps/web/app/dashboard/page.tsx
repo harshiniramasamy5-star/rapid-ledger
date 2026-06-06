@@ -170,6 +170,15 @@ export default function DashboardPage() {
                     {me?.email}
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => router.push("/orgs")} className="text-sm font-medium text-slate-700 focus:bg-slate-50">
+                    🏢 Organisation
+                  </DropdownMenuItem>
+                  {me?.role === "admin" && (
+                    <DropdownMenuItem onClick={() => router.push("/admin/users")} className="text-sm font-medium text-slate-700 focus:bg-slate-50">
+                      👥 Users
+                    </DropdownMenuItem>
+                  )}
+                  <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={logout} className="text-red-600 focus:text-red-600 focus:bg-red-50 text-sm font-medium">
                     Sign out
                   </DropdownMenuItem>
