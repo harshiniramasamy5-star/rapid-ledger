@@ -1,4 +1,5 @@
 import { Elysia } from "elysia";
+import { sendInviteEmail } from "../services/email.service";
 import { prisma } from "../lib/prisma";
 import { authMiddleware } from "../middleware/auth";
 import { requirePermission } from "../middleware/permissions";
@@ -72,7 +73,20 @@ export const orgRoutes = new Elysia({ prefix: "/orgs" })
         details: JSON.stringify({ email, role: role || "viewer", expiresAt }),
       },
     });
+    void sendInviteEmail(email, org.name, role || "viewer", invite.token).catch(e =>
+      console.error("[Invite] Email failed:", e));
     return { invite: { id: invite.id, token: invite.token, email, expiresAt } };
+  })
+
+  // GET /orgs/my — get current user org
+  .get("/my", async ({ user, set }) => {
+    requirePermission(user, "user:read", set);
+    if (!user.orgId) return { org: null };
+    const org = await prisma.organization.findUnique({
+      where: { id: user.orgId },
+      include: { _count: { select: { users: true } } },
+    });
+    return { org };
   })
 
   // POST /orgs/join/:token — accept invite

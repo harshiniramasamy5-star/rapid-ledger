@@ -69,3 +69,44 @@ export async function sendWelcomeEmail(email: string, name: string): Promise<voi
     }),
   });
 }
+
+export async function sendInviteEmail(
+  email: string,
+  orgName: string,
+  role: string,
+  token: string
+): Promise<void> {
+  if (!RESEND_API_KEY) {
+    console.warn("[Email] RESEND_API_KEY not set — skipping invite email");
+    return;
+  }
+  const url = `${FRONTEND_URL}/join/${token}`;
+  const res = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${RESEND_API_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      from: FROM,
+      to: email,
+      subject: `You've been invited to ${orgName} on RAPID Ledger`,
+      html: `
+        <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:32px">
+          <div style="background:#6366f1;width:40px;height:40px;border-radius:10px;margin-bottom:24px;display:flex;align-items:center;justify-content:center">
+            <span style="color:#fff;font-weight:700;font-size:14px">RL</span>
+          </div>
+          <h2 style="margin:0 0 8px;font-size:22px;color:#0f172a">You're invited</h2>
+          <p style="color:#475569;margin:0 0 8px">You've been invited to join <strong>${orgName}</strong> on RAPID Ledger as <strong>${role}</strong>.</p>
+          <p style="color:#475569;margin:0 0 24px">Click below to accept the invitation and get started.</p>
+          <a href="${url}" style="display:inline-block;background:#6366f1;color:#fff;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:600">Accept invitation →</a>
+          <p style="color:#94a3b8;font-size:12px;margin-top:32px">This invite expires in 7 days. If you weren't expecting this, ignore this email.</p>
+        </div>
+      `,
+    }),
+  });
+  if (!res.ok) {
+    const err = await res.text();
+    console.error("[Email] Resend invite error:", err);
+  }
+}
