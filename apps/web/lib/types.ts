@@ -68,6 +68,14 @@ export interface ApiUser {
 }
 
 // API-layer ApiDocument — full shape returned by backend
+export interface UserData {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  orgId?: string | null;
+}
+
 export interface ApiDocument {
   id: string;
   documentCode: string;

@@ -15,7 +15,7 @@ const ROLE_ROUTES: Record<string, string> = {
   performer: "/dashboard", viewer: "/dashboard",
 };
 
-type UserData = { id: string; name: string; email: string; role: string; totpEnabled?: boolean };
+type UserData = { id: string; name: string; email: string; role: string; totpEnabled?: boolean; orgId?: string | null };
 
 const LEFT = (
   <div className="hidden lg:flex flex-col justify-between w-[46%] px-14 py-12 relative overflow-hidden"
