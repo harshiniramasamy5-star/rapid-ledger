@@ -78,7 +78,7 @@ export default function LoginPage() {
     document.cookie = `rapid_token=${token}; path=/; max-age=${age}; SameSite=Lax${secure}`;
     document.cookie = `rapid_role=${user.role}; path=/; max-age=${age}; SameSite=Lax${secure}`;
     toast.success("Welcome back, " + user.name + "!");
-    router.push(ROLE_ROUTES[user.role] ?? "/dashboard");
+    if (!user.orgId) { router.push("/onboarding"); } else { router.push(ROLE_ROUTES[user.role] ?? "/dashboard"); }
   }
 
   async function handleLogin(e: React.FormEvent) {
