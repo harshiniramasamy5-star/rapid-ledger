@@ -1,107 +1,107 @@
-# ARCHITECTURE AUDIT — RAPID Ledger v2
-**Generated:** 2026-06-05
-**Sprint:** Architecture Completion
+# ARCHITECTURE_AUDIT.md
+Generated: 2026-06-06
 
----
+## Backend (apps/api)
 
-## Executive Summary
-
-| Layer | Status |
-|-------|--------|
-| Backend services | ✅ Complete |
-| Backend routes | ✅ Complete |
-| Prisma schema | ✅ Complete |
-| Webhook / event bus | ✅ Complete |
-| Notion integration | ✅ Complete |
-| Transcript pipeline | ✅ Complete |
-| Frontend pages | ✅ Complete |
-| Org management | ✅ Complete |
-| TOTP / 2FA | ✅ Complete |
-| Audit log coverage | ✅ Complete (this sprint) |
-| Infrastructure | ✅ Railway + Vercel live |
-
----
-
-## Backend Services
-
+### Services
 | Service | Purpose |
-|---------|---------|
-| audit.service.ts | createAuditLog() — immutable log writer |
-| auth.service.ts | JWT issue/verify, refresh token rotation |
-| document.service.ts | RAPID document lifecycle, submit, approve, dispatch |
-| email.service.ts | Email verification / invite emails |
-| ledger.service.ts | Finalize + LedgerEntry creation |
-| linear.service.ts | Optional engineering integration (no-op without env vars) |
-| notion.service.ts | Sync approved docs to Notion DB via REST API |
-| pdf.service.ts | PDF export generation |
-| validation.service.ts | RAPID role validation engine |
-| webhookDispatcher.ts | Central event bus — all integrations subscribe here |
+|---|---|
+| auth.service.ts | JWT login, register, token refresh, account lockout |
+| document.service.ts | RAPID document lifecycle, status transitions, webhook dispatch |
+| approval.service.ts | Per-user approval decisions, RAPID role enforcement |
+| ledger.service.ts | Immutable ledger entry creation on finalization |
+| notion.service.ts | Notion API sync, page create/update, SyncStatus tracking |
+| webhookDispatcher.ts | Central async event bus — document.approved → Notion handler |
+| linear.service.ts | Optional Linear issue creation (env-gated, non-primary) |
+| totp.service.ts | TOTP secret generation, QR code, enable/disable/verify |
+| org.service.ts | Organization create/update/delete, invite, member management |
 
-## Backend Routes
-
+### Routes
 | Route File | Prefix | Key Endpoints |
-|-----------|--------|--------------|
-| auth.routes.ts | /auth | register, login, logout, refresh, verify-email |
-| document.routes.ts | /documents | CRUD, submit, recommend, input, perform, reject, version |
-| approval.routes.ts | /approvals | approve, pending |
-| audit.routes.ts | /audit | logs with filters |
-| org.routes.ts | /orgs | create, invite, join, members |
-| totp.routes.ts | /auth/totp | setup, verify, disable, validate |
-| transcript.routes.ts | /documents | transcript attach/export/get |
+|---|---|---|
+| auth.routes.ts | /auth | login, register, me, refresh |
+| document.routes.ts | /documents | CRUD, submit, approve, finalize, version, export-pdf |
+| transcript.routes.ts | /documents | /:id/transcript, /:id/transcript/export |
+| approval.routes.ts | /approvals | my, decide, needs-changes |
+| ledger.routes.ts | /ledger | list, export CSV |
 | integrations.routes.ts | /integrations | notion/connect, sync, status, resync |
-| webhook.routes.ts | /webhooks | linear/trigger (optional) |
-| ledger.routes.ts | /ledger | entries, finalize |
-| user.routes.ts | /users | CRUD, role management |
-| ai.routes.ts | /ai | chat |
-| comments.routes.ts | /documents | comments CRUD |
+| org.routes.ts | /orgs | create, invite, accept, remove, change-role |
+| totp.routes.ts | /auth/totp | setup, enable, disable, verify |
+| audit.routes.ts | /audit | list audit logs |
+| ai.routes.ts | /ai | ChatCL via Groq llama-3.3-70b-versatile |
+| webhook.routes.ts | /webhooks | Linear trigger (optional, env-gated) |
+| user.routes.ts | /users | list, unlock (admin) |
+| comments.routes.ts | /documents/:id/comments | threaded comments + replies |
 
-## Prisma Schema Enums
+### Prisma Schema
+| Model | Key Fields |
+|---|---|
+| User | id, email, role, failedLogins, lockedUntil, totpSecret, totpEnabled |
+| RapidDocument | id, documentCode, status, syncStatus, notionPageId, syncedAt, parentDocumentId, transcriptContent, mediaUrl |
+| Organization | id, name, domain, ownerId |
+| Approval | id, documentId, approverId, decision |
+| LedgerEntry | id, documentId, hash, sealed (immutable) |
+| AuditLog | id, userId, action, entityType, entityId, details |
 
-| Enum | Values |
-|------|--------|
-| DocumentType | RAPID, PORTAL, TRANSCRIPT |
-| SyncStatus | PENDING, SYNCED, FAILED |
-| DocumentStatus | draft, review, awaiting_agreement, approved, rejected, finalized, execution_complete, needs_changes |
-| RoleType | RECOMMEND, AGREE, PERFORM, INPUT, DECIDE |
-| AuditAction | login, login_failed, document_created, document_submitted, document_approved, document_rejected, document_finalized, document_versioned, role_assigned, evidence_added, user_created, user_updated, ledger_entry_created, document_recommended, document_input_provided, execution_complete, org_created, document_type_changed, visibility_changed, invite_sent, invite_accepted, notion_synced, email_verification_sent, email_verified, totp_enabled, totp_disabled, transcript_exported, webhook_failed, webhook_retried, sync_failed, sync_recovered |
-| UserRole | admin, creator, approver, recommender, performer, viewer |
+### Enums
+- UserRole: admin, creator, approver, viewer, recommender, performer
+- DocumentStatus: draft, submitted, awaiting_agreement, approved, finalized, execution_complete, rejected, needs_changes
+- SyncStatus: PENDING, SYNCED, FAILED
+- DocumentType: RAPID, PORTAL, TRANSCRIPT
+- AuditAction: document_created, document_approved, transcript_exported, webhook_retried, login_failed, evidence_added, sync_failed
 
-## Primary Workflow
+### Infrastructure
+| Component | Provider | URL |
+|---|---|---|
+| API | Railway | https://rapid-ledger-production.up.railway.app |
+| Database | Railway PostgreSQL | kodama.proxy.rlwy.net:58012 |
+| Frontend | Vercel | https://rapid-ledger.vercel.app |
+| Portal | Vercel | apps/portal/index.html |
 
-Meeting → Fathom AI
-→ Upload transcript → RAPID Ledger TRANSCRIPT document
-→ Link to RAPID document
-→ Submit → Role validation
-→ Approve → status: approved
-→ WebhookDispatcher.dispatch("document.approved")
-→ NotionSyncService.sync()
-→ Notion DB page created, notionPageId stored, syncStatus: SYNCED
-→ AuditLog: notion_synced
+### Environment Variables (Railway)
+- DATABASE_URL
+- DATABASE_PUBLIC_URL
+- JWT_SECRET
+- JWT_REFRESH_SECRET
+- GROQ_API_KEY
+- NOTION_API_KEY
+- NOTION_DATABASE_ID
+- FRONTEND_URL
+- NODE_ENV
+- PORT
 
-## Frontend Pages
+## Frontend (apps/web)
 
-| Route | Purpose |
-|-------|---------|
-| /login | Auth with optional TOTP step |
-| /dashboard | Overview, stats, recent docs |
-| /documents | List + create |
-| /documents/[id] | Detail, approve, Notion badge |
-| /approvals | Pending approvals queue |
-| /audit-log | Audit trail viewer |
-| /ledger | Finalized ledger entries |
-| /admin | User management |
-| /verify-email | Email verification flow |
+### Pages
+| Page | Path | Purpose |
+|---|---|---|
+| Login | /login | JWT auth via cookie |
+| Dashboard | /dashboard | Document list, analytics, pagination |
+| Document Detail | /documents/[id] | Full lifecycle UI, timeline, transcript, Notion badge |
+| Document Edit | /documents/[id]/edit | Edit draft/needs_changes docs |
+| Approvals | /approvals | Pending approval queue |
+| Ledger | /ledger | Immutable ledger entries |
+| Audit Log | /audit-log | Full audit trail |
+| ChatCL | /chatcl | Groq-powered AI assistant |
+| Orgs | /orgs | Organization management |
+| TOTP | /settings/2fa | 2FA setup |
 
-## Infrastructure
+### Key Components
+- Notion sync badge (PENDING/SYNCED/FAILED) in document header
+- Document timeline card (Created → Approved → Synced → Finalized)
+- Recharts analytics (status, risk, department breakdown)
+- Threaded comments with replies
+- Transcript upload (file + paste) with Fathom link
 
-| Component | Provider | Status |
-|-----------|----------|--------|
-| API | Railway (Bun runtime) | ✅ Live |
-| Database | Railway PostgreSQL | ✅ Live |
-| Frontend | Vercel (Next.js 15) | ✅ Live |
-| CI/CD | GitHub Actions | ✅ Green |
+## CI/CD
+- GitHub Actions: lint + typecheck + vitest + jest on push to main
+- Railway: auto-deploy on main push
+- Vercel: auto-deploy on main push
 
-## Required Environment Variables
-
-Railway: DATABASE_URL, JWT_SECRET, REFRESH_TOKEN_SECRET, NOTION_API_KEY, NOTION_DATABASE_ID
-Vercel: NEXT_PUBLIC_API_URL
+## Test Coverage
+| Suite | Count | Tool |
+|---|---|---|
+| API unit + integration | 80 | Vitest |
+| Frontend component | 38 | Jest + RTL |
+| E2E | 12 | Playwright |
+| Total | 130 | — |

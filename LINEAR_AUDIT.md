@@ -1,26 +1,48 @@
-# LINEAR AUDIT — RAPID Ledger v2
-**Generated:** 2026-06-05
+# LINEAR_AUDIT.md
+Generated: 2026-06-06
 
 ## Summary
-Linear is demoted to optional engineering integration.
-It is NOT in the primary document lifecycle.
-Primary compliance destination: Notion (via NotionSyncService).
+Linear has been demoted from primary document destination to an optional engineering integration.
+The primary compliance archive destination is now Notion via the WebhookDispatcher.
 
-## Files Referencing Linear
+## References Found
 
-| File | Classification | Action |
-|------|---------------|--------|
-| apps/api/src/services/linear.service.ts | KEEP — optional util | No change |
-| apps/api/src/routes/webhook.routes.ts | KEEP — optional manual trigger | No change |
+### apps/api/src/services/linear.service.ts
+**Classification: KEEP**
+Optional integration. Creates ENG-series Linear issues on document approval.
+Only executes when LINEAR_API_KEY and LINEAR_TEAM_ID are present in environment.
+Not a compliance record store — purely an engineering notification mechanism.
 
-## What Linear Does NOT Do
-- NOT called on document approval
-- NOT the compliance archive
-- NOT in WebhookDispatcher event chain
-- NOT required for deployment
+### apps/api/src/routes/webhook.routes.ts
+**Classification: KEEP (modified)**
+Linear handler registered only when env vars are present.
+Comment in file explicitly states: Linear is NOT the primary destination.
+Approved compliance records go to Notion via WebhookDispatcher.
 
-## Primary Lifecycle (Linear-Free)
-Document approved → WebhookDispatcher → NotionSyncService → Notion DB → AuditLog: notion_synced
+### apps/api/src/index.ts
+**Classification: KEEP**
+Linear webhook handler registered conditionally:
+if (LINEAR_API_KEY && LINEAR_TEAM_ID) webhookDispatcher.register(linearHandler)
 
-## Verdict: PASS
-Linear fully demoted. No Linear dependency in primary compliance workflow.
+### apps/api/src/services/webhookDispatcher.ts
+**Classification: KEEP**
+Central event bus. Notion handler is always registered.
+Linear handler registration is env-gated and optional.
+
+## Approved Final Workflow
+
+Meeting → Fathom AI
+→ Transcript upload to RAPID Ledger
+→ TRANSCRIPT document created
+→ Linked to parent RAPID document
+→ Approval workflow
+→ document.approved event dispatched
+→ WebhookDispatcher → NotionSyncService
+→ Page created in RAPID Compliance Archive (Notion)
+→ notionPageId + syncedAt + syncStatus=SYNCED stored in DB
+→ Audit log entry written
+
+## Linear Status
+- Linear: OPTIONAL engineering integration (env-gated)
+- Notion: PRIMARY compliance archive (always active when env vars set)
+- No Linear dependency in core document lifecycle
