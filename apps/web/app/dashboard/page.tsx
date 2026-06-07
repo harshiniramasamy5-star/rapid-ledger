@@ -123,6 +123,7 @@ export default function DashboardPage() {
     { label: "Ledger",    path: "/ledger",      roles: ["admin","viewer","decider","creator","approver","performer"] },
     { label: "Audit Log", path: "/audit-log",   roles: ["admin","viewer"] },
     { label: "Admin",     path: "/admin",       roles: ["admin"] },
+    { label: "Meetings",  path: "/admin/meetings", roles: ["admin"] },
 
   ];
 
