@@ -15,7 +15,7 @@ export type LoginResult =
   | { success: true; data: LoginResponse }
   | { success: false; reason: "invalid_credentials" | "account_locked" | "account_inactive" | "email_not_verified"; lockedUntil?: Date };
 
-export async function loginUser(email: string, password: string): Promise<LoginResult> {
+export async function loginUser(email: string, password: string, totpCode?: string): Promise<LoginResult> {
   const user = await prisma.user.findUnique({ where: { email } });
 
   // Unknown email — don't reveal whether account exists
@@ -85,11 +85,17 @@ export async function getCurrentUser(userId: string): Promise<PublicUser | null>
 
 import { generateVerificationToken } from "./email.service";
 
+const ALLOWED_DOMAINS = ['complyance.io', 'antna.co.in']
+
 export async function registerUser(
   name: string,
   email: string,
   password: string
 ): Promise<{ success: boolean; message?: string; token?: string }> {
+  const emailDomain = email.split('@')[1]?.toLowerCase() ?? ''
+  if (!ALLOWED_DOMAINS.includes(emailDomain)) {
+    throw Object.assign(new Error('Only @complyance.io accounts are allowed'), { code: 'DOMAIN_NOT_ALLOWED' })
+  }
   const existing = await prisma.user.findUnique({ where: { email } });
   if (existing) return { success: false, message: "An account with this email already exists." };
 
