@@ -54,11 +54,12 @@ export const fathomWebhookRoutes = new Elysia({ prefix: '/webhooks' })
     }
 
     // Only handle call.completed events
-    if (payload.event !== 'call.completed') {
-      return { ok: true, skipped: true, event: payload.event }
+    const eventType = payload.event ?? payload.event_type ?? payload.type ?? ''
+    if (!['call.completed', 'transcript', 'recording.completed', 'call_ended'].includes(eventType)) {
+      return { ok: true, skipped: true, event: eventType }
     }
 
-    const call = payload.call ?? {}
+    const call = payload.call ?? payload.data ?? payload.recording ?? {}
     const attendees: Array<{ email: string; name: string }> = call.attendees ?? []
     const transcriptText: string = call.transcript ?? ''
     const summary: string = call.summary ?? ''
