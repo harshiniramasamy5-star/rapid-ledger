@@ -146,7 +146,7 @@ export async function verifyEmail(
 
   await prisma.user.update({
     where: { id: user.id },
-    data: { emailVerified: false, verificationToken: null },
+    data: { emailVerified: true, verificationToken: null },
   });
 
   return { success: true, email: user.email, name: user.name };
