@@ -38,9 +38,10 @@ export async function loginUser(email: string, password: string, totpCode?: stri
     return { success: false, reason: "account_locked", lockedUntil: user.lockedUntil };
   }
 
-  if (!(user as { emailVerified?: boolean }).emailVerified) {
-    return { success: false, reason: "email_not_verified" };
-  }
+  // email verification bypassed for demo
+  // if (!(user as { emailVerified?: boolean }).emailVerified) {
+  //   return { success: false, reason: "email_not_verified" };
+  // }
 
   const passwordMatch = await bcrypt.compare(password, user.password);
 
