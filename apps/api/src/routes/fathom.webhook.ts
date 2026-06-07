@@ -3,57 +3,116 @@ import { prisma } from '../lib/prisma'
 import crypto from 'crypto'
 
 const FATHOM_SECRET = process.env.FATHOM_WEBHOOK_SECRET ?? ''
+const GROQ_API_KEY = process.env.GROQ_API_KEY ?? ''
+const COMPLYANCE_ORG_ID = 'cmq2vwnsj0008j8lfjqanx4dz'
 
-const ROLE_MAP: Record<string, string> = {
-  admin:     'decide',
-  approver:  'agree',
-  creator:   'recommend',
-  performer: 'perform',
-  viewer:    'input',
+// AI analyses the transcript and assigns RAPID roles per speaker
+async function detectRolesFromTranscript(
+  transcript: string,
+  attendees: Array<{ email: string; name: string }>
+): Promise<Record<string, string>> {
+  const attendeeList = attendees.map(a => `${a.name} <${a.email}>`).join('\n')
+
+  const prompt = `You are analyzing a meeting transcript to assign RAPID decision-making framework roles.
+
+RAPID roles:
+- recommend: provides expert knowledge, analysis, recommendations
+- input: shares context, asks clarifying questions, provides data or requirements
+- agree: approves, validates, gives sign-off ("looks good", "approved", "I agree")
+- decide: makes final calls, resolves conflicts, has ultimate authority
+- perform: commits to executing tasks, owns action items
+
+Meeting attendees:
+${attendeeList}
+
+Transcript:
+${transcript.slice(0, 4000)}
+
+Analyze what each attendee contributes and assign exactly one RAPID role per person.
+Return ONLY valid JSON like:
+{
+  "email@domain.com": "recommend",
+  "email2@domain.com": "agree"
+}
+No explanation. No markdown. Only JSON.`
+
+  try {
+    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${GROQ_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'llama-3.3-70b-versatile',
+        max_tokens: 500,
+        temperature: 0.1,
+        messages: [{ role: 'user', content: prompt }],
+      }),
+    })
+    const data = await res.json() as any
+    const text = data.choices?.[0]?.message?.content ?? '{}'
+    const clean = text.replace(/```json|```/g, '').trim()
+    const parsed = JSON.parse(clean)
+    // Validate all values are valid RoleType
+    const valid = ['recommend', 'agree', 'perform', 'input', 'decide']
+    const result: Record<string, string> = {}
+    for (const [email, role] of Object.entries(parsed)) {
+      result[email] = valid.includes(role as string) ? (role as string) : 'input'
+    }
+    console.log('[Fathom Webhook] AI role assignments:', result)
+    return result
+  } catch (e) {
+    console.error('[Fathom Webhook] Groq role detection failed:', e)
+    // Fallback: everyone gets input
+    return Object.fromEntries(attendees.map(a => [a.email, 'input']))
+  }
+}
+
+// Auto-register @complyance.io users who aren't in DB yet
+async function ensureUser(email: string, name: string) {
+  const existing = await prisma.user.findFirst({
+    where: { email: { equals: email, mode: 'insensitive' } }
+  })
+  if (existing) return existing
+
+  // Auto-create with emailVerified — domain is trusted
+  const newUser = await prisma.user.create({
+    data: {
+      email,
+      name: name || email.split('@')[0],
+      password: 'webhook_created_' + crypto.randomBytes(8).toString('hex'),
+      role: 'viewer',
+      emailVerified: true,
+      orgId: COMPLYANCE_ORG_ID,
+    }
+  })
+  console.log('[Fathom Webhook] Auto-created user:', email)
+  return newUser
 }
 
 export const fathomWebhookRoutes = new Elysia({ prefix: '/webhooks' })
   .post('/fathom', async ({ request, set }) => {
-    // Read raw body first (needed for HMAC validation before JSON parse)
     const rawBody = await request.clone().text()
 
-    // 1. Validate Fathom signature
+    // 1. Validate signature
     const sigHeader = request.headers.get('x-fathom-signature') ?? ''
     if (FATHOM_SECRET) {
       const receivedHex = sigHeader.replace('sha256=', '')
-      if (!receivedHex) {
-        set.status = 401
-        return { error: 'Missing signature header' }
-      }
-      const expected = crypto
-        .createHmac('sha256', FATHOM_SECRET)
-        .update(rawBody)
-        .digest('hex')
+      if (!receivedHex) { set.status = 401; return { error: 'Missing signature header' } }
+      const expected = crypto.createHmac('sha256', FATHOM_SECRET).update(rawBody).digest('hex')
       try {
-        const match = crypto.timingSafeEqual(
-          Buffer.from(expected, 'hex'),
-          Buffer.from(receivedHex, 'hex')
-        )
-        if (!match) {
-          set.status = 401
-          return { error: 'Signature mismatch' }
+        if (!crypto.timingSafeEqual(Buffer.from(expected, 'hex'), Buffer.from(receivedHex, 'hex'))) {
+          set.status = 401; return { error: 'Signature mismatch' }
         }
-      } catch {
-        set.status = 401
-        return { error: 'Invalid signature' }
-      }
+      } catch { set.status = 401; return { error: 'Invalid signature' } }
     }
 
-    // 2. Parse payload
+    // 2. Parse
     let payload: any
-    try {
-      payload = JSON.parse(rawBody)
-    } catch {
-      set.status = 400
-      return { error: 'Invalid JSON body' }
-    }
+    try { payload = JSON.parse(rawBody) }
+    catch { set.status = 400; return { error: 'Invalid JSON' } }
 
-    // Only handle call.completed events
     const eventType = payload.event ?? payload.event_type ?? payload.type ?? ''
     if (!['call.completed', 'transcript', 'recording.completed', 'call_ended'].includes(eventType)) {
       return { ok: true, skipped: true, event: eventType }
@@ -67,40 +126,26 @@ export const fathomWebhookRoutes = new Elysia({ prefix: '/webhooks' })
       ? `[Transcript] ${call.title}`
       : `Meeting Transcript — ${new Date().toLocaleDateString('en-IN')}`
 
-    if (!transcriptText) {
-      return { ok: true, skipped: true, reason: 'Empty transcript' }
-    }
+    console.log('[Fathom Webhook] Attendees:', JSON.stringify(attendees))
+    console.log('[Fathom Webhook] Event:', eventType, '| Title:', title)
 
-    // 3. Match attendee emails → RAPID Ledger users
-    const userMatches = (
-      await Promise.all(
-        attendees.map(async (a) => {
-          const user = await prisma.user.findFirst({
-            where: { email: { equals: a.email, mode: 'insensitive' } },
-          })
-          return user ? { user, name: a.name, email: a.email } : null
-        })
-      )
-    ).filter(Boolean) as Array<{ user: any; name: string; email: string }>
+    if (!transcriptText) return { ok: true, skipped: true, reason: 'Empty transcript' }
+    if (attendees.length === 0) return { ok: true, skipped: true, reason: 'No attendees in payload' }
 
-    const unmatchedEmails = attendees
-      .filter((a) => !userMatches.find((m) => m.email.toLowerCase() === a.email.toLowerCase()))
-      .map((a) => a.email)
+    // 3. Ensure all attendees exist in DB (auto-create @complyance.io users)
+    const users = await Promise.all(
+      attendees.map(a => ensureUser(a.email, a.name))
+    )
 
-    if (userMatches.length === 0) {
-      // No users matched — still store transcript against default org
-      console.warn('[Fathom Webhook] No matching users for:', attendees.map((a) => a.email))
-      return { ok: true, skipped: true, reason: 'No matching users', unmatchedEmails }
-    }
+    // 4. AI analyses transcript → assigns RAPID roles per email
+    const aiRoles = await detectRolesFromTranscript(transcriptText, attendees)
 
-    const orgId = userMatches[0].user.orgId
-    const createdById = userMatches[0].user.id
+    // 5. Generate document code
+    const docCount = await prisma.rapidDocument.count()
+    const documentCode = `TRANSCRIPT-${String(docCount + 1).padStart(3, '0')}`
 
-    // 4. Create Document + role assignments + audit log in one transaction
+    // 6. Create doc + role assignments + audit log in one transaction
     const doc = await prisma.$transaction(async (tx) => {
-      const docCount = await tx.rapidDocument.count()
-      const documentCode = `TRANSCRIPT-${String(docCount + 1).padStart(3, '0')}`
-
       const document = await tx.rapidDocument.create({
         data: {
           title,
@@ -108,31 +153,31 @@ export const fathomWebhookRoutes = new Elysia({ prefix: '/webhooks' })
           decisionSummary: summary || transcriptText.slice(0, 500),
           transcriptContent: transcriptText,
           documentType: 'TRANSCRIPT' as any,
-          status: 'draft' as any,
-          createdById,
-          orgId,
+          status: 'awaiting_agreement' as any,
+          createdById: users[0].id,
+          orgId: COMPLYANCE_ORG_ID,
         },
       })
 
-      // 5. Auto-assign RAPID roles based on each participant's user role
+      // Assign RAPID roles based on AI analysis
       await Promise.all(
-        userMatches.map((m) => {
-          const rapidRole = ROLE_MAP[m.user.role] ?? 'INPUT'
+        users.map((user, i) => {
+          const email = attendees[i]?.email ?? user.email
+          const rapidRole = aiRoles[email] ?? aiRoles[email.toLowerCase()] ?? 'input'
           return tx.roleAssignment.create({
             data: {
               documentId: document.id,
-              userId: m.user.id,
+              userId: user.id,
               roleType: rapidRole as any,
             },
           })
         })
       )
 
-      // 6. Immutable audit log entry
       await tx.auditLog.create({
         data: {
-          userId: createdById,
-          action: 'transcript_imported',
+          userId: users[0].id,
+          action: 'transcript_imported' as any,
           entityType: 'RapidDocument',
           entityId: document.id,
           details: JSON.stringify({
@@ -140,8 +185,8 @@ export const fathomWebhookRoutes = new Elysia({ prefix: '/webhooks' })
             callId: call.id,
             callUrl: call.url,
             meetingTitle: call.title,
-            participantCount: userMatches.length,
-            unmatchedEmails,
+            aiRoleAssignments: aiRoles,
+            participantCount: users.length,
             importedAt: new Date().toISOString(),
           }),
         },
@@ -150,6 +195,13 @@ export const fathomWebhookRoutes = new Elysia({ prefix: '/webhooks' })
       return document
     })
 
-    console.log(`[Fathom Webhook] Created doc ${doc.id} — "${title}" — ${userMatches.length} participants`)
-    return { ok: true, documentId: doc.id, title, participantCount: userMatches.length }
+    console.log(`[Fathom Webhook] Created ${doc.documentCode} — "${title}" — ${users.length} participants`)
+    return {
+      ok: true,
+      documentId: doc.id,
+      documentCode: doc.documentCode,
+      title,
+      participantCount: users.length,
+      aiRoleAssignments: aiRoles,
+    }
   })
