@@ -17,7 +17,7 @@ export function middleware(request: NextRequest) {
   const token = request.cookies.get("rapid_token")?.value;
   const role  = request.cookies.get("rapid_role")?.value;
 
-  if (pathname === "/login" || pathname === "/" || pathname.startsWith("/signup") || pathname.startsWith("/verify-email")) return NextResponse.next();
+  if (pathname === "/login" || pathname === "/register" || pathname === "/" || pathname.startsWith("/signup") || pathname.startsWith("/verify-email")) return NextResponse.next();
   if (!token) return NextResponse.redirect(new URL("/login", request.url));
 
   const matchedRoute = Object.keys(ROLE_ACCESS).find(route =>
