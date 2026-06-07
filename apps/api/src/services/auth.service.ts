@@ -109,7 +109,7 @@ export async function registerUser(
       email,
       password: hashed,
       role: "viewer",
-      emailVerified: false,
+      emailVerified: true,
       verificationToken: token,
     },
   });
