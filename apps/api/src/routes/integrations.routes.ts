@@ -1,4 +1,5 @@
 import { Elysia } from "elysia";
+import crypto from 'crypto';
 import { authMiddleware } from "../middleware/auth";
 import { requirePermission } from "../middleware/permissions";
 import { prisma } from "../lib/prisma";
@@ -103,8 +104,6 @@ export const integrationsRoutes = new Elysia({ prefix: "/integrations" })
       })).filter((a: any) => a.email);
 
       const COMPLYANCE_ORG_ID = 'cmq2vwnsj0008j8lfjqanx4dz';
-      const crypto = await import('crypto');
-
       const ensureUser = async (email: string, name: string) => {
         const existing = await prisma.user.findFirst({ where: { email: { equals: email, mode: 'insensitive' } } });
         if (existing) return existing;
