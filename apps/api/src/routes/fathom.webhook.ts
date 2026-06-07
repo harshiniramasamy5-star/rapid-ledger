@@ -69,6 +69,64 @@ No explanation. No markdown. Only JSON.`
   }
 }
 
+// AI extracts structured decisions, actions, owners, deadlines from transcript
+async function extractDecisionsFromTranscript(
+  transcript: string,
+  attendees: Array<{ email: string; name: string }>
+): Promise<{ decisions: string[]; actions: string[]; owners: string[]; deadlines: string[] }> {
+  const attendeeList = attendees.map(a => `${a.name} <${a.email}>`).join('\n')
+
+  const prompt = `You are analyzing a compliance meeting transcript.
+
+Meeting attendees:
+${attendeeList}
+
+Transcript:
+${transcript.slice(0, 4000)}
+
+Extract the following and return ONLY valid JSON with these exact keys:
+{
+  "decisions": ["list of decisions made, e.g. Budget approved for Q3", "Vendor X rejected"],
+  "actions": ["list of action items, e.g. Submit revised proposal by Friday", "Update compliance register"],
+  "owners": ["list of owners of actions, e.g. Sarah to submit proposal", "John to update register"],
+  "deadlines": ["list of any dates or deadlines mentioned, e.g. by Friday June 14", "before Q3 review"]
+}
+
+If nothing found for a category, return an empty array.
+No explanation. No markdown. Only JSON.`
+
+  try {
+    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${GROQ_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'llama-3.3-70b-versatile',
+        max_tokens: 800,
+        temperature: 0.1,
+        messages: [{ role: 'user', content: prompt }],
+      }),
+    })
+    const data = await res.json() as any
+    const text = data.choices?.[0]?.message?.content ?? '{}'
+    const clean = text.replace(/```json|```/g, '').trim()
+    const parsed = JSON.parse(clean)
+    const result = {
+      decisions: Array.isArray(parsed.decisions) ? parsed.decisions : [],
+      actions:   Array.isArray(parsed.actions)   ? parsed.actions   : [],
+      owners:    Array.isArray(parsed.owners)     ? parsed.owners    : [],
+      deadlines: Array.isArray(parsed.deadlines)  ? parsed.deadlines : [],
+    }
+    console.log('[Fathom Webhook] AI structured extraction:', JSON.stringify(result))
+    return result
+  } catch (e) {
+    console.error('[Fathom Webhook] Groq decision extraction failed:', e)
+    return { decisions: [], actions: [], owners: [], deadlines: [] }
+  }
+}
+
 // Auto-register @complyance.io users who aren't in DB yet
 async function ensureUser(email: string, name: string) {
   const existing = await prisma.user.findFirst({
@@ -143,8 +201,11 @@ export const fathomWebhookRoutes = new Elysia({ prefix: '/webhooks' })
       attendees.map(a => ensureUser(a.email, a.name))
     )
 
-    // 4. AI analyses transcript → assigns RAPID roles per email
-    const aiRoles = await detectRolesFromTranscript(transcriptText, attendees)
+    // 4. AI analyses transcript — run both extractions in parallel
+    const [aiRoles, aiStructured] = await Promise.all([
+      detectRolesFromTranscript(transcriptText, attendees),
+      extractDecisionsFromTranscript(transcriptText, attendees),
+    ])
 
     // 5. Generate document code
     const docCount = await prisma.rapidDocument.count()
@@ -156,7 +217,15 @@ export const fathomWebhookRoutes = new Elysia({ prefix: '/webhooks' })
         data: {
           title,
           documentCode,
-          decisionSummary: summary || transcriptText.slice(0, 500),
+          decisionSummary: aiStructured.decisions.length
+            ? aiStructured.decisions.join('\n')
+            : summary || transcriptText.slice(0, 500),
+          businessContext: aiStructured.actions.length
+            ? 'Actions:\n' + aiStructured.actions.join('\n') + '\n\nOwners:\n' + aiStructured.owners.join('\n')
+            : undefined,
+          proposedDecision: aiStructured.deadlines.length
+            ? 'Deadlines:\n' + aiStructured.deadlines.join('\n')
+            : undefined,
           transcriptContent: transcriptText,
           documentType: 'TRANSCRIPT' as any,
           status: 'awaiting_agreement' as any,
@@ -192,6 +261,10 @@ export const fathomWebhookRoutes = new Elysia({ prefix: '/webhooks' })
             callUrl: call.url,
             meetingTitle: call.title,
             aiRoleAssignments: aiRoles,
+            aiDecisions: aiStructured.decisions,
+            aiActions: aiStructured.actions,
+            aiOwners: aiStructured.owners,
+            aiDeadlines: aiStructured.deadlines,
             participantCount: users.length,
             importedAt: new Date().toISOString(),
           }),
