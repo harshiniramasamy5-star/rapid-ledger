@@ -110,7 +110,9 @@ export async function registerUser(
   try {
     const emailDomain = email.split("@")[1];
     if (emailDomain) {
-      const matchedOrg = await prisma.organization.findFirst({ where: { domain: emailDomain } });
+      const matchedOrg = await prisma.organization.findFirst({
+        where: { domain: { in: [emailDomain, emailDomain === 'antna.co.in' ? 'complyance.io' : emailDomain] } }
+      });
       if (matchedOrg) {
         await prisma.user.update({ where: { email }, data: { orgId: matchedOrg.id } });
       }
@@ -119,7 +121,9 @@ export async function registerUser(
   try {
     const emailDomain = email.split("@")[1];
     if (emailDomain) {
-      const matchedOrg = await prisma.organization.findFirst({ where: { domain: emailDomain } });
+      const matchedOrg = await prisma.organization.findFirst({
+        where: { domain: { in: [emailDomain, emailDomain === 'antna.co.in' ? 'complyance.io' : emailDomain] } }
+      });
       if (matchedOrg) {
         await prisma.user.update({ where: { email }, data: { orgId: matchedOrg.id } });
       }
