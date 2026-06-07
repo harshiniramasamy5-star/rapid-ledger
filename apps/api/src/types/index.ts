@@ -15,6 +15,7 @@ export interface LoginResponse {
 }
 
 export interface PublicUser {
+  orgId?: string | null;
   id: string;
   name: string;
   email: string;
