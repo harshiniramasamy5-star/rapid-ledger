@@ -119,12 +119,18 @@ export const fathomWebhookRoutes = new Elysia({ prefix: '/webhooks' })
     }
 
     const call = payload.call ?? payload.data ?? payload.recording ?? {}
+
+    // [RAPID] prefix filter — only process decision meetings
+    const rawTitle: string = call.title ?? ''
+    if (!rawTitle.startsWith('[RAPID]')) {
+      console.log('[Fathom Webhook] Skipping non-RAPID meeting:', rawTitle || '(no title)')
+      return { ok: true, skipped: true, reason: 'Not a RAPID meeting — title must start with [RAPID]' }
+    }
+
     const attendees: Array<{ email: string; name: string }> = call.attendees ?? []
     const transcriptText: string = call.transcript ?? ''
     const summary: string = call.summary ?? ''
-    const title = call.title
-      ? `[Transcript] ${call.title}`
-      : `Meeting Transcript — ${new Date().toLocaleDateString('en-IN')}`
+    const title = `[Transcript] ${rawTitle}`
 
     console.log('[Fathom Webhook] Attendees:', JSON.stringify(attendees))
     console.log('[Fathom Webhook] Event:', eventType, '| Title:', title)
