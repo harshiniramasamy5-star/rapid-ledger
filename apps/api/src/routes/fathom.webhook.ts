@@ -5,11 +5,11 @@ import crypto from 'crypto'
 const FATHOM_SECRET = process.env.FATHOM_WEBHOOK_SECRET ?? ''
 
 const ROLE_MAP: Record<string, string> = {
-  ADMIN:     'DECIDE',
-  APPROVER:  'AGREE',
-  CREATOR:   'RECOMMEND',
-  PERFORMER: 'PERFORM',
-  VIEWER:    'INPUT',
+  admin:     'decide',
+  approver:  'agree',
+  creator:   'recommend',
+  performer: 'perform',
+  viewer:    'input',
 }
 
 export const fathomWebhookRoutes = new Elysia({ prefix: '/api/webhooks' })
@@ -101,7 +101,7 @@ export const fathomWebhookRoutes = new Elysia({ prefix: '/api/webhooks' })
         data: {
           title,
           decisionSummary: summary || transcriptText.slice(0, 500),
-          transcriptText,
+          transcriptContent: transcriptText,
           type: 'TRANSCRIPT',
           status: 'draft',
           createdById,
