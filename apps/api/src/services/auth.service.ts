@@ -94,7 +94,7 @@ export async function registerUser(
 ): Promise<{ success: boolean; message?: string; token?: string }> {
   const emailDomain = email.split('@')[1]?.toLowerCase() ?? ''
   if (!ALLOWED_DOMAINS.includes(emailDomain)) {
-    throw Object.assign(new Error('Only @complyance.io accounts are allowed'), { code: 'DOMAIN_NOT_ALLOWED' })
+    throw Object.assign(new Error('Only @complyance.io or @antna.co.in accounts are allowed'), { code: 'DOMAIN_NOT_ALLOWED' })
   }
   const existing = await prisma.user.findUnique({ where: { email } });
   if (existing) return { success: false, message: "An account with this email already exists." };
