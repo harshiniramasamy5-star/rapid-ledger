@@ -5,7 +5,7 @@ const prisma = new PrismaClient();
 async function main() {
   console.log("Production seed — ensuring org exists...");
 
-  await prisma.organisation.upsert({
+  await prisma.organization.upsert({
     where: { id: "cmq2vwnsj0008j8lfjqanx4dz" },
     update: {},
     create: {
