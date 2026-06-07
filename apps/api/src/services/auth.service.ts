@@ -7,8 +7,8 @@ import type { LoginResponse, PublicUser } from "../types";
 const MAX_FAILED_ATTEMPTS = 5;
 const LOCKOUT_DURATION_MS = 30 * 60 * 1000; // 30 minutes
 
-export function toPublicUser(user: { id: string; name: string; email: string; role: string; department: string | null; totpEnabled?: boolean }): PublicUser {
-  return { id: user.id, name: user.name, email: user.email, role: user.role, department: user.department, totpEnabled: user.totpEnabled ?? false };
+export function toPublicUser(user: { id: string; name: string; email: string; role: string; department: string | null; totpEnabled?: boolean; orgId?: string | null }): PublicUser {
+  return { id: user.id, name: user.name, email: user.email, role: user.role, department: user.department, totpEnabled: user.totpEnabled ?? false, orgId: user.orgId ?? null };
 }
 
 export type LoginResult =
