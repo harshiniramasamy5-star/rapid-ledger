@@ -12,7 +12,7 @@ const ROLE_MAP: Record<string, string> = {
   viewer:    'input',
 }
 
-export const fathomWebhookRoutes = new Elysia({ prefix: '/api/webhooks' })
+export const fathomWebhookRoutes = new Elysia({ prefix: '/webhooks' })
   .post('/fathom', async ({ request, set }) => {
     // Read raw body first (needed for HMAC validation before JSON parse)
     const rawBody = await request.clone().text()
