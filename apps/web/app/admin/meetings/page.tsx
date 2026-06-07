@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
+function getToken(){const m=document.cookie.match(/(?:^|;\s*)rapid_token=([^;]*)/);return m?decodeURIComponent(m[1]):null;}
 
 interface FathomMeeting {
   id: string;
@@ -25,7 +26,7 @@ export default function MeetingImportsPage() {
 
   useEffect(() => {
     fetch(`${API}/integrations/fathom/meetings`, {
-      headers: { Authorization: `Bearer ${localStorage.getItem("token") ?? ""}` },
+      headers: { Authorization: `Bearer ${getToken() ?? ""}` },
     })
       .then((r) => r.json())
       .then((d) => {
@@ -43,7 +44,7 @@ export default function MeetingImportsPage() {
     try {
       const res = await fetch(`${API}/integrations/fathom/import/${meetingId}`, {
         method: "POST",
-        headers: { Authorization: `Bearer ${localStorage.getItem("token") ?? ""}` },
+        headers: { Authorization: `Bearer ${getToken() ?? ""}` },
       });
       const d = await res.json();
       if (d.error) setError(d.error);
