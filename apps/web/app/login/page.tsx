@@ -91,6 +91,10 @@ export default function LoginPage() {
       });
       const data = await res.json();
       if (!res.ok) throw data;
+      if (data.requiresMfa) {
+        setTotpStep(true);
+        return;
+      }
       const user: UserData = data.user;
       if (user.totpEnabled) {
         setPendingToken(data.token);
@@ -112,13 +116,23 @@ export default function LoginPage() {
     if (!pendingUser) return;
     setLoading(true);
     try {
-      const res  = await fetch(`${API}/auth/totp/validate`, {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId: pendingUser.id, code: totpCode }),
-      });
-      const data = await res.json();
-      if (!res.ok || !data.valid) throw new Error("Invalid code. Try again.");
-      applySession(pendingToken, pendingUser);
+      if (pendingToken && pendingUser) {
+        const res  = await fetch(`${API}/auth/totp/validate`, {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ userId: pendingUser.id, code: totpCode }),
+        });
+        const data = await res.json();
+        if (!res.ok || !data.valid) throw new Error("Invalid code. Try again.");
+        applySession(pendingToken, pendingUser);
+      } else {
+        const res = await fetch(`${API}/auth/login`, {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, password, totpCode }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Invalid code. Try again.");
+        applySession(data.token, data.user);
+      }
     } catch (err: unknown) {
       toast.error((err as Error).message ?? "Invalid code.");
       setTotpCode("");
