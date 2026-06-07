@@ -221,7 +221,7 @@ export default function LoginPage() {
                 <p className="text-slate-500 text-sm text-center">
                   Don&apos;t have an account?{" "}</p>
                 <p className="text-slate-400 text-xs text-center leading-relaxed">
-                  Access is provisioned by your system administrator.<br />Contact IT support if you are unable to sign in.
+                  <br />
                 </p>
               </div>
             </>
