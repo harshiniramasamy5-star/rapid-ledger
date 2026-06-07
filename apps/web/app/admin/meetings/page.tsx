@@ -2,6 +2,8 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
+const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
+
 interface FathomMeeting {
   id: string;
   title: string;
@@ -22,7 +24,7 @@ export default function MeetingImportsPage() {
   const router = useRouter();
 
   useEffect(() => {
-    fetch("/api/integrations/fathom/meetings", {
+    fetch(`${API}/integrations/fathom/meetings`, {
       headers: { Authorization: `Bearer ${localStorage.getItem("token") ?? ""}` },
     })
       .then((r) => r.json())
@@ -39,7 +41,7 @@ export default function MeetingImportsPage() {
     setError("");
     setSuccess("");
     try {
-      const res = await fetch(`/api/integrations/fathom/import/${meetingId}`, {
+      const res = await fetch(`${API}/integrations/fathom/import/${meetingId}`, {
         method: "POST",
         headers: { Authorization: `Bearer ${localStorage.getItem("token") ?? ""}` },
       });
