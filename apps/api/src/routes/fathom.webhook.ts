@@ -97,13 +97,17 @@ export const fathomWebhookRoutes = new Elysia({ prefix: '/api/webhooks' })
 
     // 4. Create Document + role assignments + audit log in one transaction
     const doc = await prisma.$transaction(async (tx) => {
+      const docCount = await tx.rapidDocument.count()
+      const documentCode = `TRANSCRIPT-${String(docCount + 1).padStart(3, '0')}`
+
       const document = await tx.rapidDocument.create({
         data: {
           title,
+          documentCode,
           decisionSummary: summary || transcriptText.slice(0, 500),
           transcriptContent: transcriptText,
-          type: 'TRANSCRIPT',
-          status: 'draft',
+          documentType: 'TRANSCRIPT' as any,
+          status: 'draft' as any,
           createdById,
           orgId,
         },
