@@ -217,11 +217,10 @@ export default function LoginPage() {
                   {loading ? <span className="flex items-center gap-2.5"><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"/>Signing in...</span> : "Continue"}
                 </Button>
               </form>
-              <div className="mt-8 pt-7 border-t border-slate-200 space-y-4">
+              <div className="mt-8 pt-7 border-t border-slate-200">
                 <p className="text-slate-500 text-sm text-center">
-                  Don&apos;t have an account?{" "}</p>
-                <p className="text-slate-400 text-xs text-center leading-relaxed">
-                  <br />
+                  Don&apos;t have an account?{" "}
+                  <a href="/register" className="font-semibold text-blue-600 hover:underline">Sign up</a>
                 </p>
               </div>
             </>
