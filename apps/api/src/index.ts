@@ -10,6 +10,7 @@ import { aiRoutes } from "./routes/ai.routes";
 import { orgRoutes } from "./routes/org.routes";
 import { totpRoutes, totpPublicRoutes } from "./routes/totp.routes";
 import { transcriptRoutes } from "./routes/transcript.routes";
+import { fathomWebhookRoutes } from './routes/fathom.webhook'
 import { webhookRoutes } from "./routes/webhook.routes";
 import { auditRoutes } from "./routes/audit.routes";
 import { commentsRoutes } from "./routes/comments.routes";
@@ -44,6 +45,7 @@ export const app = new Elysia()
   .use(totpRoutes)
   .use(transcriptRoutes)
   .use(webhookRoutes)
+  .use(fathomWebhookRoutes)
   .use(integrationsRoutes)
   .use(authRoutes)
   .use(documentRoutes)
