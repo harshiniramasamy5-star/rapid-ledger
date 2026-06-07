@@ -8,6 +8,114 @@ import { notionSyncService } from "../services/notion.service";
 export const integrationsRoutes = new Elysia({ prefix: "/integrations" })
   .use(authMiddleware)
 
+  .post("/fathom/manual", async ({ user, body, set }) => {
+    requirePermission(user, "document:approve", set);
+    const { title, emails, transcript } = body as { title: string; emails: string[]; transcript: string };
+    if (!title?.trim()) { set.status = 400; return { error: "title is required" }; }
+    if (!emails?.length) { set.status = 400; return { error: "at least one email is required" }; }
+    if (!transcript?.trim()) { set.status = 400; return { error: "transcript is required" }; }
+
+    const COMPLYANCE_ORG_ID = "cmq2vwnsj0008j8lfjqanx4dz";
+    const GROQ_API_KEY = process.env.GROQ_API_KEY ?? "";
+
+    const ensureUser = async (email: string) => {
+      const existing = await prisma.user.findFirst({ where: { email: { equals: email, mode: "insensitive" } } });
+      if (existing) return existing;
+      return prisma.user.create({
+        data: {
+          email, name: email.split("@")[0],
+          password: "manual_import_" + crypto.randomBytes(8).toString("hex"),
+          role: "viewer", emailVerified: true, orgId: COMPLYANCE_ORG_ID,
+        },
+      });
+    };
+
+    const attendees = emails.map((email) => ({ email, name: email.split("@")[0] }));
+    const users = await Promise.all(attendees.map((a) => ensureUser(a.email)));
+
+    const attendeeList = attendees.map((a) => `${a.name} <${a.email}>`).join("\n");
+    const rolePrompt = `You are analyzing a meeting transcript to assign RAPID decision-making framework roles.
+RAPID roles: recommend, input, agree, decide, perform
+Meeting attendees:\n${attendeeList}
+Transcript:\n${transcript.slice(0, 4000)}
+Assign exactly one RAPID role per person. Return ONLY valid JSON like {"email@domain.com": "recommend"}. No markdown.`;
+
+    const decisionPrompt = `You are analyzing a compliance meeting transcript.
+Attendees:\n${attendeeList}
+Transcript:\n${transcript.slice(0, 4000)}
+Extract and return ONLY valid JSON with keys: decisions (array), actions (array), owners (array), deadlines (array). No markdown.`;
+
+    let aiRoles: Record<string, string> = {};
+    let aiStructured = { decisions: [] as string[], actions: [] as string[], owners: [] as string[], deadlines: [] as string[] };
+
+    try {
+      const [r1, r2] = await Promise.all([
+        fetch("https://api.groq.com/openai/v1/chat/completions", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${GROQ_API_KEY}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ model: "llama-3.3-70b-versatile", max_tokens: 500, temperature: 0.1, messages: [{ role: "user", content: rolePrompt }] }),
+        }),
+        fetch("https://api.groq.com/openai/v1/chat/completions", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${GROQ_API_KEY}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ model: "llama-3.3-70b-versatile", max_tokens: 800, temperature: 0.1, messages: [{ role: "user", content: decisionPrompt }] }),
+        }),
+      ]);
+      const valid = ["recommend", "agree", "perform", "input", "decide"];
+      const d1 = await r1.json() as any;
+      const parsed1 = JSON.parse((d1.choices?.[0]?.message?.content ?? "{}").replace(/```json|```/g, "").trim());
+      for (const [email, role] of Object.entries(parsed1)) {
+        aiRoles[email] = valid.includes(role as string) ? (role as string) : "input";
+      }
+      const d2 = await r2.json() as any;
+      const parsed2 = JSON.parse((d2.choices?.[0]?.message?.content ?? "{}").replace(/```json|```/g, "").trim());
+      aiStructured = {
+        decisions: Array.isArray(parsed2.decisions) ? parsed2.decisions : [],
+        actions: Array.isArray(parsed2.actions) ? parsed2.actions : [],
+        owners: Array.isArray(parsed2.owners) ? parsed2.owners : [],
+        deadlines: Array.isArray(parsed2.deadlines) ? parsed2.deadlines : [],
+      };
+    } catch (e) {
+      console.error("[Manual Import] Groq failed:", e);
+      aiRoles = Object.fromEntries(attendees.map((a) => [a.email, "input"]));
+    }
+
+    const docCount = await prisma.rapidDocument.count();
+    const documentCode = `TRANSCRIPT-${String(docCount + 1).padStart(3, "0")}`;
+    const docTitle = `[Transcript] ${title}`;
+
+    const doc = await prisma.$transaction(async (tx) => {
+      const document = await tx.rapidDocument.create({
+        data: {
+          title: docTitle, documentCode,
+          decisionSummary: aiStructured.decisions.length ? aiStructured.decisions.join("\n") : transcript.slice(0, 500),
+          businessContext: aiStructured.actions.length ? "Actions:\n" + aiStructured.actions.join("\n") + "\n\nOwners:\n" + aiStructured.owners.join("\n") : undefined,
+          proposedDecision: aiStructured.deadlines.length ? "Deadlines:\n" + aiStructured.deadlines.join("\n") : undefined,
+          transcriptContent: transcript,
+          documentType: "TRANSCRIPT" as any,
+          status: "awaiting_agreement" as any,
+          createdById: users[0].id,
+          orgId: COMPLYANCE_ORG_ID,
+        },
+      });
+      await Promise.all(users.map((u, i) => {
+        const email = attendees[i]?.email ?? u.email;
+        const rapidRole = aiRoles[email] ?? aiRoles[email.toLowerCase()] ?? "input";
+        return tx.roleAssignment.create({ data: { documentId: document.id, userId: u.id, roleType: rapidRole as any } });
+      }));
+      await tx.auditLog.create({
+        data: {
+          userId: user.id, action: "transcript_imported" as any,
+          entityType: "RapidDocument", entityId: document.id,
+          details: JSON.stringify({ source: "manual_paste", meetingTitle: title, aiRoleAssignments: aiRoles, aiDecisions: aiStructured.decisions, importedAt: new Date().toISOString() }),
+        },
+      });
+      return document;
+    });
+
+    return { ok: true, documentId: doc.id, documentCode: doc.documentCode, title: docTitle, participantCount: users.length, aiRoleAssignments: aiRoles };
+  })
+
   .post("/notion/connect", async ({ user, set }) => {
     requirePermission(user, "document:approve", set);
     const configured = Boolean(process.env.NOTION_API_KEY) && Boolean(process.env.NOTION_DATABASE_ID);
