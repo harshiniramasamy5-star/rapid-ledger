@@ -135,7 +135,7 @@ export const orgRoutes = new Elysia({ prefix: "/orgs" })
     await prisma.auditLog.create({
       data: {
         userId: user.id,
-        action: "role_changed",
+        action: "role_changed" as any,
         entityType: "User",
         entityId: params.userId,
         orgId: params.id,
@@ -158,7 +158,7 @@ export const orgRoutes = new Elysia({ prefix: "/orgs" })
     await prisma.auditLog.create({
       data: {
         userId: user.id,
-        action: "member_removed",
+        action: "member_removed" as any,
         entityType: "User",
         entityId: params.userId,
         orgId: params.id,

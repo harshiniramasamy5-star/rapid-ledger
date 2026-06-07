@@ -260,6 +260,7 @@ enum AuditAction {
   totp_enabled
   totp_disabled
   transcript_exported
+  transcript_imported
   webhook_failed
   webhook_retried
   sync_failed

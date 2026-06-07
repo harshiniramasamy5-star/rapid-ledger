@@ -100,7 +100,7 @@ export const fathomWebhookRoutes = new Elysia({ prefix: '/api/webhooks' })
       const document = await tx.rapidDocument.create({
         data: {
           title,
-          content: summary || transcriptText.slice(0, 500),
+          decisionSummary: summary || transcriptText.slice(0, 500),
           transcriptText,
           type: 'TRANSCRIPT',
           status: 'draft',
@@ -117,7 +117,7 @@ export const fathomWebhookRoutes = new Elysia({ prefix: '/api/webhooks' })
             data: {
               documentId: document.id,
               userId: m.user.id,
-              role: rapidRole,
+              roleType: rapidRole as any,
             },
           })
         })
@@ -127,7 +127,7 @@ export const fathomWebhookRoutes = new Elysia({ prefix: '/api/webhooks' })
       await tx.auditLog.create({
         data: {
           userId: createdById,
-          action: 'TRANSCRIPT_IMPORTED',
+          action: 'transcript_imported',
           entityType: 'RapidDocument',
           entityId: document.id,
           details: JSON.stringify({
