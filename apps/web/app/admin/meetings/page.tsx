@@ -33,7 +33,7 @@ export default function MeetingImportsPage() {
         if (d.error) setError(d.error);
         else setMeetings(d.meetings ?? []);
       })
-      .catch(() => setError("Failed to load meetings"))
+      .catch(() => setError("Fathom REST API unavailable — meetings auto-import via webhook when title starts with [RAPID]"))
       .finally(() => setLoading(false));
   }, []);
 
