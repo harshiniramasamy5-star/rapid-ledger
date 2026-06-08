@@ -139,9 +139,10 @@ export default function DocumentDetailPage() {
   const isCreator = (doc?.createdBy as unknown as ApiUser)?.id === myId;
   const status      = doc?.status ?? "";
 
-  const canSubmit   = isCreator && ["draft","needs_changes"].includes(status);
-  const canEdit = isCreator && ["draft","needs_changes"].includes(status);
-  const canAgree    = !isCreator && (!!myApproval || myRole?.roleType === "agree") && status === "awaiting_agreement";
+  const canSubmit   = (isCreator || myRole?.roleType === "decide" || me?.role === "admin") && ["draft","needs_changes"].includes(status);
+  const canEdit     = (isCreator || me?.role === "admin") && ["draft","needs_changes"].includes(status);
+  const canAgree    = myRole?.roleType === "agree" && !["draft","rejected","finalized","execution_complete"].includes(status);
+  const canDecide   = myRole?.roleType === "decide" && !["draft","needs_changes","rejected"].includes(status);
   const canFinalize = me?.role === "admin" && status === "approved";
 
   async function exportPdf() {
@@ -212,10 +213,10 @@ export default function DocumentDetailPage() {
 
   const canComplete = myRole?.roleType === "perform" && status === "finalized";
   const canVersion  = me?.role === "admin" && ["finalized","execution_complete"].includes(status);
-  const isRecommenderWaiting = myRole?.roleType === "recommend" && !!doc?.recommendationNotes && status === "awaiting_agreement";
-  const canInput        = myRole?.roleType === "input" && !doc?.inputNotes && ["draft","needs_changes","submitted","awaiting_agreement"].includes(status);
+  const isRecommenderWaiting = myRole?.roleType === "recommend" && !!doc?.recommendationNotes;
+  const canInput        = myRole?.roleType === "input" && !doc?.inputNotes && !["rejected","finalized","execution_complete"].includes(status);
   const isInputWaiting  = myRole?.roleType === "input" && !!doc?.inputNotes;
-  const canRecommend = myRole?.roleType === "recommend" && !isRecommenderWaiting && ["draft","needs_changes","submitted","awaiting_agreement"].includes(status);
+  const canRecommend    = myRole?.roleType === "recommend" && !isRecommenderWaiting && !["rejected","finalized","execution_complete"].includes(status);
 
   const sc = STATUS_CONFIG[status] ?? { variant: "outline" as const, label: status, color: "text-slate-600" };
 
@@ -404,7 +405,34 @@ export default function DocumentDetailPage() {
               </div>
             )}
 
-            {canRecommend && (
+            {canDecide && (
+              <div className="space-y-3">
+                <textarea rows={2} placeholder="Acknowledgement notes (optional)..."
+                  value={approvalNotes} onChange={e => setApprovalNotes(e.target.value)}
+                  className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary bg-white text-slate-900 placeholder:text-slate-400" />
+                <AlertDialog>
+                  <AlertDialogTrigger className="w-full inline-flex items-center justify-center rounded-md text-sm font-semibold bg-red-700 hover:bg-red-800 text-white h-11 px-4 py-2 disabled:opacity-50" disabled={acting}>
+                    ✓ Acknowledge Decision
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Acknowledge this decision?</AlertDialogTitle>
+                      <AlertDialogDescription>As the Decider, you are confirming this decision is final and approved.</AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction className="bg-red-700 hover:bg-red-800" onClick={() => handle(async () => {
+                        const { res, data } = await apiPost(`/documents/${params.id}/approve`, { comment: approvalNotes });
+                        if (res.ok) { toast.success("Decision acknowledged!"); setApprovalNotes(""); await load(); }
+                        else toast.error((data as ApiError)?.error?.message ?? "Failed");
+                      })}>Confirm</AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
+            )}
+
+
               <div className="space-y-3">
                 <p className="text-xs text-slate-500 font-medium">
                   Add your recommendation before this document is submitted.
@@ -508,7 +536,7 @@ export default function DocumentDetailPage() {
               </Button>
             )}
 
-            {!canEdit && !canSubmit && !canAgree && !canFinalize && !canComplete && !canVersion && !canRecommend && !isRecommenderWaiting && !canInput && !isInputWaiting && (
+            {!canEdit && !canSubmit && !canAgree && !canDecide && !canFinalize && !canComplete && !canVersion && !canRecommend && !isRecommenderWaiting && !canInput && !isInputWaiting && (
               <p className="text-sm text-slate-400 text-center py-2">
                 No actions available for your role at this stage.
               </p>
