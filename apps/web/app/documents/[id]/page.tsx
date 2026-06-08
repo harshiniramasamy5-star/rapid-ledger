@@ -142,7 +142,7 @@ export default function DocumentDetailPage() {
   const canSubmit   = (isCreator || myRole?.roleType === "decide" || me?.role === "admin") && ["draft","needs_changes"].includes(status);
   const canEdit     = (isCreator || me?.role === "admin") && ["draft","needs_changes"].includes(status);
   const canAgree    = myRole?.roleType === "agree" && !["draft","rejected","finalized","execution_complete"].includes(status);
-  const canDecide   = myRole?.roleType === "decide" && !["draft","needs_changes","rejected"].includes(status);
+  const canDecide   = myRole?.roleType === "decide" && !["draft","needs_changes","rejected","finalized","execution_complete","approved"].includes(status);
   const canFinalize = me?.role === "admin" && status === "approved";
 
   async function exportPdf() {
