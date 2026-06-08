@@ -432,7 +432,7 @@ export default function DocumentDetailPage() {
               </div>
             )}
 
-
+            {canRecommend && (
               <div className="space-y-3">
                 <p className="text-xs text-slate-500 font-medium">
                   Add your recommendation before this document is submitted.
