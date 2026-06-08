@@ -139,10 +139,10 @@ export default function DocumentDetailPage() {
   const isCreator = (doc?.createdBy as unknown as ApiUser)?.id === myId;
   const status      = doc?.status ?? "";
 
-  const canSubmit   = (isCreator || myRole?.roleType === "decide" || me?.role === "admin") && ["draft","needs_changes"].includes(status);
+  const canSubmit   = (isCreator || me?.role === "admin") && ["draft","needs_changes"].includes(status);
   const canEdit     = (isCreator || me?.role === "admin") && ["draft","needs_changes"].includes(status);
-  const canAgree    = myRole?.roleType === "agree" && !["draft","rejected","finalized","execution_complete"].includes(status);
-  const canDecide   = myRole?.roleType === "decide" && !["draft","needs_changes","rejected","finalized","execution_complete","approved"].includes(status);
+  const canAgree    = myRole?.roleType === "agree" && !["rejected"].includes(status);
+  const canDecide   = myRole?.roleType === "decide" && !["draft","rejected"].includes(status);
   const canFinalize = me?.role === "admin" && status === "approved";
 
   async function exportPdf() {
@@ -214,9 +214,9 @@ export default function DocumentDetailPage() {
   const canComplete = myRole?.roleType === "perform" && status === "finalized";
   const canVersion  = me?.role === "admin" && ["finalized","execution_complete"].includes(status);
   const isRecommenderWaiting = myRole?.roleType === "recommend" && !!doc?.recommendationNotes;
-  const canInput        = myRole?.roleType === "input" && !doc?.inputNotes && !["rejected","finalized","execution_complete"].includes(status);
+  const canInput        = myRole?.roleType === "input" && !doc?.inputNotes && !["rejected"].includes(status);
   const isInputWaiting  = myRole?.roleType === "input" && !!doc?.inputNotes;
-  const canRecommend    = myRole?.roleType === "recommend" && !isRecommenderWaiting && !["rejected","finalized","execution_complete"].includes(status);
+  const canRecommend    = myRole?.roleType === "recommend" && !isRecommenderWaiting && !["rejected"].includes(status);
 
   const sc = STATUS_CONFIG[status] ?? { variant: "outline" as const, label: status, color: "text-slate-600" };
 
@@ -423,8 +423,14 @@ export default function DocumentDetailPage() {
                       <AlertDialogCancel>Cancel</AlertDialogCancel>
                       <AlertDialogAction className="bg-red-700 hover:bg-red-800" onClick={() => handle(async () => {
                         const { res, data } = await apiPost(`/documents/${params.id}/approve`, { comment: approvalNotes });
-                        if (res.ok) { toast.success("Decision acknowledged!"); setApprovalNotes(""); await load(); }
-                        else toast.error((data as ApiError)?.error?.message ?? "Failed");
+                        const errMsg = (data as ApiError)?.error?.message ?? "";
+                        if (res.ok || errMsg.includes("finalized") || errMsg.includes("approved") || errMsg.includes("invalidStatus")) {
+                          toast.success("Decision acknowledged!");
+                          setApprovalNotes("");
+                        } else {
+                          toast.error(errMsg || "Failed");
+                        }
+                        await load();
                       })}>Confirm</AlertDialogAction>
                     </AlertDialogFooter>
                   </AlertDialogContent>
