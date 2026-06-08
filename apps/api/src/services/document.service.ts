@@ -6,6 +6,11 @@ import { createAuditLog } from "./audit.service";
 import type { CreateDocumentBody } from "../types";
 import { webhookDispatcher } from "./webhookDispatcher";
 import { notionSyncService } from "./notion.service";
+import {
+  sendApprovalNotificationEmail,
+  sendRejectionNotificationEmail,
+  sendChangesRequestedEmail,
+} from "./email.service";
 
 const INCLUDE = {
   createdBy: { select: { id: true, name: true, email: true, role: true } },
@@ -124,6 +129,28 @@ export async function approveDocument(documentId: string, approverId: string, co
       userId: approverId,
       timestamp: new Date().toISOString(),
     });
+
+    // Email notifications — submitter + assigned users
+    try {
+      const doc = await prisma.rapidDocument.findUnique({
+        where: { id: documentId },
+        include: {
+          createdBy: { select: { name: true, email: true } },
+          roleAssignments: { include: { user: { select: { name: true, email: true } } } },
+          approvals: { include: { approver: { select: { name: true } } } },
+        },
+      });
+      if (doc) {
+        const approverName = doc.approvals.find((a: { approverId: string; approver: { name: string } }) => a.approverId === approverId)?.approver.name ?? "An approver";
+        const recipients = new Set([doc.createdBy.email]);
+        doc.roleAssignments.forEach((ra: { user: { email: string } }) => recipients.add(ra.user.email));
+        await Promise.allSettled(
+          [...recipients].map(email =>
+            sendApprovalNotificationEmail(email, email.split("@")[0], doc.title, doc.documentCode, approverName)
+          )
+        );
+      }
+    } catch (e) { console.error("[DocService] Approval email failed:", e); }
   }
 
   return { ok: true as const, document: updated };
@@ -139,6 +166,29 @@ export async function rejectDocument(documentId: string, approverId: string, com
     await createAuditLog(approverId, "document_rejected", "RapidDocument", documentId, { comment }, tx);
     return result;
   });
+  // Email notifications on rejection
+  if (updated) {
+    try {
+      const rejectDoc = await prisma.rapidDocument.findUnique({
+        where: { id: documentId },
+        include: {
+          createdBy: { select: { name: true, email: true } },
+          roleAssignments: { include: { user: { select: { name: true, email: true } } } },
+          approvals: { include: { approver: { select: { name: true } } } },
+        },
+      });
+      if (rejectDoc) {
+        const approverName = rejectDoc.approvals.find((a: { approverId: string; approver: { name: string } }) => a.approverId === approverId)?.approver.name ?? "An approver";
+        const recipients = new Set([rejectDoc.createdBy.email]);
+        rejectDoc.roleAssignments.forEach((ra: { user: { email: string } }) => recipients.add(ra.user.email));
+        await Promise.allSettled(
+          [...recipients].map(email =>
+            sendRejectionNotificationEmail(email, email.split("@")[0], rejectDoc.title, rejectDoc.documentCode, approverName, comment)
+          )
+        );
+      }
+    } catch (e) { console.error("[DocService] Rejection email failed:", e); }
+  }
   return { ok: true as const, document: updated };
 }
 
@@ -152,6 +202,29 @@ export async function requestChanges(documentId: string, approverId: string, com
     await createAuditLog(approverId, "document_needs_changes", "RapidDocument", documentId, { comment }, tx);
     return result;
   });
+  // Email notifications on changes requested
+  if (updated) {
+    try {
+      const changesDoc = await prisma.rapidDocument.findUnique({
+        where: { id: documentId },
+        include: {
+          createdBy: { select: { name: true, email: true } },
+          roleAssignments: { include: { user: { select: { name: true, email: true } } } },
+          approvals: { include: { approver: { select: { name: true } } } },
+        },
+      });
+      if (changesDoc) {
+        const reviewerName = changesDoc.approvals.find((a: { approverId: string; approver: { name: string } }) => a.approverId === approverId)?.approver.name ?? "A reviewer";
+        const recipients = new Set([changesDoc.createdBy.email]);
+        changesDoc.roleAssignments.forEach((ra: { user: { email: string } }) => recipients.add(ra.user.email));
+        await Promise.allSettled(
+          [...recipients].map(email =>
+            sendChangesRequestedEmail(email, email.split("@")[0], changesDoc.title, changesDoc.documentCode, reviewerName, comment)
+          )
+        );
+      }
+    } catch (e) { console.error("[DocService] Changes-requested email failed:", e); }
+  }
   return { ok: true as const, document: updated };
 }
 

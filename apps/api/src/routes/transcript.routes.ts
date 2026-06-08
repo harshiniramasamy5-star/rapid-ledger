@@ -78,6 +78,44 @@ export const transcriptRoutes = new Elysia({ prefix: "/documents" })
     return txtContent;
   })
 
+
+  // GET /documents/:id/export?format=txt — sprint-spec canonical export endpoint
+  .get("/:id/export", async ({ user, params, query, set }) => {
+    const fmt = (query as { format?: string }).format ?? "txt";
+    if (fmt !== "txt") { set.status = 400; return { error: "only format=txt supported" }; }
+    const doc = await prisma.rapidDocument.findUnique({ where: { id: params.id } });
+    if (!doc) { set.status = 404; return { error: "document not found" }; }
+    if (!doc.transcriptContent) { set.status = 404; return { error: "no transcript attached" }; }
+
+    const filename = `${doc.documentCode}-v${doc.version}-transcript.txt`;
+    const txtContent = [
+      `RAPID Ledger — Transcript Export`,
+      `Document: ${doc.title} (${doc.documentCode} v${doc.version})`,
+      `Exported: ${new Date().toISOString()}`,
+      `${"=".repeat(60)}`,
+      "",
+      doc.transcriptContent,
+    ].join("\n");
+
+    set.headers = {
+      "Content-Type": "text/plain; charset=utf-8",
+      "Content-Disposition": `attachment; filename="${filename}"`,
+    };
+
+    await prisma.auditLog.create({
+      data: {
+        userId: user.id,
+        action: "transcript_exported",
+        entityType: "RapidDocument",
+        entityId: params.id,
+        documentId: params.id,
+        details: JSON.stringify({ filename, documentCode: doc.documentCode, format: "txt" }),
+      },
+    });
+
+    return txtContent;
+  })
+
   // GET /documents/:id/transcript — get transcript metadata + preview
   .get("/:id/transcript", async ({ user, params, set }) => {
     requirePermission(user, "document:read", set);
@@ -101,3 +139,6 @@ export const transcriptRoutes = new Elysia({ prefix: "/documents" })
       charCount: doc.transcriptContent.length,
     };
   });
+
+// GET /documents/:id/export?format=txt — canonical export alias (sprint spec)
+// (Keeps backward compat with /transcript/export — this is the new canonical path)

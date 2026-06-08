@@ -196,6 +196,26 @@ export const fathomWebhookRoutes = new Elysia({ prefix: '/webhooks' })
     if (!transcriptText) return { ok: true, skipped: true, reason: 'Empty transcript' }
     if (attendees.length === 0) return { ok: true, skipped: true, reason: 'No attendees in payload' }
 
+    // Idempotency: skip if we already imported this exact callId
+    const callId = call.id ?? call.call_id ?? ''
+    if (callId) {
+      const existingDoc = await prisma.rapidDocument.findFirst({
+        where: {
+          documentType: 'TRANSCRIPT' as any,
+          auditLogs: {
+            some: {
+              action: 'transcript_imported' as any,
+              details: { contains: callId },
+            },
+          },
+        },
+      })
+      if (existingDoc) {
+        console.log(`[Fathom Webhook] Skipping duplicate callId: ${callId}`)
+        return { ok: true, skipped: true, reason: 'Already imported', documentId: existingDoc.id }
+      }
+    }
+
     // 3. Ensure all attendees exist in DB (auto-create @complyance.io users)
     const users = await Promise.all(
       attendees.map(a => ensureUser(a.email, a.name))

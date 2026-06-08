@@ -10,6 +10,29 @@ function VerifyContent() {
   const token = params.get("token")
   const [state, setState] = useState<State>("loading")
   const [message, setMessage] = useState("")
+  const [resent, setResent] = useState(false)
+  const [resending, setResending] = useState(false)
+  const [userEmail] = useState(() => {
+    if (typeof window !== "undefined") {
+      return new URLSearchParams(window.location.search).get("email") ?? ""
+    }
+    return ""
+  })
+
+  async function handleResend() {
+    if (!userEmail) return
+    setResending(true)
+    try {
+      await fetch(`${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001"}/auth/resend-verification`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: userEmail }),
+      })
+      setResent(true)
+    } finally {
+      setResending(false)
+    }
+  }
 
   useEffect(() => {
     if (!token) { setState("error"); setMessage("No verification token found."); return }
@@ -66,6 +89,16 @@ function VerifyContent() {
             </div>
             <h1 className="text-xl font-bold text-slate-900">Verification failed</h1>
             <p className="text-slate-500 text-sm">{message || "This link is invalid or already used."}</p>
+            {userEmail && !resent && (
+              <button
+                onClick={handleResend}
+                disabled={resending}
+                className="inline-block mt-2 px-5 py-2 border border-blue-200 text-sm text-blue-600 font-medium rounded-lg hover:bg-blue-50 transition-colors disabled:opacity-50"
+              >
+                {resending ? "Sending…" : "Resend verification email"}
+              </button>
+            )}
+            {resent && <p className="text-sm text-emerald-600 mt-2">✓ Verification email resent!</p>}
             <Link href="/signup" className="inline-block mt-2 text-sm text-blue-600 hover:text-blue-700 font-medium">
               Back to sign up
             </Link>

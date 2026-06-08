@@ -4,20 +4,31 @@ import QRCode from "qrcode";
 import { prisma } from "../lib/prisma";
 import { authMiddleware } from "../middleware/auth";
 import { createAuditLog } from "../services/audit.service";
+import { signToken } from "../lib/auth";
+import { toPublicUser } from "../services/auth.service";
 
+// Public route: validate TOTP code and issue full JWT (second factor)
 export const totpPublicRoutes = new Elysia({ prefix: "/auth/totp" })
   .post("/validate", async ({ body, set }) => {
     const { userId, code } = body as { userId: string; code: string };
     if (!userId || !code) { set.status = 400; return { error: "userId and code required" }; }
+
     const dbUser = await prisma.user.findUnique({ where: { id: userId } });
     if (!dbUser?.totpSecret || !dbUser.totpEnabled) {
       set.status = 400;
       return { error: "TOTP not enabled for this user" };
     }
+
     const _res = await verifyTOTP({ token: code, secret: dbUser.totpSecret });
     const valid = typeof _res === "object" && _res !== null ? (_res as Record<string, unknown>).valid : _res;
     if (!valid) { set.status = 401; return { error: "invalid TOTP code" }; }
-    return { valid: true, userId };
+
+    // Issue full JWT now that both factors are confirmed
+    const token = signToken({ userId: dbUser.id, email: dbUser.email, role: dbUser.role });
+
+    await createAuditLog(dbUser.id, "login", "User", dbUser.id, { email: dbUser.email, mfaVerified: true });
+
+    return { valid: true, token, user: toPublicUser(dbUser) };
   });
 
 export const totpRoutes = new Elysia({ prefix: "/auth/totp" })

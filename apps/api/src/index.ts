@@ -16,10 +16,14 @@ import { auditRoutes } from "./routes/audit.routes";
 import { commentsRoutes } from "./routes/comments.routes";
 import { integrationsRoutes } from "./routes/integrations.routes";
 import { webhookDispatcher } from "./services/webhookDispatcher";
+import { linearWebhookHandler } from "./services/linear.handler";
 import { notionSyncService } from "./services/notion.service";
 
 // Register Notion as primary handler for approved documents
 webhookDispatcher.register("document.approved", notionSyncService);
+
+// Register Linear handler — creates issue on approval (gated by LINEAR_API_KEY)
+webhookDispatcher.register("document.approved", linearWebhookHandler);
 
 export const app = new Elysia()
   .use(cors({

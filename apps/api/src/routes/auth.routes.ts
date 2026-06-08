@@ -1,6 +1,6 @@
 import { Elysia, t } from "elysia";
 import { authMiddleware } from "../middleware/auth";
-import { loginUser, getCurrentUser, registerUser, verifyEmail } from "../services/auth.service";
+import { loginUser, getCurrentUser, registerUser, verifyEmail, resendVerificationEmail } from "../services/auth.service";
 import { sendVerificationEmail, sendWelcomeEmail } from "../services/email.service";
 import { checkRateLimit } from "../lib/rate-limit";
 import { Errors } from "../lib/errors";
@@ -11,7 +11,6 @@ export const authRoutes = new Elysia({ prefix: "/auth" })
     async (ctx) => {
       const { email, password } = ctx.body as { email: string; password: string };
 
-      // IP-based rate limiting
       const ip = ctx.request.headers.get("x-forwarded-for") ?? "unknown";
       const rateCheck = checkRateLimit(ip);
       if (!rateCheck.allowed) {
@@ -37,6 +36,11 @@ export const authRoutes = new Elysia({ prefix: "/auth" })
           ctx.set.status = 403;
           return Errors.custom("ACCOUNT_INACTIVE", "This account has been deactivated. Contact your administrator.");
         }
+        if ((result.reason as string) === "totp_required") {
+          // Signal to client that TOTP is required; do NOT send a token yet
+          ctx.set.status = 200;
+          return { requiresMfa: true, userId: (result as { userId?: string }).userId };
+        }
         ctx.set.status = 401;
         return Errors.unauthorized("Invalid email or password");
       }
@@ -60,7 +64,11 @@ export const authRoutes = new Elysia({ prefix: "/auth" })
         ctx.set.status = 400;
         return { error: { code: "REGISTER_FAILED", message: result.message } };
       }
-      await sendVerificationEmail(email, name, result.token!);
+      try {
+        await sendVerificationEmail(email, name, result.token!);
+      } catch (e) {
+        console.error("[Register] Failed to send verification email:", e);
+      }
       ctx.set.status = 201;
       return { message: "Account created. Check your email to verify your account." };
     },
@@ -83,9 +91,28 @@ export const authRoutes = new Elysia({ prefix: "/auth" })
       ctx.set.status = 400;
       return { error: { code: "INVALID_TOKEN", message: result.message } };
     }
-    await sendWelcomeEmail(result.email!, result.name!);
+    try {
+      await sendWelcomeEmail(result.email!, result.name!);
+    } catch (e) {
+      console.error("[Verify] Failed to send welcome email:", e);
+    }
     return { message: "Email verified successfully. You can now log in." };
   })
+  .post(
+    "/resend-verification",
+    async (ctx) => {
+      const { email } = ctx.body as { email: string };
+      const result = await resendVerificationEmail(email);
+      // Always 200 to avoid email enumeration
+      ctx.set.status = 200;
+      return { message: result.message ?? "If this email is registered and unverified, a link has been sent." };
+    },
+    {
+      body: t.Object({
+        email: t.String({ minLength: 1 }),
+      }),
+    }
+  )
   .use(authMiddleware)
   .get("/me", async (ctx) => {
     const user = ctx.user as { id: string };

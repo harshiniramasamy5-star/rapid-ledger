@@ -13,7 +13,7 @@ export function toPublicUser(user: { id: string; name: string; email: string; ro
 
 export type LoginResult =
   | { success: true; data: LoginResponse }
-  | { success: false; reason: "invalid_credentials" | "account_locked" | "account_inactive" | "email_not_verified"; lockedUntil?: Date };
+  | { success: false; reason: "invalid_credentials" | "account_locked" | "account_inactive" | "email_not_verified" | "totp_required"; lockedUntil?: Date; userId?: string };
 
 export async function loginUser(email: string, password: string, totpCode?: string): Promise<LoginResult> {
   const user = await prisma.user.findUnique({ where: { email } });
@@ -38,10 +38,15 @@ export async function loginUser(email: string, password: string, totpCode?: stri
     return { success: false, reason: "account_locked", lockedUntil: user.lockedUntil };
   }
 
-  // email verification bypassed for demo
-  // if (!(user as { emailVerified?: boolean }).emailVerified) {
-  //   return { success: false, reason: "email_not_verified" };
-  // }
+  // Block login until email is verified
+  if (!(user as { emailVerified?: boolean }).emailVerified) {
+    return { success: false, reason: "email_not_verified" };
+  }
+
+  // TOTP server-side gate — if totpEnabled, require code or signal challenge
+  if ((user as { totpEnabled?: boolean }).totpEnabled && !totpCode) {
+    return { success: false, reason: "totp_required" as any, userId: user.id };
+  }
 
   const passwordMatch = await bcrypt.compare(password, user.password);
 
@@ -62,6 +67,20 @@ export async function loginUser(email: string, password: string, totpCode?: stri
       locked: shouldLock });
 
     return { success: false, reason: "invalid_credentials" };
+  }
+
+  // Validate TOTP if enabled
+  if ((user as { totpEnabled?: boolean }).totpEnabled && totpCode) {
+    try {
+      const { verify } = await import("otplib");
+      const _res = await verify({ token: totpCode, secret: user.totpSecret! });
+      const valid = typeof _res === "object" && _res !== null ? (_res as Record<string, unknown>).valid : _res;
+      if (!valid) {
+        return { success: false, reason: "invalid_credentials" };
+      }
+    } catch {
+      return { success: false, reason: "invalid_credentials" };
+    }
   }
 
   // Successful login — reset failed attempts
@@ -109,7 +128,7 @@ export async function registerUser(
       email,
       password: hashed,
       role: "viewer",
-      emailVerified: true,
+      emailVerified: false,
       verificationToken: token,
     },
   });
@@ -125,18 +144,25 @@ export async function registerUser(
       }
     }
   } catch (_) { /* non-fatal — org assign fails silently */ }
-  try {
-    const emailDomain = email.split("@")[1];
-    if (emailDomain) {
-      const matchedOrg = await prisma.organization.findFirst({
-        where: { domain: { in: [emailDomain, emailDomain === 'antna.co.in' ? 'complyance.io' : emailDomain] } }
-      });
-      if (matchedOrg) {
-        await prisma.user.update({ where: { email }, data: { orgId: matchedOrg.id } });
-      }
-    }
-  } catch (_) { /* non-fatal — org assign fails silently */ }
   return { success: true, token };
+}
+
+
+export async function resendVerificationEmail(
+  email: string
+): Promise<{ success: boolean; message?: string }> {
+  const user = await prisma.user.findUnique({ where: { email } });
+  if (!user) return { success: true, message: "If this email is registered, a verification link will be sent." };
+  if (user.emailVerified) return { success: false, message: "Email is already verified." };
+  const token = generateVerificationToken();
+  await prisma.user.update({ where: { id: user.id }, data: { verificationToken: token } });
+  try {
+    const emailSvc = await import("./email.service");
+    await emailSvc.sendVerificationEmail(email, user.name, token);
+  } catch (e) {
+    console.error("[Auth] resend verification email failed:", e);
+  }
+  return { success: true, message: "Verification email sent." };
 }
 
 export async function verifyEmail(
@@ -152,3 +178,4 @@ export async function verifyEmail(
 
   return { success: true, email: user.email, name: user.name };
 }
+

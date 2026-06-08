@@ -71,6 +71,7 @@ export default function LoginPage() {
   const [totpCode, setTotpCode]   = useState("");
   const [pendingToken, setPendingToken] = useState("");
   const [pendingUser, setPendingUser]   = useState<UserData | null>(null);
+  const [pendingUserId, setPendingUserId] = useState("");
 
   function applySession(token: string, user: UserData) {
     const secure = window.location.protocol === "https:" ? "; Secure" : "";
@@ -92,17 +93,13 @@ export default function LoginPage() {
       const data = await res.json();
       if (!res.ok) throw data;
       if (data.requiresMfa) {
+        // Server-side TOTP gate — token not yet issued; store userId for validation
+        setPendingUserId(data.userId ?? "");
         setTotpStep(true);
         return;
       }
       const user: UserData = data.user;
-      if (user.totpEnabled) {
-        setPendingToken(data.token);
-        setPendingUser(user);
-        setTotpStep(true);
-      } else {
-        applySession(data.token, user);
-      }
+      applySession(data.token, user);
     } catch (err: unknown) {
       const msg = (err as { error?: { message?: string } })?.error?.message ?? "";
       toast.error(msg.includes("verify your email")
@@ -116,23 +113,17 @@ export default function LoginPage() {
     if (!pendingUser) return;
     setLoading(true);
     try {
-      if (pendingToken && pendingUser) {
-        const res  = await fetch(`${API}/auth/totp/validate`, {
-          method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ userId: pendingUser.id, code: totpCode }),
-        });
-        const data = await res.json();
-        if (!res.ok || !data.valid) throw new Error("Invalid code. Try again.");
-        applySession(pendingToken, pendingUser);
-      } else {
-        const res = await fetch(`${API}/auth/login`, {
-          method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email, password, totpCode }),
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || "Invalid code. Try again.");
-        applySession(data.token, data.user);
-      }
+      // Validate TOTP — server issues JWT only after code is confirmed
+      const userId = pendingUserId || pendingUser?.id || "";
+      if (!userId) throw new Error("Session expired. Please log in again.");
+      const res = await fetch(`${API}/auth/totp/validate`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, code: totpCode }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.valid) throw new Error("Invalid code. Try again.");
+      // /validate now returns { valid, token, user }
+      applySession(data.token, data.user);
     } catch (err: unknown) {
       toast.error((err as Error).message ?? "Invalid code.");
       setTotpCode("");
