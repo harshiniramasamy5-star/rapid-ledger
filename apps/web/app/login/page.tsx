@@ -110,7 +110,7 @@ export default function LoginPage() {
 
   async function handleTotp(e: React.FormEvent) {
     e.preventDefault();
-    if (!pendingUser) return;
+    if (!pendingUserId && !pendingUser) return;
     setLoading(true);
     try {
       // Validate TOTP — server issues JWT only after code is confirmed
