@@ -17,7 +17,8 @@ const INCLUDE = {
   roleAssignments: { include: { user: { select: { id: true, name: true, email: true, role: true } } } },
   evidence: true,
   approvals: { include: { approver: { select: { id: true, name: true, email: true } } } },
-  ledgerEntries: true } as const;
+  ledgerEntries: true,
+  auditLogs: { include: { user: { select: { name: true, email: true } } }, orderBy: { createdAt: "desc" as const }, take: 20 } } as const;
 
 export interface ListDocumentsOptions {
   status?: string;

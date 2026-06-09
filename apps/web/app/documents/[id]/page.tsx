@@ -1,4 +1,5 @@
 "use client"
+import { DocumentTimeline } from "@/components/document-timeline";
 
 interface ApiError { error?: { message?: string }; id?: string }
 
@@ -542,7 +543,15 @@ export default function DocumentDetailPage() {
               </Button>
             )}
 
-            {!canEdit && !canSubmit && !canAgree && !canDecide && !canFinalize && !canComplete && !canVersion && !canRecommend && !isRecommenderWaiting && !canInput && !isInputWaiting && (
+            {/* Document Timeline */}
+          {doc.auditLogs && doc.auditLogs.length > 0 && (
+            <div className="mt-6 border border-slate-200 rounded-xl p-5 bg-white">
+              <h3 className="text-sm font-semibold text-slate-700 mb-4 uppercase tracking-wide">Activity Timeline</h3>
+              <DocumentTimeline entries={doc.auditLogs} />
+            </div>
+          )}
+
+          {!canEdit && !canSubmit && !canAgree && !canDecide && !canFinalize && !canComplete && !canVersion && !canRecommend && !isRecommenderWaiting && !canInput && !isInputWaiting && (
               <p className="text-sm text-slate-400 text-center py-2">
                 No actions available for your role at this stage.
               </p>
