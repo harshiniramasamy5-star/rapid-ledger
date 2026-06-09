@@ -1,6 +1,6 @@
 ![CI](https://github.com/harshiniramasamy5-star/rapid-ledger/actions/workflows/ci.yml/badge.svg)
 ![TypeScript](https://img.shields.io/badge/TypeScript-strict%20%E2%9C%93-3178C6?logo=typescript&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-130%20passing-brightgreen?logo=vitest)
+![Tests](https://img.shields.io/badge/tests-118%20passing-brightgreen?logo=vitest)
 ![Railway](https://img.shields.io/badge/Railway-deployed-7B2FBE?logo=railway&logoColor=white)
 ![Vercel](https://img.shields.io/badge/Vercel-live-000000?logo=vercel&logoColor=white)
 ![Prisma](https://img.shields.io/badge/Prisma-ORM-2D3748?logo=prisma&logoColor=white)
@@ -18,7 +18,7 @@
 | | URL |
 |---|---|
 | **App** | https://rapid-ledger.vercel.app |
-| **Portal** | https://portal-beta-bay.vercel.app |
+
 | **Docs** | https://complyance-e81c9706.mintlify.app |
 | **API** | https://rapid-ledger-production.up.railway.app |
 

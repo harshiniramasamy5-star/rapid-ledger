@@ -16,6 +16,7 @@ import { auditRoutes } from "./routes/audit.routes";
 import { commentsRoutes } from "./routes/comments.routes";
 import { integrationsRoutes } from "./routes/integrations.routes";
 import { webhookDispatcher } from "./services/webhookDispatcher";
+import { swagger } from "@elysiajs/swagger";
 import { linearWebhookHandler } from "./services/linear.handler";
 import { notionSyncService } from "./services/notion.service";
 
@@ -42,6 +43,26 @@ export const app = new Elysia()
     const icon = status >= 500 ? "💥" : status >= 400 ? "⚠️" : "✅";
     console.log(`${icon} ${request.method} ${url.pathname} → ${status}`);
   })
+  .use(swagger({
+    documentation: {
+      info: {
+        title: "RAPID Ledger API",
+        version: "2.0.0",
+        description: "Compliance decision management platform — RAPID framework",
+        contact: { name: "Complyance", email: "harshini@antna.co.in" },
+      },
+      tags: [
+        { name: "auth", description: "Authentication & 2FA" },
+        { name: "documents", description: "RAPID document lifecycle" },
+        { name: "approvals", description: "Approval workflow" },
+        { name: "orgs", description: "Organization & invite management" },
+        { name: "integrations", description: "Notion, Linear, Fathom" },
+        { name: "audit", description: "Immutable audit logs" },
+      ],
+      servers: [{ url: "https://rapid-ledger-production.up.railway.app/api", description: "Production" }],
+    },
+    path: "/docs",
+  }))
   .get("/health", () => ({ status: "ok", timestamp: new Date().toISOString() }))
   .use(aiRoutes)
   .use(orgRoutes)
