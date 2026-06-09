@@ -233,12 +233,6 @@ export const transcriptRoutes = new Elysia({ prefix: "/documents" })
     const pdfBuffer = Buffer.concat(chunks);
     const filename = `${doc.documentCode}-v${doc.version}.pdf`;
 
-    set.headers = {
-      "Content-Type": "application/pdf",
-      "Content-Disposition": `attachment; filename="${filename}"`,
-      "Content-Length": String(pdfBuffer.length),
-    };
-
     await prisma.auditLog.create({
       data: {
         userId: user.id,
@@ -250,7 +244,13 @@ export const transcriptRoutes = new Elysia({ prefix: "/documents" })
       },
     });
 
-    return pdfBuffer;
+    return new Response(pdfBuffer, {
+      headers: {
+        "Content-Type": "application/pdf",
+        "Content-Disposition": `attachment; filename="${filename}"`,
+        "Content-Length": String(pdfBuffer.length),
+      },
+    });
   })
 
   // GET /documents/:id/transcript — get transcript metadata + preview
