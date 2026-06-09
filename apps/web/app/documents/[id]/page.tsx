@@ -152,14 +152,12 @@ export default function DocumentDetailPage() {
     const res = await fetch(`${API}/documents/${doc.id}/export-pdf`, {
       headers: { Authorization: `Bearer ${token}` },
     });
-    if (!res.ok) { toast.error("Failed to export PDF"); return; }
-    const blob = await res.blob();
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${doc.documentCode}-v${doc.version}.pdf`;
-    a.click();
-    URL.revokeObjectURL(url);
+    if (!res.ok) { toast.error("Failed to export"); return; }
+    const html = await res.text();
+    const blob = new Blob([html], { type: "text/html" });
+    const blobUrl = URL.createObjectURL(blob);
+    window.open(blobUrl, "_blank");
+    toast.success("Opening print dialog…");
   }
   async function syncToNotion() {
     const t = getToken();
