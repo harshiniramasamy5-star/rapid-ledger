@@ -116,7 +116,7 @@ export const transcriptRoutes = new Elysia({ prefix: "/documents" })
     return txtContent;
   })
 
-  // GET /documents/:id/export-pdf — branded PDF export
+  // GET /documents/:id/export-pdf — HTML export (printable)
   .get("/:id/export-pdf", async ({ user, params, set }) => {
     requirePermission(user, "document:read", set);
     const doc = await prisma.rapidDocument.findUnique({
@@ -129,109 +129,45 @@ export const transcriptRoutes = new Elysia({ prefix: "/documents" })
     });
     if (!doc) { set.status = 404; return { error: "document not found" }; }
 
-    const PDFDocument = (await import("pdfkit")).default;
-    const chunks: Buffer[] = [];
-    const pdf = new PDFDocument({ margin: 50, size: "A4" });
-    pdf.on("data", (chunk: Buffer) => chunks.push(chunk));
+    const roles = doc.roleAssignments.map((ra: any) =>
+      `<tr><td style="padding:6px 12px;font-weight:600;color:#6366f1;text-transform:uppercase;font-size:11px">${ra.roleType}</td><td style="padding:6px 12px;font-size:12px">${ra.user.name}</td><td style="padding:6px 12px;font-size:12px;color:#64748b">${ra.user.email}</td></tr>`
+    ).join("");
 
-    await new Promise<void>((resolve) => {
-      pdf.on("end", resolve);
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"/>
+    <title>${doc.documentCode} — RAPID Ledger</title>
+    <style>
+      body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-width:800px;margin:40px auto;padding:0 24px;color:#0f172a}
+      .header{border-bottom:3px solid #6366f1;padding-bottom:16px;margin-bottom:24px;display:flex;justify-content:space-between;align-items:flex-end}
+      .logo{font-size:20px;font-weight:800;color:#6366f1}
+      .meta{font-size:11px;color:#94a3b8;text-align:right}
+      .badge{display:inline-block;background:#6366f1;color:white;padding:2px 10px;border-radius:12px;font-size:11px;font-weight:600}
+      h1{font-size:22px;margin:0 0 8px}
+      h2{font-size:13px;font-weight:700;color:#6366f1;text-transform:uppercase;letter-spacing:.05em;margin:24px 0 8px;border-top:1px solid #f1f5f9;padding-top:16px}
+      p{font-size:13px;line-height:1.6;color:#334155;margin:0 0 12px}
+      table{width:100%;border-collapse:collapse;font-size:12px}
+      tr:nth-child(even){background:#f8fafc}
+      .transcript{background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:16px;font-size:11px;font-family:monospace;line-height:1.6;white-space:pre-wrap;max-height:400px;overflow:hidden}
+      .footer{margin-top:40px;padding-top:16px;border-top:1px solid #e2e8f0;font-size:10px;color:#94a3b8;display:flex;justify-content:space-between}
+      @media print{body{margin:0}}
+    </style></head><body>
+    <div class="header">
+      <div><div class="logo">RAPID Ledger</div><div style="font-size:11px;color:#94a3b8;margin-top:2px">Compliance Decision Record</div></div>
+      <div class="meta"><span class="badge">${doc.documentCode}</span><br/>v${doc.version} · ${doc.status.replace(/_/g," ").toUpperCase()}<br/>${doc.riskLevel.toUpperCase()} RISK · ${new Date().toLocaleDateString("en-IN",{day:"numeric",month:"short",year:"numeric"})}</div>
+    </div>
+    <h1>${doc.title}</h1>
+    <h2>Decision Summary</h2><p>${doc.decisionSummary ?? "—"}</p>
+    ${doc.businessContext ? `<h2>Business Context</h2><p>${doc.businessContext}</p>` : ""}
+    ${doc.problemStatement ? `<h2>Problem Statement</h2><p>${doc.problemStatement}</p>` : ""}
+    <h2>RAPID Role Assignments</h2>
+    <table><thead><tr style="background:#f1f5f9"><th style="padding:6px 12px;text-align:left;font-size:11px">Role</th><th style="padding:6px 12px;text-align:left;font-size:11px">Name</th><th style="padding:6px 12px;text-align:left;font-size:11px">Email</th></tr></thead><tbody>${roles}</tbody></table>
+    ${doc.approvals.length > 0 ? `<h2>Approval Record</h2><table><tbody>${doc.approvals.map((a: any) => `<tr><td style="padding:6px 12px;font-size:12px">${a.approver.name}</td><td style="padding:6px 12px;font-size:12px;color:#6366f1;font-weight:600">${a.decision?.toUpperCase() ?? "PENDING"}</td><td style="padding:6px 12px;font-size:12px;color:#64748b">${new Date(a.createdAt).toLocaleDateString("en-IN")}</td></tr>`).join("")}</tbody></table>` : ""}
+    ${doc.transcriptContent ? `<h2>Meeting Transcript</h2><div class="transcript">${doc.transcriptContent.slice(0,2000).replace(/</g,"&lt;").replace(/>/g,"&gt;")}${doc.transcriptContent.length > 2000 ? "
+[truncated]" : ""}</div>` : ""}
+    <div class="footer"><span>RAPID Ledger · Complyance</span><span>Document ID: ${doc.id}</span><span>Exported: ${new Date().toISOString()}</span></div>
+    <script>window.onload=()=>window.print()</script>
+    </body></html>`;
 
-      // Header bar
-      pdf.rect(0, 0, pdf.page.width, 8).fill("#6366f1");
-
-      // Logo + title
-      pdf.moveDown(0.5);
-      pdf.fontSize(20).fillColor("#0f172a").font("Helvetica-Bold")
-        .text("RAPID Ledger", 50, 30);
-      pdf.fontSize(9).fillColor("#6366f1").font("Helvetica")
-        .text("Compliance Decision Record", 50, 54);
-
-      // Document code badge area
-      pdf.rect(50, 72, pdf.page.width - 100, 36).fill("#f8fafc").stroke("#e2e8f0");
-      pdf.fontSize(11).fillColor("#6366f1").font("Helvetica-Bold")
-        .text(doc.documentCode, 60, 82);
-      pdf.fontSize(9).fillColor("#64748b").font("Helvetica")
-        .text(`v${doc.version}  •  ${doc.status.replace(/_/g," ").toUpperCase()}  •  ${doc.riskLevel.toUpperCase()} RISK`, 130, 84);
-      pdf.fontSize(9).fillColor("#64748b")
-        .text(`Exported: ${new Date().toLocaleDateString("en-IN",{day:"numeric",month:"short",year:"numeric"})}`, pdf.page.width - 200, 84);
-
-      pdf.moveDown(2.5);
-
-      // Title
-      pdf.fontSize(16).fillColor("#0f172a").font("Helvetica-Bold")
-        .text(doc.title, 50, pdf.y);
-      pdf.moveDown(0.3);
-      pdf.moveTo(50, pdf.y).lineTo(pdf.page.width - 50, pdf.y).stroke("#e2e8f0");
-      pdf.moveDown(0.5);
-
-      // Section helper
-      const section = (label: string) => {
-        pdf.moveDown(0.4);
-        pdf.fontSize(8).fillColor("#6366f1").font("Helvetica-Bold")
-          .text(label.toUpperCase(), 50, pdf.y, { characterSpacing: 1 });
-        pdf.moveDown(0.2);
-      };
-
-      const body = (text: string) => {
-        pdf.fontSize(10).fillColor("#334155").font("Helvetica")
-          .text(text || "—", 50, pdf.y, { width: pdf.page.width - 100, lineGap: 3 });
-        pdf.moveDown(0.4);
-      };
-
-      section("Decision Summary");
-      body(doc.decisionSummary);
-
-      if (doc.businessContext) { section("Business Context"); body(doc.businessContext); }
-      if (doc.problemStatement) { section("Problem Statement"); body(doc.problemStatement); }
-
-      // RAPID Roles table
-      section("RAPID Role Assignments");
-      const roles = ["recommend","agree","perform","input","decide"];
-      const roleColors: Record<string,string> = {
-        recommend:"#3b82f6", agree:"#10b981", decide:"#f59e0b",
-        perform:"#8b5cf6", input:"#6b7280"
-      };
-      doc.roleAssignments.forEach((ra: any) => {
-        const color = roleColors[ra.roleType] ?? "#6b7280";
-        pdf.fontSize(9).fillColor(color).font("Helvetica-Bold")
-          .text(`[${ra.roleType.toUpperCase()}]`, 50, pdf.y, { continued: true, width: 90 });
-        pdf.fillColor("#334155").font("Helvetica")
-          .text(`  ${ra.user.name} (${ra.user.email})`, { width: pdf.page.width - 160 });
-      });
-      pdf.moveDown(0.4);
-
-      // Approvals
-      if (doc.approvals.length > 0) {
-        section("Approval Record");
-        doc.approvals.forEach((a: any) => {
-          pdf.fontSize(9).fillColor("#334155").font("Helvetica")
-            .text(`${a.approver.name}  •  ${a.decision?.toUpperCase() ?? "PENDING"}  •  ${new Date(a.createdAt).toLocaleDateString("en-IN")}`, 50, pdf.y);
-        });
-        pdf.moveDown(0.4);
-      }
-
-      // Transcript
-      if (doc.transcriptContent) {
-        section("Meeting Transcript");
-        pdf.fontSize(8.5).fillColor("#475569").font("Helvetica")
-          .text(doc.transcriptContent.slice(0, 2000) + (doc.transcriptContent.length > 2000 ? "
-[truncated — full transcript in system]" : ""),
-            50, pdf.y, { width: pdf.page.width - 100, lineGap: 2 });
-        pdf.moveDown(0.4);
-      }
-
-      // Footer
-      pdf.moveTo(50, pdf.page.height - 50).lineTo(pdf.page.width - 50, pdf.page.height - 50).stroke("#e2e8f0");
-      pdf.fontSize(8).fillColor("#94a3b8").font("Helvetica")
-        .text(`RAPID Ledger  •  Complyance  •  Document ID: ${doc.id}`, 50, pdf.page.height - 38,
-          { align: "center", width: pdf.page.width - 100 });
-
-      pdf.end();
-    });
-
-    const pdfBuffer = Buffer.concat(chunks);
-    const filename = `${doc.documentCode}-v${doc.version}.pdf`;
+    set.headers = { "Content-Type": "text/html; charset=utf-8" };
 
     await prisma.auditLog.create({
       data: {
@@ -240,18 +176,13 @@ export const transcriptRoutes = new Elysia({ prefix: "/documents" })
         entityType: "RapidDocument",
         entityId: params.id,
         documentId: params.id,
-        details: JSON.stringify({ filename, format: "pdf", documentCode: doc.documentCode }),
+        details: JSON.stringify({ format: "html-print", documentCode: doc.documentCode }),
       },
     });
 
-    return new Response(pdfBuffer, {
-      headers: {
-        "Content-Type": "application/pdf",
-        "Content-Disposition": `attachment; filename="${filename}"`,
-        "Content-Length": String(pdfBuffer.length),
-      },
-    });
+    return new Response(html, { headers: { "Content-Type": "text/html; charset=utf-8" } });
   })
+
 
   // GET /documents/:id/transcript — get transcript metadata + preview
   .get("/:id/transcript", async ({ user, params, set }) => {
