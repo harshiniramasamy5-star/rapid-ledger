@@ -1,4 +1,5 @@
 "use client"
+import { NotificationBell } from "@/components/notification-bell";
 import { getToken, clearAuth } from "@/lib/api";;
 import { useEffect, useState, useCallback } from "react";
 import { AnalyticsCharts } from "@/components/analytics-charts";
@@ -150,6 +151,7 @@ export default function DashboardPage() {
                 {n.label}
               </Button>
             ))}
+            <NotificationBell />
             <Separator orientation="vertical" className="h-5 mx-2" />
             <DropdownMenu>
               <DropdownMenuTrigger>
