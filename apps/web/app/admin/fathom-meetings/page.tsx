@@ -41,7 +41,7 @@ export default function FathomMeetingsPage() {
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data?.error?.message ?? data?.error ?? "Failed to load meetings");
+        setError(data?.error?.message ?? data?.error ?? "Session expired — please log in again");
         setMeetings([]);
       } else {
         setMeetings(data.meetings ?? []);
@@ -151,7 +151,10 @@ export default function FathomMeetingsPage() {
       {!loading && error && error !== "no_meetings" && (
         <div className="border border-red-200 rounded-xl p-6 bg-red-50 text-center">
           <p className="text-sm text-red-700 mb-3">{error}</p>
-          <button onClick={loadMeetings} className="text-sm text-red-600 underline">Retry</button>
+          <div className="flex gap-3 justify-center mt-3">
+            <button onClick={loadMeetings} className="px-4 py-2 text-sm border border-red-200 text-red-600 rounded-lg hover:bg-red-100">Retry</button>
+            <button onClick={() => router.push("/admin/meetings")} className="px-4 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">Manual Paste →</button>
+          </div>
         </div>
       )}
 
