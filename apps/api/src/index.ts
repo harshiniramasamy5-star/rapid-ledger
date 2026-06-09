@@ -27,7 +27,7 @@ webhookDispatcher.register("document.approved", linearWebhookHandler);
 
 export const app = new Elysia()
   .use(cors({
-    origin: ["https://rapid-ledger.vercel.app", "http://localhost:3000"],
+    origin: ["https://portal-beta-bay.vercel.app", "https://rapid-ledger.vercel.app", "http://localhost:3000"],
     credentials: true,
     allowedHeaders: ["Content-Type", "Authorization"],
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
