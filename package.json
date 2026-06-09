@@ -40,7 +40,6 @@
     "@types/pdfkit": "^0.17.6",
     "bcryptjs": "^3.0.3",
     "dotenv": "^17.4.2",
-    "pdfkit": "^0.19.0",
     "pino": "^10.3.1",
     "pino-pretty": "^13.1.3"
   },
