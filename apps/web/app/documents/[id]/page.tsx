@@ -211,7 +211,7 @@ export default function DocumentDetailPage() {
     finally { setTranscriptUploading(false); }
   }
 
-  const canComplete = myRole?.roleType === "perform" && status === "finalized";
+  const canComplete = myRole?.roleType === "perform" && !["draft","rejected"].includes(status);
   const canVersion  = me?.role === "admin" && ["finalized","execution_complete"].includes(status);
   const isRecommenderWaiting = myRole?.roleType === "recommend" && !!doc?.recommendationNotes;
   const canInput        = myRole?.roleType === "input" && !doc?.inputNotes && !["rejected"].includes(status);

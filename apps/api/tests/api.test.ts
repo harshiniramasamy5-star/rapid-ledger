@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * API integration tests — Fix 8: self-contained, use app.handle() directly.
  * No separate server process needed. Tests run against the Elysia handler.
@@ -7,6 +8,8 @@
  *   - Seed users must exist (run `npm run db:seed` once)
  */
 import { describe, it, expect, beforeAll } from "vitest";
+
+const TIMEOUT = 30000;
 // increase timeout for integration tests hitting Railway
 
 // @vitest-environment node
@@ -32,6 +35,7 @@ async function req(
   const body = await res.json().catch(() => null);
   return { status: res.status, body };
 }
+
 
 let adminToken = "";
 let creatorToken = "";

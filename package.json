@@ -9,7 +9,7 @@
   "scripts": {
     "dev": "concurrently \"bun run --cwd apps/api dev\" \"bun run --cwd apps/web dev\" --names api,web --prefix-colors cyan,magenta",
     "build": "bun run build --workspaces --if-present",
-    "test": "bun run test --workspaces --if-present",
+    "test": "cd apps/api && npx vitest run && cd ../web && npx jest --passWithNoTests",
     "lint": "bun run lint --workspaces --if-present",
     "typecheck": "bun run typecheck --workspaces --if-present",
     "db:generate": "prisma generate --schema=prisma/schema.prisma",
@@ -18,7 +18,10 @@
     "db:seed": "tsx prisma/seed.ts",
     "db:studio": "prisma studio --schema=prisma/schema.prisma",
     "db:reset": "prisma migrate reset --schema=prisma/schema.prisma --force && bun run db:seed",
-    "setup": "bun install && bun run db:generate && bun run db:push && bun run db:seed"
+    "setup": "bun install && bun run db:generate && bun run db:push && bun run db:seed",
+    "test:api": "cd apps/api && npx vitest run",
+    "test:web": "cd apps/web && npx jest --passWithNoTests",
+    "test:e2e": "cd apps/web && npx playwright test"
   },
   "devDependencies": {
     "@prisma/client": "^5.22.0",

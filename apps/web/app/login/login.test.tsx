@@ -44,7 +44,7 @@ describe("LoginPage", () => {
   });
 
   it("redirects creator to /dashboard", async () => {
-    mockFetch({ token: "tok", user: { name: "Charlie", role: "creator" } });
+    mockFetch({ token: "tok", user: { name: "Charlie", role: "creator", orgId: "test-org-id" } });
     render(<LoginPage />);
     await userEvent.type(screen.getByLabelText(/work email/i), "creator@rapid.com");
     await userEvent.type(screen.getByLabelText(/password/i), "password123");
@@ -53,7 +53,7 @@ describe("LoginPage", () => {
   });
 
   it("redirects approver to /approvals", async () => {
-    mockFetch({ token: "tok", user: { name: "Sarah", role: "approver" } });
+    mockFetch({ token: "tok", user: { name: "Sarah", role: "approver", orgId: "test-org-id" } });
     render(<LoginPage />);
     await userEvent.type(screen.getByLabelText(/work email/i), "approver@rapid.com");
     await userEvent.type(screen.getByLabelText(/password/i), "password123");
@@ -62,7 +62,7 @@ describe("LoginPage", () => {
   });
 
   it("redirects viewer to /dashboard", async () => {
-    mockFetch({ token: "tok", user: { name: "Viewer", role: "viewer" } });
+    mockFetch({ token: "tok", user: { name: "Viewer", role: "viewer", orgId: "test-org-id" } });
     render(<LoginPage />);
     await userEvent.type(screen.getByLabelText(/work email/i), "viewer@rapid.com");
     await userEvent.type(screen.getByLabelText(/password/i), "password123");
@@ -80,7 +80,7 @@ describe("LoginPage", () => {
   });
 
   it("shows success toast with user name", async () => {
-    mockFetch({ token: "tok", user: { name: "Alice", role: "admin" } });
+    mockFetch({ token: "tok", user: { name: "Alice", role: "admin", orgId: "test-org-id" } });
     render(<LoginPage />);
     await userEvent.type(screen.getByLabelText(/work email/i), "admin@rapid.com");
     await userEvent.type(screen.getByLabelText(/password/i), "password123");
