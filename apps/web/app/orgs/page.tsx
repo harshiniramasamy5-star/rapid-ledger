@@ -23,6 +23,8 @@ export default function OrgsPage() {
   const [inviteRole, setInviteRole] = useState("viewer");
   const [creating, setCreating] = useState(false);
   const [inviting, setInviting] = useState(false);
+  const [invites, setInvites] = useState<Array<{id:string;email:string;role:string;expiresAt:string}>>([]);
+  const [loadingInvites, setLoadingInvites] = useState(false);
 
   const token = () => getToken() ?? "";
 
@@ -61,6 +63,37 @@ export default function OrgsPage() {
     setCreating(false);
   }
 
+  async function loadInvites(orgId: string) {
+    setLoadingInvites(true);
+    try {
+      const res = await fetch(`${API}/orgs/${orgId}/invites`, {
+        headers: { Authorization: `Bearer ${getToken() ?? ""}` },
+      });
+      const data = await res.json();
+      if (res.ok) setInvites(data.invites ?? []);
+    } finally { setLoadingInvites(false); }
+  }
+
+  async function revokeInvite(inviteId: string) {
+    if (!org) return;
+    const res = await fetch(`${API}/orgs/${org.id}/invites/${inviteId}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${getToken() ?? ""}` },
+    });
+    if (res.ok) { toast.success("Invite revoked"); setInvites(i => i.filter(x => x.id !== inviteId)); }
+    else toast.error("Failed to revoke");
+  }
+
+  async function resendInvite(inviteId: string) {
+    if (!org) return;
+    const res = await fetch(`${API}/orgs/${org.id}/invites/${inviteId}/resend`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${getToken() ?? ""}` },
+    });
+    if (res.ok) toast.success("Invite resent!");
+    else toast.error("Failed to resend");
+  }
+
   async function sendInvite() {
     if (!inviteEmail.trim() || !org) return;
     setInviting(true);
@@ -70,7 +103,7 @@ export default function OrgsPage() {
       body: JSON.stringify({ email: inviteEmail.trim(), role: inviteRole }),
     });
     const data = await res.json();
-    if (res.ok) { toast.success(`Invite sent to ${inviteEmail}`); setInviteEmail(""); }
+    if (res.ok) { toast.success(`Invite sent to ${inviteEmail}`); setInviteEmail(""); if (org) loadInvites(org.id); }
     else toast.error(data?.error?.message ?? data?.error ?? "Failed to send invite");
     setInviting(false);
   }

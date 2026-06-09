@@ -118,6 +118,50 @@ export const orgRoutes = new Elysia({ prefix: "/orgs" })
     });
     return { message: "joined org successfully", orgId: invite.orgId };
   })
+
+  // GET /orgs/:id/invites — list pending invites
+  .get("/:id/invites", async ({ user, params, set }) => {
+    requirePermission(user, "user:read", set);
+    const invites = await prisma.invite.findMany({
+      where: { orgId: params.id, usedAt: null },
+      orderBy: { createdAt: "desc" },
+    });
+    return { invites };
+  })
+
+  // DELETE /orgs/:id/invites/:inviteId — revoke invite
+  .delete("/:id/invites/:inviteId", async ({ user, params, set }) => {
+    requirePermission(user, "user:create", set);
+    const invite = await prisma.invite.findUnique({ where: { id: params.inviteId } });
+    if (!invite) { set.status = 404; return { error: "invite not found" }; }
+    if (invite.orgId !== params.id) { set.status = 403; return { error: "not your org" }; }
+    await prisma.invite.delete({ where: { id: params.inviteId } });
+    await prisma.auditLog.create({
+      data: {
+        userId: user.id,
+        action: "invite_sent" as any,
+        entityType: "Invite",
+        entityId: params.inviteId,
+        orgId: params.id,
+        details: JSON.stringify({ action: "revoked", email: invite.email }),
+      },
+    });
+    return { message: "invite revoked" };
+  })
+
+  // POST /orgs/:id/invites/:inviteId/resend — resend invite email
+  .post("/:id/invites/:inviteId/resend", async ({ user, params, set }) => {
+    requirePermission(user, "user:create", set);
+    const invite = await prisma.invite.findUnique({ where: { id: params.inviteId } });
+    if (!invite) { set.status = 404; return { error: "invite not found" }; }
+    if (invite.orgId !== params.id) { set.status = 403; return { error: "not your org" }; }
+    if (invite.usedAt) { set.status = 410; return { error: "invite already used" }; }
+    const org = await prisma.organization.findUnique({ where: { id: params.id } });
+    if (!org) { set.status = 404; return { error: "org not found" }; }
+    const { sendInviteEmail } = await import("../services/email.service");
+    void sendInviteEmail(invite.email, org.name, invite.role, invite.token).catch(console.error);
+    return { message: "invite resent" };
+  })
   // PATCH /orgs/:id/members/:userId — promote/demote member
   .patch("/:id/members/:userId", async ({ user, params, body, set }) => {
     requirePermission(user, "user:create", set);
