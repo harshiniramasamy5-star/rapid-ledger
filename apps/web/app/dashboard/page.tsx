@@ -125,6 +125,7 @@ export default function DashboardPage() {
     { label: "Admin",     path: "/admin",       roles: ["admin"] },
     { label: "Meetings",  path: "/admin/meetings", roles: ["admin"] },
     { label: "Fathom Meetings", path: "/admin/fathom-meetings", roles: ["admin"] },
+    { label: "Webhook Logs",    path: "/admin/webhook-logs",    roles: ["admin"] },
 
   ];
 
