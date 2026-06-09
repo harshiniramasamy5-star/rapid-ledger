@@ -77,6 +77,8 @@ export default function JoinPage() {
         document.cookie = `rapid_token=${encodeURIComponent(data.token)};path=/;max-age=${age};SameSite=Lax${secure}`;
         setStep("joining");
         await joinOrg(data.token);
+      } else if (res.ok && data.requiresMfa) {
+        toast.error("This account has 2FA enabled. Please log in from the main login page first, then return to this invite link.");
       } else { toast.error(data?.error?.message ?? "Login failed"); }
     } catch { toast.error("Network error"); }
     finally { setWorking(false); }

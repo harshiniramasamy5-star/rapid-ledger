@@ -20,7 +20,7 @@ export default function OrgsPage() {
   const [orgName, setOrgName]   = useState("");
   const [orgDomain, setOrgDomain] = useState("");
   const [inviteEmail, setInviteEmail] = useState("");
-  const inviteRole = "viewer";
+  const [inviteRole, setInviteRole] = useState("viewer");
   const [creating, setCreating] = useState(false);
   const [inviting, setInviting] = useState(false);
 
@@ -122,7 +122,7 @@ export default function OrgsPage() {
                 <CardHeader className="pb-3"><CardTitle className="text-base">Invite member</CardTitle></CardHeader>
                 <CardContent className="space-y-3">
                   <input className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" placeholder="Email address *" value={inviteEmail} onChange={e => setInviteEmail(e.target.value)} />
-                  <select className="hidden" value={inviteRole} onChange={() => {}}>
+                  <select className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" value={inviteRole} onChange={e => setInviteRole(e.target.value)}>
                     {ROLES.map(r => <option key={r} value={r}>{r}</option>)}
                   </select>
                   <Button className="w-full" disabled={inviting || !inviteEmail.trim()} onClick={sendInvite}>
