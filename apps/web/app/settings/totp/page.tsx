@@ -1,5 +1,6 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -8,7 +9,10 @@ import { toast } from "sonner";
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
 const getToken = () => document.cookie.split("; ").find(r => r.startsWith("rapid_token="))?.split("=")[1] ?? "";
 
-export default function TOTPSetupPage() {
+function TOTPSetupContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const required = searchParams.get("required") === "1";
   const [step, setStep]       = useState<"idle"|"setup"|"done">("idle");
   const [qrCode, setQrCode]   = useState("");
   const [secret, setSecret]   = useState("");
@@ -44,7 +48,8 @@ export default function TOTPSetupPage() {
       });
       const d = await res.json();
       if (!res.ok) throw new Error(d?.error?.message ?? "Invalid code");
-      toast.success("Two-factor authentication enabled!"); setEnabled(true); setStep("done"); setCode("");
+      toast.success("Two-factor authentication enabled!");
+      setEnabled(true); setStep("done"); setCode("");
       if (required) { setTimeout(() => router.push("/dashboard"), 1500); }
     } catch (e: unknown) { toast.error((e as Error).message); setCode(""); }
     finally { setLoading(false); }
@@ -70,6 +75,11 @@ export default function TOTPSetupPage() {
         <h1 className="text-2xl font-bold text-slate-900">Two-Factor Authentication</h1>
         <p className="text-slate-500 text-sm mt-1">Secure your account with an authenticator app.</p>
       </div>
+      {required && !enabled && (
+        <div className="mb-6 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 text-sm text-amber-800 font-medium">
+          ⚠️ Two-factor authentication is required before you can access RAPID Ledger. Please set it up below.
+        </div>
+      )}
       <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm space-y-6">
         <div className="flex items-center justify-between">
           <div>
@@ -138,5 +148,13 @@ export default function TOTPSetupPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function TOTPSetupPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="w-8 h-8 border-2 border-slate-200 border-t-blue-600 rounded-full animate-spin" /></div>}>
+      <TOTPSetupContent />
+    </Suspense>
   );
 }
