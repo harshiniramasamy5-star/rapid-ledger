@@ -20,6 +20,12 @@ export function middleware(request: NextRequest) {
   if (pathname === "/login" || pathname === "/register" || pathname === "/" || pathname.startsWith("/signup") || pathname.startsWith("/verify-email") || pathname.startsWith("/join/")) return NextResponse.next();
   if (!token) return NextResponse.redirect(new URL("/login", request.url));
 
+  // Enforce MFA setup: until rapid_mfa=1, only the TOTP setup page is reachable
+  const mfa = request.cookies.get("rapid_mfa")?.value;
+  if (mfa === "0" && !pathname.startsWith("/settings/totp")) {
+    return NextResponse.redirect(new URL("/settings/totp?required=1", request.url));
+  }
+
   const matchedRoute = Object.keys(ROLE_ACCESS).find(route =>
     pathname.startsWith(route)
   );

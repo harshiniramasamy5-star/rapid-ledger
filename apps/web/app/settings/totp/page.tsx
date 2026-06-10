@@ -50,6 +50,7 @@ function TOTPSetupContent() {
       if (!res.ok) throw new Error(d?.error?.message ?? "Invalid code");
       toast.success("Two-factor authentication enabled!");
       setEnabled(true); setStep("done"); setCode("");
+      document.cookie = `rapid_mfa=1; path=/; max-age=${60*60*24*7}; SameSite=Lax`;
       if (required) { setTimeout(() => router.push("/dashboard"), 1500); }
     } catch (e: unknown) { toast.error((e as Error).message); setCode(""); }
     finally { setLoading(false); }

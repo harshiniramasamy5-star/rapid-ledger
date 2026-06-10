@@ -78,8 +78,11 @@ export default function LoginPage() {
     const age = 60 * 60 * 24 * 7;
     document.cookie = `rapid_token=${token}; path=/; max-age=${age}; SameSite=Lax${secure}`;
     document.cookie = `rapid_role=${user.role}; path=/; max-age=${age}; SameSite=Lax${secure}`;
+    document.cookie = `rapid_mfa=${user.totpEnabled ? "1" : "0"}; path=/; max-age=${age}; SameSite=Lax${secure}`;
     toast.success("Welcome back, " + user.name + "!");
-    if (!user.orgId) { router.push("/onboarding"); } else { router.push(ROLE_ROUTES[user.role] ?? "/dashboard"); }
+    if (!user.totpEnabled) { router.push("/settings/totp?required=1"); }
+    else if (!user.orgId) { router.push("/onboarding"); }
+    else { router.push(ROLE_ROUTES[user.role] ?? "/dashboard"); }
   }
 
   async function handleLogin(e: React.FormEvent) {
