@@ -32,7 +32,7 @@ export default function FathomMeetingsPage() {
       const data = await res.json();
       if (!res.ok) { setError("Failed to load transcripts"); return; }
       const all = data.documents ?? data.data ?? [];
-      setDocs(all.filter((d: TranscriptDoc) => d.title?.includes("[RAPID]") || d.documentCode?.startsWith("TRANSCRIPT")));
+      setDocs(all);
     } catch { setError("Network error"); }
     finally { setLoading(false); }
   }
