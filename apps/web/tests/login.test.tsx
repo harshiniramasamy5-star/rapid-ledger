@@ -99,7 +99,7 @@ describe("LoginPage", () => {
       ok: true,
       json: async () => ({
         token: "mock-jwt-token",
-        user: { name: "Alice Admin", role: "admin", orgId: "test-org-id" },
+        user: { name: "Alice Admin", role: "admin", orgId: "test-org-id", totpEnabled: true },
       }),
     });
 
@@ -118,7 +118,7 @@ describe("LoginPage", () => {
       ok: true,
       json: async () => ({
         token: "mock-jwt-token",
-        user: { name: "Alice Admin", role: "admin", orgId: "test-org-id" },
+        user: { name: "Alice Admin", role: "admin", orgId: "test-org-id", totpEnabled: true },
       }),
     });
 
@@ -137,7 +137,7 @@ describe("LoginPage", () => {
       ok: true,
       json: async () => ({
         token: "mock-jwt-token",
-        user: { name: "Aria Approver", role: "approver", orgId: "test-org-id" },
+        user: { name: "Aria Approver", role: "approver", orgId: "test-org-id", totpEnabled: true },
       }),
     });
 
@@ -156,7 +156,7 @@ describe("LoginPage", () => {
       ok: true,
       json: async () => ({
         token: "mock-jwt-token",
-        user: { name: "Adam Auditor", role: "viewer", orgId: "test-org-id" },
+        user: { name: "Adam Auditor", role: "viewer", orgId: "test-org-id", totpEnabled: true },
       }),
     });
 
