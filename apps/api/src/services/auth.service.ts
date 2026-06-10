@@ -43,11 +43,6 @@ export async function loginUser(email: string, password: string, totpCode?: stri
     return { success: false, reason: "email_not_verified" };
   }
 
-  // TOTP server-side gate — if totpEnabled, require code or signal challenge
-  if ((user as { totpEnabled?: boolean }).totpEnabled && !totpCode) {
-    return { success: false, reason: "totp_required" as any, userId: user.id };
-  }
-
   const passwordMatch = await bcrypt.compare(password, user.password);
 
   if (!passwordMatch) {
@@ -67,6 +62,11 @@ export async function loginUser(email: string, password: string, totpCode?: stri
       locked: shouldLock });
 
     return { success: false, reason: "invalid_credentials" };
+  }
+
+  // TOTP server-side gate — password verified above; now require code or signal challenge
+  if ((user as { totpEnabled?: boolean }).totpEnabled && !totpCode) {
+    return { success: false, reason: "totp_required" as any, userId: user.id };
   }
 
   // Validate TOTP if enabled
