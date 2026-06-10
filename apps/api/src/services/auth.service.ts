@@ -144,6 +144,14 @@ export async function registerUser(
       }
     }
   } catch (_) { /* non-fatal — org assign fails silently */ }
+
+  try {
+    const emailSvc = await import("./email.service");
+    await emailSvc.sendVerificationEmail(email, name, token);
+  } catch (e) {
+    console.error("[Auth] send verification email failed:", e);
+  }
+
   return { success: true, token };
 }
 
