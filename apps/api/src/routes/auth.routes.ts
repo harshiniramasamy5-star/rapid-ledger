@@ -64,11 +64,7 @@ export const authRoutes = new Elysia({ prefix: "/auth" })
         ctx.set.status = 400;
         return { error: { code: "REGISTER_FAILED", message: result.message } };
       }
-      try {
-        await sendVerificationEmail(email, name, result.token!);
-      } catch (e) {
-        console.error("[Register] Failed to send verification email:", e);
-      }
+      sendVerificationEmail(email, name, result.token!).catch((e) => console.error("[Register] Failed to send verification email:", e));
       ctx.set.status = 201;
       return { message: "Account created. Check your email to verify your account." };
     },
