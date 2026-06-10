@@ -80,8 +80,12 @@ Extract and return ONLY valid JSON with keys: decisions (array), actions (array)
       aiRoles = Object.fromEntries(attendees.map((a) => [a.email, "input"]));
     }
 
-    const docCount = await prisma.rapidDocument.count();
-    const documentCode = `TRANSCRIPT-${String(docCount + 1).padStart(3, "0")}`;
+    const lastDoc = await prisma.rapidDocument.findFirst({
+      where: { documentCode: { startsWith: "TRANSCRIPT-" } },
+      orderBy: { documentCode: "desc" },
+    });
+    const lastNum = lastDoc ? parseInt(lastDoc.documentCode.replace("TRANSCRIPT-", ""), 10) || 0 : 0;
+    const documentCode = `TRANSCRIPT-${String(lastNum + 1).padStart(3, "0")}-${crypto.randomBytes(3).toString("hex")}`;
     const docTitle = `[Transcript] ${title}`;
 
     const doc = await prisma.$transaction(async (tx) => {
