@@ -9,8 +9,6 @@ import { toast } from "sonner";
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
 function getToken(){ const m=document.cookie.match(/(?:^|;\s*)rapid_token=([^;]*)/); return m?decodeURIComponent(m[1]):null; }
 
-const ROLES = ["viewer","creator","recommender","approver","performer","admin"];
-
 export default function OrgsPage() {
   const router = useRouter();
   const [org, setOrg]           = useState<{id:string;name:string;domain?:string;_count?:{users:number}}|null>(null);
@@ -20,7 +18,6 @@ export default function OrgsPage() {
   const [orgName, setOrgName]   = useState("");
   const [orgDomain, setOrgDomain] = useState("");
   const [inviteEmail, setInviteEmail] = useState("");
-  const [inviteRole, setInviteRole] = useState("viewer");
   const [creating, setCreating] = useState(false);
   const [inviting, setInviting] = useState(false);
   const [invites, setInvites] = useState<Array<{id:string;email:string;role:string;expiresAt:string}>>([]);
@@ -100,7 +97,7 @@ export default function OrgsPage() {
     const res = await fetch(`${API}/orgs/${org.id}/invite`, {
       method: "POST",
       headers: { Authorization: `Bearer ${token()}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ email: inviteEmail.trim(), role: inviteRole }),
+      body: JSON.stringify({ email: inviteEmail.trim(), role: "viewer" }),
     });
     const data = await res.json();
     if (res.ok) { toast.success(`Invite sent to ${inviteEmail}`); setInviteEmail(""); if (org) loadInvites(org.id); }
@@ -155,9 +152,6 @@ export default function OrgsPage() {
                 <CardHeader className="pb-3"><CardTitle className="text-base">Invite member</CardTitle></CardHeader>
                 <CardContent className="space-y-3">
                   <input className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" placeholder="Email address *" value={inviteEmail} onChange={e => setInviteEmail(e.target.value)} />
-                  <select className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" value={inviteRole} onChange={e => setInviteRole(e.target.value)}>
-                    {ROLES.map(r => <option key={r} value={r}>{r}</option>)}
-                  </select>
                   <Button className="w-full" disabled={inviting || !inviteEmail.trim()} onClick={sendInvite}>
                     {inviting ? "Sending…" : "Send Invite Email"}
                   </Button>
@@ -179,20 +173,6 @@ export default function OrgsPage() {
                         <div className="flex items-center gap-2">
                           {me?.role === "admin" && m.id !== me?.id && (
                             <>
-                              <select
-                                className="text-xs border border-slate-200 rounded px-2 py-1 bg-white"
-                                value={m.role}
-                                onChange={async e => {
-                                  const res = await fetch(`${API}/orgs/${org!.id}/members/${m.id}`, {
-                                    method: "PATCH",
-                                    headers: { Authorization: `Bearer ${token()}`, "Content-Type": "application/json" },
-                                    body: JSON.stringify({ role: e.target.value }),
-                                  });
-                                  if (res.ok) { toast.success("Role updated"); await load(); }
-                                  else toast.error("Failed to update role");
-                                }}>
-                                {ROLES.map(r => <option key={r} value={r}>{r}</option>)}
-                              </select>
                               <button
                                 className="text-xs text-red-500 hover:text-red-700 font-medium px-2 py-1 rounded hover:bg-red-50"
                                 onClick={async () => {
