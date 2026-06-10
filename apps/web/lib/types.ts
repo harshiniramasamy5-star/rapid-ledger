@@ -94,6 +94,7 @@ export interface ApiDocument {
   slaBreached?: boolean;
   createdById: string;
   createdBy?: string;
+  auditLogs?: Array<{ id?: string; action?: string; details?: string; createdAt?: string; user?: { name?: string; email?: string } }>;
   roleAssignments?: RoleAssignment[];
   evidence?: Evidence[];
   approvals?: Approval[];
