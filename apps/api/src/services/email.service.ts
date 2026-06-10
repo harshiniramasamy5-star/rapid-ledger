@@ -11,7 +11,7 @@ const transporter = nodemailer.createTransport({
     user: process.env.SMTP_USER,
     pass: process.env.SMTP_PASSWORD,
   },
-  tls: { ciphers: "SSLv3" },
+  tls: { ciphers: "TLSv1.2", rejectUnauthorized: false },
 });
 
 const FROM = `RAPID Ledger <${process.env.SMTP_USER}>`;
