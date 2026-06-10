@@ -62,3 +62,23 @@ export async function sendChangesRequestedEmail(to: string, docTitle: string, no
      <p><a href="${process.env.FRONTEND_URL}/documents">View in RAPID Ledger</a></p>`
   );
 }
+
+export function generateVerificationToken(): string {
+  return crypto.randomUUID().replace(/-/g, "");
+}
+
+export async function sendInviteEmail(
+  to: string,
+  orgName: string,
+  role: string,
+  token: string
+) {
+  const url = `${process.env.FRONTEND_URL}/invite/accept?token=${token}`;
+  await sendEmail(
+    to,
+    `You're invited to ${orgName} on RAPID Ledger`,
+    `<p>You've been invited to join <strong>${orgName}</strong> as a <strong>${role}</strong>.</p>
+     <p><a href="${url}">Accept Invitation</a></p>
+     <p>This link expires in 7 days.</p>`
+  );
+}
