@@ -22,7 +22,7 @@ export function middleware(request: NextRequest) {
 
   // Enforce MFA setup: until rapid_mfa=1, only the TOTP setup page is reachable
   const mfa = request.cookies.get("rapid_mfa")?.value;
-  if (mfa === "0" && !pathname.startsWith("/settings/totp")) {
+  if (mfa !== "1" && !pathname.startsWith("/settings/totp")) {
     return NextResponse.redirect(new URL("/settings/totp?required=1", request.url));
   }
 
