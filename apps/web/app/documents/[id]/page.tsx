@@ -142,10 +142,9 @@ export default function DocumentDetailPage() {
 
   const canSubmit   = (isCreator || me?.role === "admin") && ["draft","needs_changes"].includes(status);
   const canEdit     = (isCreator || me?.role === "admin") && ["draft","needs_changes"].includes(status);
-  const canAgree    = myRole?.roleType === "agree" && !["rejected"].includes(status);
+  const canApprove  = myRole?.roleType === "approve" && !["rejected"].includes(status);
   const canDecide   = myRole?.roleType === "decide" && !["draft","rejected"].includes(status);
-  const canFinalize = me?.role === "admin" && status === "approved";
-
+  
   async function exportPdf() {
     const token = getToken();
     if (!token || !doc) return;
@@ -210,8 +209,6 @@ export default function DocumentDetailPage() {
     finally { setTranscriptUploading(false); }
   }
 
-  const canComplete = myRole?.roleType === "perform" && !["draft","rejected"].includes(status);
-  const canVersion  = me?.role === "admin" && ["finalized","execution_complete"].includes(status);
   const isRecommenderWaiting = myRole?.roleType === "recommend" && !!doc?.recommendationNotes;
   const canInput        = myRole?.roleType === "input" && !doc?.inputNotes && !["rejected"].includes(status);
   const isInputWaiting  = myRole?.roleType === "input" && !!doc?.inputNotes;
@@ -352,7 +349,7 @@ export default function DocumentDetailPage() {
               </Button>
             )}
 
-            {canAgree && (
+            {canApprove && (
               <div className="space-y-3">
                 <textarea rows={2} placeholder="Notes (optional)..."
                   value={approvalNotes} onChange={e => setApprovalNotes(e.target.value)}
@@ -421,15 +418,9 @@ export default function DocumentDetailPage() {
                     <AlertDialogFooter>
                       <AlertDialogCancel>Cancel</AlertDialogCancel>
                       <AlertDialogAction className="bg-red-700 hover:bg-red-800" onClick={() => handle(async () => {
-                        const { res, data } = await apiPost(`/documents/${params.id}/approve`, { comment: approvalNotes });
-                        const errMsg = (data as ApiError)?.error?.message ?? "";
-                        if (res.ok || errMsg.includes("finalized") || errMsg.includes("approved") || errMsg.includes("invalidStatus")) {
-                          toast.success("Decision acknowledged!");
-                          setApprovalNotes("");
-                        } else {
-                          toast.error(errMsg || "Failed");
-                        }
-                        await load();
+                        const { res, data } = await apiPost(`/documents/${params.id}/finalize`);
+                        if (res.ok) { toast.success("Decision acknowledged and finalized!"); setApprovalNotes(""); await load(); }
+                        else toast.error((data as ApiError)?.error?.message ?? "Failed");
                       })}>Confirm</AlertDialogAction>
                     </AlertDialogFooter>
                   </AlertDialogContent>
@@ -491,55 +482,11 @@ export default function DocumentDetailPage() {
               </div>
             )}
 
-            {canFinalize && (
-              <AlertDialog>
-                <AlertDialogTrigger className="w-full inline-flex items-center justify-center rounded-md text-sm font-semibold bg-indigo-600 hover:bg-indigo-700 text-white h-11 px-4 py-2 disabled:opacity-50" disabled={acting}>{acting ? "Finalizing..." : "Finalize Decision"}</AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Finalize this decision?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      This is irreversible. The document will be locked and added to the permanent ledger.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction className="bg-indigo-600 hover:bg-indigo-700" onClick={() => handle(async () => {
-                      const { res, data } = await apiPost(`/documents/${params.id}/finalize`);
-                      if (res.ok) { toast.success("Document finalized and added to Ledger!"); await load(); }
-                      else toast.error((data as ApiError)?.error?.message ?? "Finalize failed");
-                    })}>Confirm Finalize</AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            )}
 
-            {canComplete && (
-              <div className="space-y-3">
-                <textarea rows={2} placeholder="Execution notes (required)..."
-                  value={execNotes} onChange={e => setExecNotes(e.target.value)}
-                  className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary bg-white text-slate-900 placeholder:text-slate-400" />
-                <Button className="w-full h-11 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold" disabled={acting}
-                  onClick={() => handle(async () => {
-                    if (!execNotes.trim()) { toast.error("Execution notes are required"); return; }
-                    const { res, data } = await apiPost(`/documents/${params.id}/execution-complete`, { notes: execNotes });
-                    if (res.ok) { toast.success("Execution marked complete!"); await load(); }
-                    else toast.error((data as ApiError)?.error?.message ?? "Failed");
-                  })}>
-                  {acting ? "Saving..." : "Mark Execution Complete"}
-                </Button>
-              </div>
-            )}
 
-            {canVersion && (
-              <Button className="w-full h-11 bg-purple-600 hover:bg-purple-700 text-white font-semibold" disabled={acting}
-                onClick={() => handle(async () => {
-                  const { res, data } = await apiPost(`/documents/${params.id}/version`);
-                  if (res.ok) { toast.success("New version created!"); router.push(`/documents/${(data as ApiError)?.id}`); }
-                  else toast.error((data as ApiError)?.error?.message ?? "Failed");
-                })}>
-                {acting ? "Creating..." : `Create New Version (v${(doc.version ?? 1) + 1})`}
-              </Button>
-            )}
+
+
+
 
             {/* Document Timeline */}
           {doc.auditLogs && doc.auditLogs.length > 0 && (
@@ -549,7 +496,7 @@ export default function DocumentDetailPage() {
             </div>
           )}
 
-          {!canEdit && !canSubmit && !canAgree && !canDecide && !canFinalize && !canComplete && !canVersion && !canRecommend && !isRecommenderWaiting && !canInput && !isInputWaiting && (
+          {!canEdit && !canSubmit && !canApprove && !canDecide && !canFinalize && !canComplete && !canVersion && !canRecommend && !isRecommenderWaiting && !canInput && !isInputWaiting && (
               <p className="text-sm text-slate-400 text-center py-2">
                 No actions available for your role at this stage.
               </p>
