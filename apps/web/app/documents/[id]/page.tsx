@@ -496,7 +496,7 @@ export default function DocumentDetailPage() {
             </div>
           )}
 
-          {!canEdit && !canSubmit && !canApprove && !canDecide && !canFinalize && !canComplete && !canVersion && !canRecommend && !isRecommenderWaiting && !canInput && !isInputWaiting && (
+          {!canEdit && !canSubmit && !canApprove && !canDecide  && !canRecommend && !isRecommenderWaiting && !canInput && !isInputWaiting && (
               <p className="text-sm text-slate-400 text-center py-2">
                 No actions available for your role at this stage.
               </p>
