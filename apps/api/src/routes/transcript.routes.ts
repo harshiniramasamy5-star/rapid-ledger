@@ -161,8 +161,7 @@ export const transcriptRoutes = new Elysia({ prefix: "/documents" })
     <h2>RAPID Role Assignments</h2>
     <table><thead><tr style="background:#f1f5f9"><th style="padding:6px 12px;text-align:left;font-size:11px">Role</th><th style="padding:6px 12px;text-align:left;font-size:11px">Name</th><th style="padding:6px 12px;text-align:left;font-size:11px">Email</th></tr></thead><tbody>${roles}</tbody></table>
     ${doc.approvals.length > 0 ? `<h2>Approval Record</h2><table><tbody>${doc.approvals.map((a: any) => `<tr><td style="padding:6px 12px;font-size:12px">${a.approver.name}</td><td style="padding:6px 12px;font-size:12px;color:#6366f1;font-weight:600">${a.decision?.toUpperCase() ?? "PENDING"}</td><td style="padding:6px 12px;font-size:12px;color:#64748b">${new Date(a.createdAt).toLocaleDateString("en-IN")}</td></tr>`).join("")}</tbody></table>` : ""}
-    ${doc.transcriptContent ? `<h2>Meeting Transcript</h2><div class="transcript">${doc.transcriptContent.slice(0,2000).replace(/</g,"&lt;").replace(/>/g,"&gt;")}${doc.transcriptContent.length > 2000 ? "
-[truncated]" : ""}</div>` : ""}
+    ${doc.transcriptContent ? `<h2>Meeting Transcript</h2><div class="transcript">${doc.transcriptContent.slice(0,2000).replace(/</g,"&lt;").replace(/>/g,"&gt;")}${doc.transcriptContent.length > 2000 ? "\n[truncated]" : ""}</div>` : ""}
     <div class="footer"><span>RAPID Ledger · Complyance</span><span>Document ID: ${doc.id}</span><span>Exported: ${new Date().toISOString()}</span></div>
     <script>window.onload=()=>window.print()</script>
     </body></html>`;
