@@ -103,6 +103,9 @@ export async function submitDocument(documentId: string, actorId: string) {
 
   // Fire webhook when no agree role — doc goes draft → approved directly
   if (updated.status === "approved") {
+    // Direct sync — guaranteed regardless of dispatcher handler registration timing,
+    // mirroring approveDocument so both paths to "approved" reliably archive to Notion.
+    try { await notionSyncService.sync(documentId, actorId); } catch (e) { console.error("[DirectSync] Notion sync failed (submit-direct):", e); }
     await webhookDispatcher.dispatch("document.approved", {
       documentId,
       userId: actorId,
