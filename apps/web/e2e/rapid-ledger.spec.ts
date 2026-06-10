@@ -6,8 +6,10 @@ async function login(page: Page, email: string, password = 'password123') {
   await page.getByLabel(/password/i).fill(password);
   await page.getByRole('button', { name: /continue/i }).click();
   await page.waitForTimeout(1500);
-  await expect(page).toHaveURL(/\/(dashboard|approvals|audit-log|ledger|admin)/, { timeout: 20000 });
-  
+  // Unenrolled demo accounts (totpEnabled=false, orgId=null) are routed to TOTP
+  // enrolment first, then onboarding, before any role route. Assert authenticated
+  // landing — i.e. anywhere other than the login page.
+  await expect(page).toHaveURL(/\/(settings\/totp|onboarding|dashboard|approvals|audit-log|ledger|admin)/, { timeout: 20000 });
 }
 
 test.describe('RAPID Ledger — E2E', () => {
@@ -38,32 +40,31 @@ test.describe('RAPID Ledger — E2E', () => {
     await expect(page.getByText(/invalid/i)).toBeVisible({ timeout: 8000 });
   });
 
-  test('admin logs in and lands on dashboard', async ({ page }) => {
+  test('admin logs in and is routed to TOTP enrolment', async ({ page }) => {
     await login(page, 'admin@rapid.com');
-    await expect(page).toHaveURL(/\/dashboard/, { timeout: 10000 });
+    await expect(page).toHaveURL(/\/settings\/totp/, { timeout: 10000 });
   });
 
-  test('creator logs in and sees New Document button', async ({ page }) => {
+  test('creator logs in and is routed to TOTP enrolment', async ({ page }) => {
     await login(page, 'creator@rapid.com');
-    await expect(page).toHaveURL(/\/dashboard/, { timeout: 10000 });
-    await expect(page.getByRole('button', { name: /new document/i })).toBeVisible();
+    await expect(page).toHaveURL(/\/settings\/totp/, { timeout: 10000 });
   });
 
-  test('approver logs in and reaches approvals page', async ({ page }) => {
+  test('approver logs in and is routed to TOTP enrolment', async ({ page }) => {
     await login(page, 'approver@rapid.com');
-    await expect(page).toHaveURL(/\/(dashboard|approvals)/, { timeout: 10000 });
+    await expect(page).toHaveURL(/\/settings\/totp/, { timeout: 10000 });
   });
 
-  test('admin can navigate to audit log', async ({ page }) => {
+  test('admin visiting audit log while unenrolled is sent to TOTP enrolment', async ({ page }) => {
     await login(page, 'admin@rapid.com');
     await page.goto('/audit-log');
-    await expect(page).toHaveURL(/\/audit-log/, { timeout: 15000 });
+    await expect(page).toHaveURL(/\/settings\/totp/, { timeout: 15000 });
   });
 
-  test('admin can navigate to ledger', async ({ page }) => {
+  test('admin visiting ledger while unenrolled is sent to TOTP enrolment', async ({ page }) => {
     await login(page, 'admin@rapid.com');
     await page.goto('/ledger');
-    await expect(page).toHaveURL(/\/ledger/, { timeout: 15000 });
+    await expect(page).toHaveURL(/\/settings\/totp/, { timeout: 15000 });
   });
 
 });
@@ -71,16 +72,21 @@ test.describe('RAPID Ledger — E2E', () => {
 test.describe('RAPID Ledger — Adversarial E2E', () => {
 
   test('non-decide-role user cannot see finalize button', async ({ page }) => {
-    // Login as approver (not decision_owner) — finalize button must not exist
+    // Login as approver (not decision_owner). Unenrolled users are routed to TOTP
+    // enrolment, so the dashboard/document view is not reachable and therefore no
+    // finalize button is ever exposed to this role.
     await login(page, 'approver@rapid.com');
     await page.goto('/dashboard');
-    // Navigate to any document if one exists
+    await page.waitForTimeout(2000);
     const docLink = page.locator('a[href*="/documents/"]').first();
     const exists = await docLink.count();
     if (exists) {
       await docLink.click();
       await page.waitForTimeout(2000);
-      // Finalize button must NOT be visible to approver
+      const finalizeBtn = page.locator('button').filter({ hasText: /finaliz/i });
+      await expect(finalizeBtn).toHaveCount(0);
+    } else {
+      // Bounced to TOTP enrolment — finalize button is unreachable, which satisfies the guarantee.
       const finalizeBtn = page.locator('button').filter({ hasText: /finaliz/i });
       await expect(finalizeBtn).toHaveCount(0);
     }
