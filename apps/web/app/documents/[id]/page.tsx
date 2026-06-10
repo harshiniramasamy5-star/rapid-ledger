@@ -142,8 +142,11 @@ export default function DocumentDetailPage() {
 
   const canSubmit   = (isCreator || me?.role === "admin") && ["draft","needs_changes"].includes(status);
   const canEdit     = (isCreator || me?.role === "admin") && ["draft","needs_changes"].includes(status);
-  const canApprove  = myRole?.roleType === "approve" && !["rejected"].includes(status);
-  const canDecide   = myRole?.roleType === "decide" && !["draft","rejected"].includes(status);
+  const TERMINAL = ["rejected", "finalized", "execution_complete"];
+  const isActive    = !TERMINAL.includes(status);
+  // All RAPID contributor roles act simultaneously while the doc is active.
+  const canApprove  = myRole?.roleType === "agree" && isActive && !["draft"].includes(status);
+  const canDecide   = myRole?.roleType === "decide" && isActive && !["draft"].includes(status);
   
   async function exportPdf() {
     const token = getToken();
@@ -210,9 +213,11 @@ export default function DocumentDetailPage() {
   }
 
   const isRecommenderWaiting = myRole?.roleType === "recommend" && !!doc?.recommendationNotes;
-  const canInput        = myRole?.roleType === "input" && !doc?.inputNotes && !["rejected"].includes(status);
   const isInputWaiting  = myRole?.roleType === "input" && !!doc?.inputNotes;
-  const canRecommend    = myRole?.roleType === "recommend" && !isRecommenderWaiting && !["rejected"].includes(status);
+  // Recommend & input act simultaneously with agree/decide while the doc is active.
+  // Always available to the assigned holder in an active doc (re-submission allowed).
+  const canInput        = myRole?.roleType === "input" && isActive;
+  const canRecommend    = myRole?.roleType === "recommend" && isActive;
 
   const sc = STATUS_CONFIG[status] ?? { variant: "outline" as const, label: status, color: "text-slate-600" };
 
@@ -431,7 +436,7 @@ export default function DocumentDetailPage() {
             {canRecommend && (
               <div className="space-y-3">
                 <p className="text-xs text-slate-500 font-medium">
-                  Add your recommendation before this document is submitted.
+                  Add your recommendation. You can do this at any time while the document is active.
                 </p>
                 <textarea rows={3} placeholder="Enter your recommendation notes (required)..."
                   value={recommendNotes} onChange={e => setRecommendNotes(e.target.value)}
