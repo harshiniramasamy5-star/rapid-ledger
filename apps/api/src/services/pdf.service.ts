@@ -21,7 +21,7 @@ export function generateDocumentPdf(doc: FullDocument): Buffer {
   const chunks: Buffer[] = [];
   const pdf = new PDFDocument({ margin: 50, size: "A4" });
 
-  pdf.on("data", chunk => chunks.push(chunk));
+  pdf.on("data", (chunk: Buffer) => chunks.push(chunk));
 
   const PRIMARY = "#4f46e5";
   const SLATE = "#64748b";
