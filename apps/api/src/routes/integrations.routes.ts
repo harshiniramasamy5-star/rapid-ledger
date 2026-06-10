@@ -107,6 +107,15 @@ Extract and return ONLY valid JSON with keys: decisions (array), actions (array)
         const rapidRole = aiRoles[email] ?? aiRoles[email.toLowerCase()] ?? "input";
         return tx.roleAssignment.create({ data: { documentId: document.id, userId: u.id, roleType: rapidRole as any } });
       }));
+      // Seed pending approvals for agree-role users so approveDocument records real agreement.
+      await Promise.all(users
+        .filter((u, i) => {
+          const email = attendees[i]?.email ?? u.email;
+          const rapidRole = aiRoles[email] ?? aiRoles[email.toLowerCase()] ?? "input";
+          return rapidRole === "agree";
+        })
+        .map((u) => tx.approval.create({ data: { documentId: document.id, approverId: u.id, decision: "pending" } }))
+      );
       await tx.auditLog.create({
         data: {
           userId: user.id, action: "transcript_imported" as any,
@@ -248,11 +257,20 @@ Extract and return ONLY valid JSON with keys: decisions (array), actions (array)
             orgId: COMPLYANCE_ORG_ID,
           },
         });
-        await Promise.all(users.map((u) =>
-          tx.roleAssignment.create({
-            data: { documentId: document.id, userId: u.id, roleType: 'input' as any },
-          })
-        ));
+        // Assign default RAPID roles: first user gets agree (seeds approval flow),
+        // importing user gets decide, rest get input.
+        await Promise.all(users.map((u, i) => {
+          const roleType = i === 0 ? 'agree' : 'input';
+          return tx.roleAssignment.create({
+            data: { documentId: document.id, userId: u.id, roleType: roleType as any },
+          });
+        }));
+        // Seed pending approval for the agree-role user (first attendee).
+        if (users.length > 0) {
+          await tx.approval.create({
+            data: { documentId: document.id, approverId: users[0].id, decision: 'pending' },
+          });
+        }
         await tx.auditLog.create({
           data: {
             userId: user.id,

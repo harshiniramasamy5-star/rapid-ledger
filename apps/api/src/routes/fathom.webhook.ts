@@ -269,6 +269,22 @@ export const fathomWebhookRoutes = new Elysia({ prefix: '/webhooks' })
         })
       )
 
+      // Seed pending approvals for agree-role users so approveDocument records
+      // real agreement (avoids the vacuous "all approved" over an empty set).
+      await Promise.all(
+        users
+          .filter((user, i) => {
+            const email = attendees[i]?.email ?? user.email
+            const rapidRole = aiRoles[email] ?? aiRoles[email.toLowerCase()] ?? 'input'
+            return rapidRole === 'agree'
+          })
+          .map((user) =>
+            tx.approval.create({
+              data: { documentId: document.id, approverId: user.id, decision: 'pending' },
+            })
+          )
+      )
+
       await tx.auditLog.create({
         data: {
           userId: users[0].id,
