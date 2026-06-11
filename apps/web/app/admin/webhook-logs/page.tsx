@@ -19,7 +19,7 @@ export default function WebhookLogsPage() {
   const router = useRouter();
   const [logs, setLogs] = useState<WebhookLog[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<"all"|"success"|"failed">("all");
+  const [filter, setFilter] = useState<"all"|"success"|"failed">("success");
 
   useEffect(() => { loadLogs(); }, []);
 
