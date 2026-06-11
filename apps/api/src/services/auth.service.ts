@@ -177,7 +177,12 @@ export async function verifyEmail(
   token: string
 ): Promise<{ success: boolean; message?: string; email?: string; name?: string }> {
   const user = await prisma.user.findFirst({ where: { verificationToken: token } });
-  if (!user) return { success: false, message: "Invalid or expired verification token." };
+  if (!user) {
+    // Token not found — either never valid, or already consumed (e.g. Outlook Safe Links
+    // pre-fetch hit the single-use link first). Treat as already-verified so the user isn't
+    // shown a scary error after the account is in fact verified.
+    return { success: false, alreadyUsed: true, message: "This link has already been used. Your email is likely verified — please sign in." } as any;
+  }
 
   await prisma.user.update({
     where: { id: user.id },

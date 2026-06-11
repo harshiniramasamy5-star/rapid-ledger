@@ -40,6 +40,10 @@ function VerifyContent() {
       .then(r => r.json())
       .then(d => {
         if (d.message) setState("success")
+        else if (d.error?.code === "ALREADY_USED") {
+          // Token already consumed (e.g. Outlook Safe Links pre-fetch) — likely already verified
+          setState("success")
+        }
         else { setState("error"); setMessage(d.error?.message ?? "Verification failed.") }
       })
       .catch(() => { setState("error"); setMessage("Network error. Try again.") })

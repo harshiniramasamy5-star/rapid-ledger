@@ -85,7 +85,8 @@ export const authRoutes = new Elysia({ prefix: "/auth" })
     const result = await verifyEmail(token);
     if (!result.success) {
       ctx.set.status = 400;
-      return { error: { code: "INVALID_TOKEN", message: result.message } };
+      const code = (result as { alreadyUsed?: boolean }).alreadyUsed ? "ALREADY_USED" : "INVALID_TOKEN";
+      return { error: { code, message: result.message } };
     }
     try {
       await sendWelcomeEmail(result.email!, result.name!);
