@@ -199,20 +199,15 @@ export const fathomWebhookRoutes = new Elysia({ prefix: '/webhooks' })
     // Idempotency: skip if we already imported this exact callId
     const callId = call.id ?? call.call_id ?? ''
     if (callId) {
-      const existingDoc = await prisma.rapidDocument.findFirst({
+      const existingLog = await prisma.auditLog.findFirst({
         where: {
-          documentType: 'TRANSCRIPT' as any,
-          auditLogs: {
-            some: {
-              action: 'transcript_imported' as any,
-              details: { contains: callId },
-            },
-          },
+          action: 'transcript_imported' as any,
+          details: { contains: `"callId":"${callId}"` },
         },
       })
-      if (existingDoc) {
+      if (existingLog) {
         console.log(`[Fathom Webhook] Skipping duplicate callId: ${callId}`)
-        return { ok: true, skipped: true, reason: 'Already imported', documentId: existingDoc.id }
+        return { ok: true, skipped: true, reason: 'Already imported', documentId: existingLog.documentId }
       }
     }
 
@@ -291,6 +286,7 @@ export const fathomWebhookRoutes = new Elysia({ prefix: '/webhooks' })
           action: 'transcript_imported' as any,
           entityType: 'RapidDocument',
           entityId: document.id,
+          documentId: document.id,
           details: JSON.stringify({
             source: 'fathom_webhook',
             callId: call.id,
