@@ -54,6 +54,21 @@ class WebhookDispatcher {
         } catch (logErr) {
           console.error("[WebhookDispatcher] Failed to log failure:", logErr);
         }
+      } else {
+        try {
+          await prisma.auditLog.create({
+            data: {
+              userId: payload.userId,
+              action: "webhook_retried",
+              entityType: "RapidDocument",
+              entityId: payload.documentId,
+              documentId: payload.documentId,
+              details: JSON.stringify({ event, status: "success" }),
+            },
+          });
+        } catch (logErr) {
+          console.error("[WebhookDispatcher] Failed to log success:", logErr);
+        }
       }
     }
   }
