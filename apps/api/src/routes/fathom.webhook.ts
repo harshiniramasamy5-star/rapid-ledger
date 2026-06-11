@@ -171,6 +171,9 @@ export const fathomWebhookRoutes = new Elysia({ prefix: '/webhooks' })
     try { payload = JSON.parse(rawBody) }
     catch { set.status = 400; return { error: 'Invalid JSON' } }
 
+    // DEBUG: log full payload to diagnose Fathom field names
+    console.log('[Fathom Webhook] RAW PAYLOAD:', JSON.stringify(payload).slice(0, 2000))
+
     const eventType = payload.event ?? payload.event_type ?? payload.type ?? ''
     if (!['call.completed', 'transcript', 'recording.completed', 'call_ended'].includes(eventType)) {
       return { ok: true, skipped: true, event: eventType }
