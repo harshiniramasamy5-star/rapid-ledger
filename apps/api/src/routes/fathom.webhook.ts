@@ -175,22 +175,42 @@ export const fathomWebhookRoutes = new Elysia({ prefix: '/webhooks' })
     console.log('[Fathom Webhook] RAW PAYLOAD:', JSON.stringify(payload).slice(0, 2000))
 
     const eventType = payload.event ?? payload.event_type ?? payload.type ?? ''
-    if (!['call.completed', 'transcript', 'recording.completed', 'call_ended'].includes(eventType)) {
+    if (!['call.completed', 'transcript', 'recording.completed', 'call_ended', 'meeting_content_ready'].includes(eventType) && eventType !== '') {
       return { ok: true, skipped: true, event: eventType }
     }
 
-    const call = payload.call ?? payload.data ?? payload.recording ?? {}
+    // Fathom sends flat payload (no wrapper); other sources wrap in call/data/recording
+    const call = payload.call ?? payload.data ?? payload.recording ?? payload
 
     // [RAPID] prefix filter — only process decision meetings
-    const rawTitle: string = call.title ?? ''
+    const rawTitle: string = call.title ?? call.meeting_title ?? ''
     if (!rawTitle.startsWith('[RAPID]')) {
       console.log('[Fathom Webhook] Skipping non-RAPID meeting:', rawTitle || '(no title)')
       return { ok: true, skipped: true, reason: 'Not a RAPID meeting — title must start with [RAPID]' }
     }
 
-    const attendees: Array<{ email: string; name: string }> = call.attendees ?? []
-    const transcriptText: string = call.transcript ?? ''
-    const summary: string = call.summary ?? ''
+    // Fathom sends transcript as array of {speaker, text, timestamp} objects
+    const rawTranscript = call.transcript ?? []
+    const transcriptText: string = Array.isArray(rawTranscript)
+      ? rawTranscript.map((t: any) => `${t.speaker?.display_name ?? 'Unknown'}: ${t.text ?? ''}`).join('\n')
+      : (rawTranscript as string)
+
+    // Extract attendees from transcript speakers if not provided directly
+    const rawAttendees = call.attendees ?? call.calendar_invitees ?? []
+    let attendees: Array<{ email: string; name: string }> = Array.isArray(rawAttendees) && rawAttendees.length > 0
+      ? rawAttendees.map((a: any) => ({ email: a.email ?? a.matched_calendar_invitee_email ?? '', name: a.name ?? a.display_name ?? '' })).filter((a: any) => a.email)
+      : []
+
+    // Fallback: extract unique speakers from transcript array
+    if (attendees.length === 0 && Array.isArray(rawTranscript)) {
+      const seen = new Set<string>()
+      for (const t of rawTranscript as any[]) {
+        const email = t.speaker?.matched_calendar_invitee_email ?? ''
+        const name = t.speaker?.display_name ?? ''
+        if (email && !seen.has(email)) { seen.add(email); attendees.push({ email, name }) }
+      }
+    }
+    const summary: string = call.summary ?? call.default_summary?.markdown_formatted ?? ''
     const title = `[Transcript] ${rawTitle}`
 
     console.log('[Fathom Webhook] Attendees:', JSON.stringify(attendees))
