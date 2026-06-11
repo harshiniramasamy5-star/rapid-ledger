@@ -134,6 +134,13 @@ export async function registerUser(
   });
 
   try {
+    const emailSvc = await import("./email.service");
+    await emailSvc.sendVerificationEmail(email, name, token);
+  } catch (e) {
+    console.error("[Auth] verification email failed:", e);
+  }
+
+  try {
     const emailDomain = email.split("@")[1];
     if (emailDomain) {
       const matchedOrg = await prisma.organization.findFirst({
