@@ -31,7 +31,7 @@ export default function RegisterPage() {
       if (res.ok) {
         toast.success("Account created! Check your email to verify your account.");
         // Pass email as param so the verify-email page can offer resend
-        router.push(`/verify-email?email=${encodeURIComponent(email.trim())}`);
+        router.push(`/login?registered=1&email=${encodeURIComponent(email.trim())}`);
       } else {
         toast.error(data?.error?.message ?? "Registration failed");
       }

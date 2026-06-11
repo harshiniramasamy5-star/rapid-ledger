@@ -35,7 +35,7 @@ function VerifyContent() {
   }
 
   useEffect(() => {
-    if (!token) { setState("error"); setMessage("No verification token found."); return }
+    if (!token) { setState("error"); setMessage("We've sent a verification link to your inbox. Click it to activate your account."); return }
     fetch(`${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001"}/auth/verify-email?token=${token}`)
       .then(r => r.json())
       .then(d => {
