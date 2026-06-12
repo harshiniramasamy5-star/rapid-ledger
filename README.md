@@ -1,6 +1,6 @@
 ![CI](https://github.com/harshiniramasamy5-star/rapid-ledger/actions/workflows/ci.yml/badge.svg)
 ![TypeScript](https://img.shields.io/badge/TypeScript-strict%20%E2%9C%93-3178C6?logo=typescript&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-118%20passing-brightgreen?logo=vitest)
+![Tests](https://img.shields.io/badge/tests-101%20passing-brightgreen?logo=vitest)
 ![Railway](https://img.shields.io/badge/Railway-deployed-7B2FBE?logo=railway&logoColor=white)
 ![Vercel](https://img.shields.io/badge/Vercel-live-000000?logo=vercel&logoColor=white)
 ![Prisma](https://img.shields.io/badge/Prisma-ORM-2D3748?logo=prisma&logoColor=white)
@@ -12,15 +12,7 @@
 
 # ⚖️ RAPID Ledger
 
-## 🌐 Live Links
-
-| | URL |
-|---|---|
-| **App** | https://rapid-ledger.vercel.app |
-| **Docs** | https://complyance-e81c9706.mintlify.app |
-| **API** | https://rapid-ledger-production.up.railway.app |
-
-## *Decision governance without compromise.*
+### *Decision governance without compromise.*
 
 A full-stack decision governance platform implementing the **RAPID framework** — structured accountability for high-stakes decisions with immutable audit trails, role-based access control, and compliance-grade record keeping.
 
@@ -568,9 +560,9 @@ cd apps/api && npx eslint
 |---|---|---|---|
 | API integration tests | Vitest | 80 ✅ | Auth, CRUD, RBAC, workflow, immutability |
 | RBAC permission tests | Vitest | 44 ✅ | All role × permission combinations |
-| Frontend component tests | Jest + RTL | 38 ✅ | LoginPage, ApprovalsPage — render, validation, routing, actions, toasts |
+| Frontend component tests | Jest + RTL | 9 ✅ | LoginPage — render, validation, routing, toasts |
 | E2E workflow tests | Playwright | 12 ✅ | Login, navigation, RBAC gates, adversarial |
-| **Total** | | **130 ✅** | |
+| **Total** | | **101 ✅** | |
 
 ### CI Pipeline
 
@@ -580,7 +572,7 @@ graph LR
     CI --> MIGRATE["prisma migrate\ndeploy"]
     MIGRATE --> SEED["prisma db\nseed"]
     SEED --> VITEST["Vitest\n80 tests"]
-    SEED --> JEST["Jest\n38 tests"]
+    SEED --> JEST["Jest\n9 tests"]
     VITEST --> TSC["tsc --noEmit\nboth apps"]
     JEST --> TSC
     TSC --> LINT["ESLint\n0 errors"]
@@ -728,7 +720,7 @@ All accounts use password: **`password123`**
 
 These are deliberate architectural trade-offs made for development velocity, documented here for full transparency:
 
-- **JWT Storage**: Tokens are stored in `httpOnly` cookies with `SameSite=Lax` and the `Secure` flag on HTTPS. This prevents XSS token theft.
+- **JWT Storage**: Tokens are stored in `localStorage` for development simplicity. Production hardening would use `httpOnly SameSite=Strict` cookies to prevent XSS token theft.
 
 - **Rate Limiter**: The in-memory rate limiter resets on server restart. On Railway free tier, cold starts reset brute-force protection. A Redis-backed limiter (e.g. `rate-limiter-flexible`) would be required for production.
 
@@ -753,7 +745,7 @@ Built as a first-year internship project demonstrating:
 - Domain-driven architecture (decision governance)
 - Compliance-grade engineering (immutable records, audit trails)
 - Production deployment (Railway + Vercel + GitHub Actions CI)
-- Comprehensive test coverage (130 tests across 3 frameworks)
+- Comprehensive test coverage (101 tests across 3 frameworks)
 
 ---
 
