@@ -2,44 +2,37 @@
 node_modules/
 **/node_modules/
 
-# Database
-*.db
-*.db-journal
-
-# Environment
+# Environment (keep .example files)
 .env
-**/.env
 .env.local
+**/.env
 **/.env.local
+!**/.env.example
 
 # Build outputs
 .next/
+**/.next/
 dist/
 build/
 
-# Vite/Vitest cache
+# Caches
 **/.vite/
+
+# Test artifacts
+**/playwright-report/
+**/test-results/
+
+# Database
+*.db
+*.db-journal
+prisma/dev.db
 
 # OS
 .DS_Store
 
-# Prisma generated (keep schema, ignore generated client)
-apps/api/node_modules/
-.vercel
-.env*.local
-apps/api/.env
-
-!apps/api/.env.example
-!apps/web/.env.example
-apps/web/test-results/
-
-# Playwright
-apps/web/playwright-report/
-apps/web/test-results/
-prisma/dev.db
-.env
+# AI assistant files
 AGENTS.md
 CLAUDE.md
-playwright-report/
-test-results/
-apps/web/.next/
+
+# Vercel
+.vercel
