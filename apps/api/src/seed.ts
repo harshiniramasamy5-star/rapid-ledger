@@ -1,11 +1,10 @@
 import { PrismaClient } from "@prisma/client";
+import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
 
-
-
 async function main() {
-  console.log("Production seed — ensuring org exists...");
+  console.log("Seeding org and test users...");
 
   await prisma.organization.upsert({
     where: { id: "cmq2vwnsj0008j8lfjqanx4dz" },
@@ -18,9 +17,39 @@ async function main() {
       updatedAt: new Date(),
     },
   });
-
   console.log("✓ Complyance org ensured");
-  console.log("Seed complete. No demo users or documents created.");
+
+  const hash = await bcrypt.hash("password123", 10);
+
+  const users = [
+    { email: "admin@rapid.com",    name: "Demo Admin",    role: "admin"    as const },
+    { email: "creator@rapid.com",  name: "Demo Creator",  role: "creator"  as const },
+    { email: "approver@rapid.com", name: "Demo Approver", role: "approver" as const },
+  ];
+
+  for (const u of users) {
+    await prisma.user.upsert({
+      where: { email: u.email },
+      update: {
+        password: hash,
+        emailVerified: true,
+        totpEnabled: false,
+        totpSecret: null,
+      },
+      create: {
+        email: u.email,
+        name: u.name,
+        password: hash,
+        role: u.role,
+        emailVerified: true,
+        totpEnabled: false,
+        orgId: "cmq2vwnsj0008j8lfjqanx4dz",
+      },
+    });
+    console.log("✓ User ensured:", u.email);
+  }
+
+  console.log("Seed complete.");
 }
 
 main()
