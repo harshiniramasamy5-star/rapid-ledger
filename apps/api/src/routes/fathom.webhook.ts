@@ -194,7 +194,7 @@ export const fathomWebhookRoutes = new Elysia({ prefix: '/webhooks' })
 
     // Extract attendees from transcript speakers if not provided directly
     const rawAttendees = call.attendees ?? call.calendar_invitees ?? []
-    let attendees: Array<{ email: string; name: string }> = Array.isArray(rawAttendees) && rawAttendees.length > 0
+    const attendees: Array<{ email: string; name: string }> = Array.isArray(rawAttendees) && rawAttendees.length > 0
       ? rawAttendees.map((a: any) => ({ email: a.email ?? a.matched_calendar_invitee_email ?? '', name: a.name ?? a.display_name ?? '' })).filter((a: any) => a.email)
       : []
 
