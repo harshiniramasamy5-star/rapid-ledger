@@ -75,7 +75,7 @@ export default function OnboardingPage() {
     <div className="min-h-screen bg-slate-50 flex items-center justify-center">
       <div className="text-center space-y-3">
         <div className="text-5xl">🎉</div>
-        <p className="text-xl font-bold text-slate-900">You're all set!</p>
+        <p className="text-xl font-bold text-slate-900">You&apos;re all set!</p>
         <p className="text-sm text-slate-500">Redirecting to your dashboard…</p>
       </div>
     </div>
@@ -124,7 +124,7 @@ export default function OnboardingPage() {
         </Card>
 
         <p className="text-center text-xs text-slate-400">
-          You'll be set as the organisation admin. Invite your team from the dashboard.
+          You&apos;ll be set as the organisation admin. Invite your team from the dashboard.
         </p>
       </div>
     </div>
