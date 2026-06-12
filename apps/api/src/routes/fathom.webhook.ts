@@ -60,7 +60,6 @@ No explanation. No markdown. Only JSON.`
     for (const [email, role] of Object.entries(parsed)) {
       result[email] = valid.includes(role as string) ? (role as string) : 'input'
     }
-    console.log('[Fathom Webhook] AI role assignments:', result)
     return result
   } catch (e) {
     console.error('[Fathom Webhook] Groq role detection failed:', e)
@@ -119,7 +118,6 @@ No explanation. No markdown. Only JSON.`
       owners:    Array.isArray(parsed.owners)     ? parsed.owners    : [],
       deadlines: Array.isArray(parsed.deadlines)  ? parsed.deadlines : [],
     }
-    console.log('[Fathom Webhook] AI structured extraction:', JSON.stringify(result))
     return result
   } catch (e) {
     console.error('[Fathom Webhook] Groq decision extraction failed:', e)
@@ -172,7 +170,6 @@ export const fathomWebhookRoutes = new Elysia({ prefix: '/webhooks' })
     catch { set.status = 400; return { error: 'Invalid JSON' } }
 
     // DEBUG: log full payload to diagnose Fathom field names
-    console.log('[Fathom Webhook] RAW PAYLOAD:', JSON.stringify(payload).slice(0, 2000))
 
     const eventType = payload.event ?? payload.event_type ?? payload.type ?? ''
     if (!['call.completed', 'transcript', 'recording.completed', 'call_ended', 'meeting_content_ready'].includes(eventType) && eventType !== '') {

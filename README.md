@@ -12,13 +12,11 @@
 
 # ⚖️ RAPID Ledger
 
-#
 ## 🌐 Live Links
 
 | | URL |
 |---|---|
 | **App** | https://rapid-ledger.vercel.app |
-
 | **Docs** | https://complyance-e81c9706.mintlify.app |
 | **API** | https://rapid-ledger-production.up.railway.app |
 
