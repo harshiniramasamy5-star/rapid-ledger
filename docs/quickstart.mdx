@@ -40,7 +40,7 @@ NEXT_PUBLIC_API_URL="http://localhost:3001/api"
 ```bash
 cd apps/api
 npx prisma migrate deploy --schema=../../prisma/schema.prisma
-node ../../prisma/seed.js
+npm run db:seed   # run from repo root
 ```
 
 ## 4. Start Dev Servers

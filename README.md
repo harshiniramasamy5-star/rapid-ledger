@@ -174,7 +174,7 @@ rapid-ledger/
 ├── prisma/
 │   ├── schema.prisma          # Single source of truth
 │   ├── migrations/            # 11 versioned migrations
-│   └── seed.js                # Demo data seeder
+│   └── schema.prisma          # Prisma schema
 └── docs/                      # PRD, HLD, LLD, GHERKIN
 ```
 
@@ -516,7 +516,7 @@ npx prisma migrate deploy --schema=prisma/schema.prisma
 npx prisma generate --schema=prisma/schema.prisma
 
 # Seed demo data
-cd prisma && node seed.js
+npm run db:seed   # from repo root
 ```
 
 ### 5. Run the application
@@ -631,7 +631,7 @@ packages/
 prisma/
 ├── schema.prisma                      # Single source of truth
 ├── migrations/                        # 11 versioned migrations
-└── seed.js                            # Demo data
+└── (seed lives at apps/api/src/seed.ts)
 
 docs/
 ├── PRD.md                             # Product Requirements
