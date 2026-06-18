@@ -56,7 +56,6 @@ Generated: 2026-06-06
 | API | Railway | https://rapid-ledger-production.up.railway.app |
 | Database | Railway PostgreSQL | kodama.proxy.rlwy.net:58012 |
 | Frontend | Vercel | https://rapid-ledger.vercel.app |
-| Portal | Vercel | apps/portal/index.html |
 
 ### Environment Variables (Railway)
 - DATABASE_URL
