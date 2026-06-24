@@ -290,7 +290,7 @@ curl -X DELETE "https://rapid-ledger-production.up.railway.app/api/documents/clx
 
 ## Submit for Review
 
-Submit a `draft` document for review. Before transitioning the document to `submitted`, the validation engine runs a set of completeness checks.
+Submit a `draft` document for review. Before transitioning the document, the API validates that the document is complete and correctly structured.
 
 **POST** `/api/documents/:id/submit`
 
@@ -300,11 +300,11 @@ Submit a `draft` document for review. Before transitioning the document to `subm
 
 **Validation rules enforced at submission:**
 
-1. `title`, `decisionSummary`, `businessContext`, `problemStatement`, and `proposedDecision` must all be non-empty.
-2. At least one user must be assigned to the **D** (Decide) role.
-3. At least one user must be assigned to the **R** (Recommend) role.
-4. At least one user must be assigned to the **P** (Perform) role.
-5. `riskLevel` must be set.
+1. Exactly one user must be assigned to the **D** (Decide) role.
+2. At least one user must be assigned to the **R** (Recommend) role.
+3. At least one user must be assigned to the **P** (Perform) role.
+4. If `riskLevel` is `high` or `critical`, at least one user must be assigned to the **A** (Agree) role.
+5. If `complianceImpact` is `true`, at least one piece of evidence must be attached.
 
 ```bash
 curl -X POST "https://rapid-ledger-production.up.railway.app/api/documents/clx4k2mn0000008l5hgqf1a2b/submit" \
@@ -320,6 +320,8 @@ curl -X POST "https://rapid-ledger-production.up.railway.app/api/documents/clx4k
   "updatedAt": "2024-06-10T09:15:00.000Z"
 }
 ```
+
+If `riskLevel` is `high` or `critical` and an **A** role is assigned, the document transitions directly to `awaiting_agreement` instead of `submitted`.
 
 **Response — 400 Bad Request** (validation failure)
 
@@ -345,6 +347,10 @@ The user assigned to the **R** (Recommend) role provides their formal recommenda
 
 **POST** `/api/documents/:id/recommend`
 
+<ParamField body="notes" type="string" required>
+  The Recommender's written recommendation.
+</ParamField>
+
 ```bash
 curl -X POST "https://rapid-ledger-production.up.railway.app/api/documents/clx4k2mn0000008l5hgqf1a2b/recommend" \
   -H "Authorization: Bearer $TOKEN" \
@@ -366,9 +372,13 @@ curl -X POST "https://rapid-ledger-production.up.railway.app/api/documents/clx4k
 
 ### Approve
 
-An Approver (user with the **A** role or Admin) formally agrees to the decision.
+The user assigned to the **A** (Agree) role formally agrees to the decision.
 
 **POST** `/api/documents/:id/approve`
+
+<ParamField body="notes" type="string" required>
+  The Approver's written agreement notes.
+</ParamField>
 
 ```bash
 curl -X POST "https://rapid-ledger-production.up.railway.app/api/documents/clx4k2mn0000008l5hgqf1a2b/approve" \
@@ -391,9 +401,13 @@ curl -X POST "https://rapid-ledger-production.up.railway.app/api/documents/clx4k
 
 ### Reject
 
-An Approver or Admin rejects the document, returning it to the creator with a reason.
+An Approver rejects the document, returning it to the creator with a written reason.
 
 **POST** `/api/documents/:id/reject`
+
+<ParamField body="notes" type="string" required>
+  The reason for rejection. The creator will see this text when the document returns to them.
+</ParamField>
 
 ```bash
 curl -X POST "https://rapid-ledger-production.up.railway.app/api/documents/clx4k2mn0000008l5hgqf1a2b/reject" \
@@ -416,12 +430,12 @@ curl -X POST "https://rapid-ledger-production.up.railway.app/api/documents/clx4k
 
 ### Finalize
 
-An Admin finalizes an `approved` document. Finalization is an atomic operation — it simultaneously locks the document and creates a permanent, immutable entry in the compliance ledger.
+The Admin who holds the **D** (Decide) role finalizes an `approved` document. Finalization is an atomic operation — it simultaneously locks the document and creates a permanent, immutable entry in the compliance ledger in a single transaction.
 
 **POST** `/api/documents/:id/finalize`
 
 <Warning>
-  Finalization is irreversible. Once finalized, the document cannot be edited. To make further changes, use the [Versioning](#versioning) endpoint to create a new draft version.
+  Only the Admin assigned to the **D** (Decide) role can call this endpoint. Finalization is irreversible. Once finalized, the document cannot be edited. To make further changes, use the [Versioning](#versioning) endpoint to create a new draft version.
 </Warning>
 
 ```bash
@@ -444,15 +458,13 @@ curl -X POST "https://rapid-ledger-production.up.railway.app/api/documents/clx4k
 
 ### Complete Execution
 
-The user assigned to the **P** (Perform) role marks the decision as executed.
+The user assigned to the **P** (Perform) role marks the decision as fully executed after carrying out the finalized action. Only the Performer can call this endpoint.
 
 **POST** `/api/documents/:id/complete`
 
 ```bash
 curl -X POST "https://rapid-ledger-production.up.railway.app/api/documents/clx4k2mn0000008l5hgqf1a2b/complete" \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{ "notes": "Migration completed successfully on 2024-09-28. Zero downtime achieved." }'
+  -H "Authorization: Bearer $TOKEN"
 ```
 
 **Response — 200 OK**
@@ -477,7 +489,7 @@ Assign a RAPID role to a user on a specific document. Each role represents a dis
 | Agree | `A` | Formal approver who must sign off before finalization |
 | Perform | `P` | Executes the decision after it is finalized |
 | Input | `I` | Provides input or data without accountability for the outcome |
-| Decide | `D` | The final decision-maker |
+| Decide | `D` | The final decision-maker; must be an Admin |
 
 **POST** `/api/documents/:id/roles`
 

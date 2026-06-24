@@ -168,6 +168,6 @@ RAPID Ledger uses a structured role model that maps to the RAPID decision framew
 
 ## Multi-Tenancy
 
-Every API call you make is automatically scoped to your organisation. RAPID Ledger extracts your organisation context from the JWT in your `Authorization` header — you never need to pass an org ID explicitly.
+Every API call you make is automatically scoped to your organisation — you never need to pass an organisation ID explicitly. RAPID Ledger reads your organisation context from the token in your `Authorization` header.
 
 Cross-organisation data access is not possible. A user authenticated in Organisation A cannot read, write, or enumerate any resource belonging to Organisation B, regardless of role. If you manage multiple organisations, each requires its own set of credentials and API tokens.

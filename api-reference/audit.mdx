@@ -107,14 +107,16 @@ Every audit log entry has an `action` field drawn from the following set of valu
 | `document_created` | New decision document created |
 | `document_updated` | Document fields updated |
 | `document_submitted` | Document submitted for review |
-| `document_approved` | Document approved by an Approver |
-| `document_rejected` | Document rejected by an Approver or Admin |
+| `document_recommended` | Recommender provided their formal recommendation |
+| `document_approved` | Document approved by a user with the **A** (Agree) role |
+| `document_rejected` | Document rejected by a user with the **A** (Agree) role |
 | `needs_changes_requested` | Changes requested on a document |
-| `document_finalized` | Document finalized — a ledger entry was created |
+| `document_finalized` | Document finalized by the Admin (Decide role) — a ledger entry was created |
+| `document_completed` | Performer marked execution as complete |
 | `document_versioned` | A new version was created from a finalized document |
 | `role_assigned` | A RAPID role was assigned to a user on a document |
+| `role_removed` | A RAPID role assignment was removed from a document |
 | `evidence_added` | An evidence item was attached to a document |
-| `execution_complete` | The Performer marked execution as complete |
 | `ledger_entry_created` | An immutable ledger entry was created at finalization |
 | `report_generated` | A CSV or PDF export was generated |
 
@@ -157,7 +159,7 @@ Every audit log entry has an `action` field drawn from the following set of valu
 ---
 
 <Note>
-  Admins, Creators, and Approvers can read audit logs. Performers and Viewers do not have access to the audit log endpoint and will receive a **403 Forbidden** response.
+  Admins, Creators, and Approvers can read audit logs. Recommenders, Performers, and Viewers do not have access to this endpoint and will receive a **403 Forbidden** response.
 </Note>
 
 <Tip>

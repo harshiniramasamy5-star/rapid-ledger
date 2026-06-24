@@ -1,7 +1,7 @@
 ---
-title: "API Error Codes and HTTP Status Reference"
+title: "RAPID Ledger API Error Codes and HTTP Status Guide"
 sidebarTitle: "Errors"
-description: "All RAPID Ledger API errors follow a consistent JSON structure with a machine-readable error code, human-readable message, and optional field-level details."
+description: "Every RAPID Ledger API error returns a consistent JSON envelope with a machine-readable code, a human-readable message, and optional field-level details."
 ---
 
 RAPID Ledger uses a consistent error envelope across every endpoint. Whether you receive a `400` from a bad request body or a `503` from an infrastructure blip, the response will always be a JSON object with an `error` key. Inside that key you will find a machine-readable `code` you can switch on in your error-handling logic, a human-readable `message` suitable for logging, and an optional `details` array that pinpoints exactly which fields failed when the error is `VALIDATION_ERROR`. Building your error handling around `error.code` — rather than HTTP status alone — gives you precise control, because several distinct conditions share the same HTTP status code.

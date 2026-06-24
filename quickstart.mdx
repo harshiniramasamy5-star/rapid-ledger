@@ -1,7 +1,7 @@
 ---
-title: "Get Started with RAPID Ledger"
+title: "Quickstart: Build Your First Decision in RAPID Ledger"
 sidebarTitle: "Quickstart"
-description: "Create your first decision document, assign RAPID roles, and walk a decision to finalization in under 10 minutes."
+description: "Authenticate with the RAPID Ledger API, create a decision document, assign RAPID roles, and walk it through to a finalized ledger entry."
 ---
 
 This quickstart walks you through the core RAPID Ledger workflow end-to-end: authenticating, creating a decision document, assigning roles, attaching evidence, and advancing the document all the way to a finalized, immutable ledger entry. You can follow along using the live demo environment or against your own organisation's instance. All examples use the live API directly — no SDK or frontend required.
@@ -110,8 +110,32 @@ This quickstart walks you through the core RAPID Ledger workflow end-to-end: aut
       }'
     ```
 
+    Assign the Decide owner (exactly one is required on every document):
+
+    ```bash
+    curl -s -X POST https://rapid-ledger-production.up.railway.app/api/documents/doc_abc123/roles \
+      -H "Content-Type: application/json" \
+      -H "Authorization: Bearer $TOKEN" \
+      -d '{
+        "userId": "usr_admin",
+        "role": "Decide"
+      }'
+    ```
+
+    Assign an Approver (required because `riskLevel` is `high`):
+
+    ```bash
+    curl -s -X POST https://rapid-ledger-production.up.railway.app/api/documents/doc_abc123/roles \
+      -H "Content-Type: application/json" \
+      -H "Authorization: Bearer $TOKEN" \
+      -d '{
+        "userId": "usr_approver",
+        "role": "Agree"
+      }'
+    ```
+
     <Tip>
-      Because this document has a `riskLevel` of `high`, you must also assign at least one **Agree (A)** role. Without it, the document will be blocked at submission and will not advance to `awaiting_agreement`. Assign an Approver the same way, using `"role": "Agree"` and the appropriate `userId`.
+      Every document must have **exactly one Decide (D)** owner — assigning more than one is rejected. For high or critical risk documents, an **Agree (A)** role is also mandatory before submission will succeed.
     </Tip>
   </Step>
 

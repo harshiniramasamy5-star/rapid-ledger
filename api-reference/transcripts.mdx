@@ -4,18 +4,18 @@ sidebarTitle: "Transcripts"
 description: "Submit a Fathom Video meeting transcript to RAPID Ledger's AI pipeline. Automatically extract decisions, assign RAPID roles, and create linked decision documents."
 ---
 
-The Transcripts API processes meeting transcripts using Groq's `llama-3.3-70b` model to automatically extract decisions and assign RAPID roles. Rather than manually creating a document after every meeting, you submit the raw transcript and the AI pipeline produces a structured draft document with role assignments pre-populated. Only transcript sections tagged with the `[RAPID]` prefix are used for extraction — everything else is ignored.
+The Transcripts API processes meeting transcripts using an AI model to automatically extract decisions and assign RAPID roles. Rather than manually creating a document after every meeting, you submit the raw transcript and the pipeline produces a structured draft document with role assignments pre-populated. Only transcript sections tagged with the `[RAPID]` prefix are used for extraction — everything else is ignored.
 
 ---
 
 ## Submit a Transcript
 
-Submit a meeting transcript for AI processing. The pipeline parses `[RAPID]`-tagged sections, identifies the decision being made, infers RAPID role assignments from participant names mentioned in those sections, and creates a new document in `draft` status.
+Submit a meeting transcript for AI processing. The pipeline parses `[RAPID]`-tagged sections, identifies the decision being made, infers RAPID role assignments from participant names mentioned in those sections, and creates a new document of type `TRANSCRIPT` in `draft` status.
 
 **POST** `/api/transcripts`
 
 <ParamField body="transcript" type="string" required>
-  The full meeting transcript text. The AI extraction engine only processes sections prefixed with `[RAPID]`, so include as much of the raw transcript as you like.
+  The full meeting transcript text. The AI extraction engine only processes sections prefixed with `[RAPID]`, so you can include the complete raw transcript.
 </ParamField>
 
 <ParamField body="parentDocumentId" type="string">
@@ -126,14 +126,14 @@ X-Fathom-Signature: sha256=3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9
 ```
 
 <Note>
-  Contact your organisation Admin to obtain the webhook secret. You will need it when configuring the RAPID Ledger webhook in your Fathom Video settings. The secret is used to generate the HMAC-SHA256 signature that RAPID Ledger validates on every inbound request.
+  Contact your organisation Admin to obtain the webhook secret. You will need it when configuring the RAPID Ledger webhook in your Fathom Video settings. The secret is used to generate and verify the HMAC-SHA256 signature that RAPID Ledger validates on every inbound request.
 </Note>
 
 ---
 
 ## Tagging Conventions
 
-The AI extraction engine processes only the parts of a transcript that are prefixed with `[RAPID]`. This lets you include full meeting transcripts without the irrelevant portions affecting the extracted decision.
+The AI extraction engine processes only the parts of a transcript that are prefixed with `[RAPID]`. This lets you include full meeting transcripts without irrelevant portions affecting the extracted decision.
 
 **Rules:**
 - Tag each line or paragraph that contains decision-relevant content with `[RAPID]` at the start.

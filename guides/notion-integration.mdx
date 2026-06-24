@@ -8,14 +8,14 @@ When a document is approved in RAPID Ledger, the Notion integration automaticall
 
 ## Prerequisites
 
-Before you can use the Notion integration, your organisation Admin needs to complete a one-time configuration:
+Before you can use the Notion integration, your organisation Admin needs to complete a one-time configuration in RAPID Ledger's integration settings:
 
 <CardGroup cols={1}>
   <Card title="Notion API Key" icon="key">
-    Create an **internal integration** in your Notion workspace at [notion.so/my-integrations](https://www.notion.so/my-integrations) and copy the secret token. Your Admin adds this as `NOTION_API_KEY` in RAPID Ledger's environment configuration.
+    Create an **internal integration** in your Notion workspace at [notion.so/my-integrations](https://www.notion.so/my-integrations) and copy the secret token. Your Admin enters this token in RAPID Ledger's Notion integration settings.
   </Card>
   <Card title="Notion Database ID" icon="database">
-    Share your target Notion database with the integration you created, then copy the database ID from the database URL. Your Admin adds this as `NOTION_DATABASE_ID` in RAPID Ledger's environment configuration.
+    Share your target Notion database with the integration you created, then copy the database ID from the database URL. Your Admin enters this ID in RAPID Ledger's Notion integration settings.
   </Card>
   <Card title="Admin Access to RAPID Ledger" icon="shield-check">
     Only an Admin can configure integration credentials. If you don't have Admin access, ask your organisation Admin to complete the setup steps above.
@@ -51,7 +51,7 @@ The Notion sync fires **automatically** every time a document transitions to the
 
 **First approval:** RAPID Ledger creates a new page in your Notion database and stores the resulting Notion page ID against the document record.
 
-**Subsequent approvals:** If the document already has a `notionPageId` stored (meaning it was synced before), RAPID Ledger updates the existing Notion page with the latest property values instead of creating a new one. This keeps your Notion database clean and avoids duplicate entries across document versions.
+**Subsequent approvals:** If the document was previously synced to Notion, RAPID Ledger updates the existing Notion page with the latest property values instead of creating a new one. This keeps your Notion database clean and avoids duplicate entries across document versions.
 
 ## Error Handling
 
@@ -61,7 +61,7 @@ Notion sync errors are designed to be **non-blocking**. Your document approval a
   The following error conditions are handled gracefully — they are logged to the RAPID Ledger audit trail but will never prevent a document from being approved:
 
   - **429 Rate Limited** — Notion's API rate limit was hit. The sync attempt is logged; retry by re-approving the document or asking your Admin to inspect the audit log.
-  - **401 Unauthorised** — The configured `NOTION_API_KEY` is invalid or has been revoked. Contact your Admin to update the API key.
+  - **401 Unauthorised** — The configured Notion API key is invalid or has been revoked. Contact your Admin to update the integration credentials in RAPID Ledger's settings.
   - **Network Timeout** — The request to Notion's API timed out. The sync attempt is logged and the document remains approved in RAPID Ledger.
 
   To diagnose a failed sync, your Admin can query the audit log and filter by `entityId` to see the exact error recorded at the time of approval.

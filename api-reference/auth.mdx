@@ -1,7 +1,7 @@
 ---
-title: "Authentication API — Login, Refresh, and MFA"
+title: "RAPID Ledger Authentication API: Login, Refresh & MFA"
 sidebarTitle: "Authentication"
-description: "Authenticate with RAPID Ledger to receive a JWT token. All API requests require a Bearer token in the Authorization header."
+description: "Learn how to authenticate with RAPID Ledger, obtain a JWT Bearer token, refresh sessions, and complete TOTP multi-factor authentication."
 ---
 
 RAPID Ledger uses JWT-based authentication. You begin by exchanging your email and password for a signed token at `/api/auth/login`. Every subsequent request must include that token in the `Authorization` header as `Bearer <token>`. Tokens are valid for 24 hours — use `/api/auth/refresh` to obtain a new one before yours expires. If your organization has TOTP-based MFA enabled, login is a two-step process: the initial login call returns a challenge, and you complete authentication by submitting your one-time code to `/api/auth/totp/validate`.
@@ -134,7 +134,7 @@ curl -X POST https://rapid-ledger-production.up.railway.app/api/auth/refresh \
 ### 200 — Success
 
 <ResponseField name="token" type="string">
-  A new signed JWT. The previous token is invalidated immediately upon refresh.
+  A new signed JWT. Pass it as `Authorization: Bearer <token>` in all subsequent requests.
 </ResponseField>
 
 ```json
@@ -261,4 +261,4 @@ curl https://rapid-ledger-production.up.railway.app/api/documents \
   -H "Authorization: Bearer $TOKEN"
 ```
 
-All endpoints except `POST /api/auth/login` and `GET /api/health` require this header.
+All endpoints except `POST /api/auth/login`, `POST /api/auth/refresh`, and `GET /api/health` require this header.

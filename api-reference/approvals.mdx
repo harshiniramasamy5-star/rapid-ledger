@@ -4,13 +4,13 @@ sidebarTitle: "Approvals"
 description: "Retrieve your pending approval queue in RAPID Ledger. Approve, reject, or request changes on high-risk decision documents assigned to you."
 ---
 
-The Approvals API gives Approvers a consolidated view of every document currently awaiting their formal sign-off. This queue applies specifically to high-risk and critical-risk documents that require an **Agree (A)** role sign-off before an Admin can finalize them. Use this endpoint to build dashboards, notification systems, or automated workflow triggers based on pending actions.
+The Approvals API gives users assigned to the **A** (Agree) role a consolidated view of every document currently awaiting their formal sign-off. This queue surfaces documents in `awaiting_agreement` status where you hold the **A** role — meaning high-risk and critical-risk decisions that require agreement before an Admin can finalize them. Use this endpoint to build dashboards, notification systems, or automated workflow triggers based on pending actions.
 
 ---
 
 ## Get Your Pending Approvals
 
-Returns all approval items currently assigned to the authenticated user that have a `pending` status. Each item includes a summary of the associated decision document so you can assess and prioritize without making additional requests.
+Returns all approval records assigned to the authenticated user where the document is in `awaiting_agreement` status and the user holds the **A** (Agree) role. Each item includes a summary of the associated decision document so you can assess and prioritize without making additional requests.
 
 **GET** `/api/approvals/my`
 
@@ -32,7 +32,7 @@ curl "https://rapid-ledger-production.up.railway.app/api/approvals/my" \
       "title": "Decommission legacy payment processor",
       "riskLevel": "critical",
       "complianceImpact": true,
-      "decisionSummary": "Retire the legacy Stripe integration in favor of the new provider."
+      "decisionSummary": "Retire the legacy Stripe integration in favour of the new provider."
     }
   },
   {
@@ -55,7 +55,7 @@ curl "https://rapid-ledger-production.up.railway.app/api/approvals/my" \
 </ResponseField>
 
 <ResponseField name="status" type="string">
-  The current approval status. Will be `pending` for all items in this queue.
+  The current approval status. All items returned by this endpoint have a `pending` status.
 </ResponseField>
 
 <ResponseField name="document.id" type="string">
@@ -82,15 +82,19 @@ curl "https://rapid-ledger-production.up.railway.app/api/approvals/my" \
   A concise summary of the decision being approved.
 </ResponseField>
 
+<Note>
+  Only users with the **A** (Agree) role assigned on one or more documents will receive results from this endpoint. Documents that are not in `awaiting_agreement` status — or where you are not assigned the **A** role — will not appear.
+</Note>
+
 ---
 
 ## Acting on Approvals
 
-Once you have reviewed a document, use the [Documents API](/api-reference/documents) to record your decision. Every action requires you to reference the document ID from the approval queue response above.
+There is no separate approvals action endpoint. Once you have reviewed a document, use the [Documents API](/api-reference/documents) to record your decision. Reference the `document.id` from the approval queue response above.
 
 ### Approve a Document
 
-Formally agree to the decision. The document transitions to `approved`, and an Admin can subsequently finalize it.
+Formally agree to the decision. The document transitions to `approved`, and the Admin holding the **D** (Decide) role can subsequently finalize it.
 
 **POST** `/api/documents/:id/approve`
 
@@ -140,7 +144,7 @@ curl -X POST "https://rapid-ledger-production.up.railway.app/api/documents/clx4k
 
 ### Provide a Recommendation
 
-Users assigned to the **R** (Recommend) role use this endpoint to provide their formal recommendation before the document moves to the agreement stage.
+Users assigned to the **R** (Recommend) role use this endpoint to provide their formal recommendation before the document moves to the agreement stage. This is also a Documents API endpoint — the recommendation queue is managed through `GET /api/approvals/my` only for **A** role holders.
 
 **POST** `/api/documents/:id/recommend`
 
@@ -164,9 +168,9 @@ curl -X POST "https://rapid-ledger-production.up.railway.app/api/documents/clx4k
 ---
 
 <Note>
-  Only users with the **Approver** system role or **Admin** role can approve or reject documents. If you attempt to approve a document without the correct role assignment, you will receive a **403 Forbidden** response.
+  Only users with the **A** (Agree) role assigned on the document can approve or reject it. If you attempt to approve a document without the **A** role assignment, you will receive a **403 Forbidden** response.
 </Note>
 
 <Tip>
-  Poll `GET /api/approvals/my` on a schedule or after receiving an in-app notification to keep your approval queue up to date. Documents approved or rejected will no longer appear in subsequent responses.
+  Poll `GET /api/approvals/my` on a schedule or after receiving an in-app notification to keep your approval queue up to date. Documents you have approved or rejected will no longer appear in subsequent responses.
 </Tip>

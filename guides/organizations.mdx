@@ -8,7 +8,7 @@ RAPID Ledger is a multi-tenant platform — every account belongs to exactly one
 
 ## Inviting Users
 
-Admins create new users by sending a `POST` request to `/api/users`. Each user requires a name, email address, system role, and department. RAPID Ledger will provision the account and, if your org has email notifications configured, send a welcome email to the new user.
+Admins create new users by sending a `POST` request to `/api/users`. Each user requires a name, email address, password, and system role. Department is optional but recommended for filtering and reporting.
 
 ```bash
 curl -X POST https://rapid-ledger-production.up.railway.app/api/users \
@@ -17,6 +17,7 @@ curl -X POST https://rapid-ledger-production.up.railway.app/api/users \
   -d '{
     "name": "Alice Chen",
     "email": "alice@company.com",
+    "password": "secure-initial-password",
     "role": "creator",
     "department": "Engineering"
   }'

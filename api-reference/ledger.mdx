@@ -4,7 +4,7 @@ sidebarTitle: "Ledger"
 description: "Query RAPID Ledger's append-only compliance ledger. Every finalized decision is permanently recorded with its documentCode, version, and finalization details."
 ---
 
-The Ledger API provides read-only access to RAPID Ledger's compliance ledger — the permanent, immutable record of every finalized decision across your organisation. Ledger entries are created automatically and atomically when an Admin finalizes a document. Once written, a ledger entry cannot be modified or removed. The ledger is the authoritative source of truth for audits and compliance reviews.
+The Ledger API provides read-only access to RAPID Ledger's compliance ledger — the permanent, immutable record of every finalized decision across your organisation. Ledger entries are created automatically in a single transaction when an Admin finalizes a document. Once written, a ledger entry cannot be modified or removed. The ledger is the authoritative source of truth for audits and compliance reviews.
 
 ---
 
@@ -106,7 +106,6 @@ curl -G "https://rapid-ledger-production.up.railway.app/api/ledger/export.csv" \
   -H "Authorization: Bearer $TOKEN" \
   --data-urlencode "from=2024-01-01T00:00:00.000Z" \
   --data-urlencode "to=2024-06-30T23:59:59.999Z" \
-  --output-dir . \
   -o ledger.csv
 ```
 

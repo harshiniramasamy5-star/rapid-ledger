@@ -1,10 +1,10 @@
 ---
-title: "Decision Document Lifecycle and Workflow States"
+title: "Document Lifecycle: Workflow States and Finalization"
 sidebarTitle: "Lifecycle"
-description: "Every RAPID document follows a structured workflow from draft through execution. Learn each status, who transitions it, and what happens at finalization."
+description: "RAPID documents move through eight defined states from draft to execution. Learn each status, who triggers transitions, and how finalization works."
 ---
 
-Every decision document in RAPID Ledger moves through a defined sequence of states, from initial creation to final execution. This state machine is not just organizational scaffolding — it is the enforcement mechanism that ensures every stakeholder takes their required action in the right order, and that no step is skipped or bypassed. When a document reaches the `finalized` state, it becomes permanently immutable: a ledger entry is created in an atomic transaction, and neither the document nor its ledger record can ever be edited or deleted. The full history of how your organization arrived at that decision is preserved exactly as it happened.
+Every decision document in RAPID Ledger moves through a defined sequence of states, from initial creation to final execution. This state machine is not just organizational scaffolding — it is the enforcement mechanism that ensures every stakeholder takes their required action in the right order, and that no step is skipped or bypassed. When a document reaches the `finalized` state, it becomes permanently immutable: a ledger entry is created in a single atomic operation, and neither the document nor its ledger record can ever be edited or deleted. The full history of how your organization arrived at that decision is preserved exactly as it happened.
 
 ## Workflow States
 
@@ -13,17 +13,17 @@ The table below describes every possible document status, who is authorized to t
 | Status | Description | Who Can Transition | Next States |
 |---|---|---|---|
 | `draft` | The initial editable state. All document fields can be updated freely. | Creator / Admin | `submitted` |
-| `submitted` | The document has been submitted for review. Editing is locked. The system routes to the appropriate next state based on risk level. | System (on submit) | `awaiting_agreement`, `approved`, `rejected`, `needs_changes` |
+| `submitted` | The document has been submitted for review. Editing is locked. The system routes to the appropriate next state based on risk level. | Creator / Admin (on submit) | `awaiting_agreement`, `approved`, `rejected`, `needs_changes` |
 | `awaiting_agreement` | The document's risk level is `high` or `critical`. The assigned Agree (A) role holder must formally agree before the Decider can act. | Approver | `approved`, `rejected` |
-| `approved` | The Decider (Admin) has made the final call. The document is ready to be finalized and executed. | Admin (Decide) | `finalized`, `rejected` |
-| `rejected` | The document has been sent back and cannot be revised in its current version. A new version must be created to continue. | Admin / Approver | — *(terminal for this version)* |
+| `approved` | The document has cleared all required review checkpoints and is ready to be finalized by the Admin. | Admin (Decide) | `finalized`, `rejected` |
+| `rejected` | The document has been declined and cannot be revised in its current version. A new version must be created to continue. | Admin / Approver | — *(terminal for this version)* |
 | `needs_changes` | The document has been returned to the Creator for edits before resubmission. | Admin / Approver | `draft` |
-| `finalized` | The decision is locked and immutable. A LedgerEntry has been automatically created. The document cannot be edited or deleted. | — *(system-locked)* | `execution_complete` |
+| `finalized` | The decision is locked and immutable. A LedgerEntry has been automatically created. The document cannot be edited or deleted. | Admin (Decide) | `execution_complete` |
 | `execution_complete` | The Performer has carried out the decision and marked it complete. This is the terminal state for a successfully executed decision. | Performer | — *(terminal)* |
 
 ## Standard vs. High-Risk Workflow
 
-The path a document takes through the state machine depends on its `riskLevel`. Low and medium risk documents follow a streamlined path directly to approval. High and critical risk documents include a mandatory agreement checkpoint that must be cleared before the Decider acts.
+The path a document takes through the state machine depends on its `riskLevel`. Low and medium risk documents follow a streamlined path directly to approval and finalization. High and critical risk documents include a mandatory agreement checkpoint that must be cleared before the Admin finalizes.
 
 <Tabs>
   <Tab title="Standard (Low / Medium Risk)">
@@ -37,11 +37,8 @@ The path a document takes through the state machine depends on its `riskLevel`. 
       <Step title="Recommender provides recommendation">
         The assigned Recommend (R) role holder formally submits their recommendation via `POST /api/documents/:id/recommend`. This provides the Decider with the structured proposal and rationale.
       </Step>
-      <Step title="Decider approves">
-        The Admin (Decide owner) reviews the document, the recommendation, and any Input context. They approve the document via `POST /api/documents/:id/approve`, moving it to `approved` status.
-      </Step>
-      <Step title="Finalize the document">
-        The Performer calls `POST /api/documents/:id/finalize`. RAPID Ledger atomically updates the status to `finalized`, creates a LedgerEntry, and writes an audit log entry. The document is now immutable.
+      <Step title="Admin approves and finalizes">
+        The Admin (Decide owner) reviews the document, the recommendation, and any Input context. They approve the document via `POST /api/documents/:id/approve`, moving it to `approved` status. The Admin then finalizes it via `POST /api/documents/:id/finalize`. RAPID Ledger atomically updates the status to `finalized`, creates a LedgerEntry, and writes an audit log entry. The document is now immutable.
       </Step>
       <Step title="Mark execution complete">
         After carrying out the decision, the Performer calls `POST /api/documents/:id/execute`, moving the document to `execution_complete`. The decision lifecycle is fully closed.
@@ -62,11 +59,8 @@ The path a document takes through the state machine depends on its `riskLevel`. 
       <Step title="Approver formally agrees">
         The assigned Agree (A) role holder — a user with the Approver system role — reviews the document and formally agrees via `POST /api/documents/:id/agree`. This moves the document from `awaiting_agreement` to `approved`. The Approver can also reject at this stage, which sends the document to `rejected` status.
       </Step>
-      <Step title="Decider approves">
-        With the Approver's agreement on record, the Admin (Decide owner) makes the final call via `POST /api/documents/:id/approve`. The document moves to `approved` status.
-      </Step>
-      <Step title="Finalize the document">
-        The Performer calls `POST /api/documents/:id/finalize`. RAPID Ledger atomically finalizes the document, creates a LedgerEntry, and writes an audit log entry. The document is now immutable.
+      <Step title="Admin finalizes the document">
+        With the Approver's agreement on record, the Admin (Decide owner) finalizes the document via `POST /api/documents/:id/finalize`. RAPID Ledger atomically updates the status to `finalized`, creates a LedgerEntry, and writes an audit log entry. The document is now immutable.
       </Step>
       <Step title="Mark execution complete">
         After executing the decision, the Performer calls `POST /api/documents/:id/execute` to close the lifecycle at `execution_complete`.
@@ -77,19 +71,19 @@ The path a document takes through the state machine depends on its `riskLevel`. 
 
 ## Finalization and the Immutable Ledger
 
-Finalization is the most consequential event in a document's lifecycle. When the Performer calls `POST /api/documents/:id/finalize`, RAPID Ledger performs the following operations in a single atomic transaction:
+Finalization is the most consequential event in a document's lifecycle. When the Admin calls `POST /api/documents/:id/finalize` in their capacity as the Decide (D) owner, RAPID Ledger performs the following operations in a single atomic operation:
 
 1. **Status update** — The document status is set to `finalized`.
 2. **LedgerEntry creation** — A permanent, tamper-proof LedgerEntry is written capturing the complete state of the document at the moment of finalization, including all role assignments, evidence references, and the full decision content.
-3. **Audit log entry** — A timestamped audit event is recorded identifying the Performer who triggered finalization.
+3. **Audit log entry** — A timestamped audit event is recorded identifying the Admin who triggered finalization.
 
 Because these three operations happen atomically, there is no possible state where a document is marked finalized without a corresponding ledger entry, or vice versa.
 
-Once finalized, a document is permanently locked. Any attempt to edit or delete a finalized document returns `403 Forbidden`. This immutability is not a policy — it is a hard technical constraint enforced at both the API and database layers.
+Once finalized, a document is permanently locked. Any attempt to edit or delete a finalized document returns `403 Forbidden`. This immutability is not a policy — it is a hard technical constraint enforced at the API layer.
 
 If circumstances change and a finalized decision needs to be revisited, you do not modify the original. Instead, you create a new version:
 
-```
+```http
 POST /api/documents/:id/version
 ```
 

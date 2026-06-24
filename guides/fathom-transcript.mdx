@@ -12,13 +12,13 @@ The pipeline runs through five stages every time a transcript is submitted:
 
 1. **Tag filtering** — The transcript text is scanned for lines and sections prefixed with `[RAPID]`. Only tagged content is sent to the AI; the rest of the conversation is ignored. This keeps the AI focused on the decisions your team deliberately flagged.
 
-2. **Dual parallel AI analysis** — Two extractions run simultaneously in parallel:
+2. **Dual parallel AI analysis** — Two extractions run simultaneously:
    - **Role assignment** — The AI maps each attendee's email address to a RAPID role (Decide, Recommend, Approve, Perform, Input, or Delegate) based on context from the tagged sections.
    - **Structured extraction** — The AI pulls out discrete decisions, action items, owners, and deadlines from the tagged content.
 
-3. **Document creation** — A new document of type `TRANSCRIPT` is created in your organisation and linked to the parent document via `parentDocumentId`.
+3. **Document creation** — A new document of type `TRANSCRIPT` is created in your organisation and linked to the parent document you specified.
 
-4. **Role assignment creation** — `RoleAssignment` records are created for every identified participant, associating their email with their assigned RAPID role on the parent document.
+4. **Role assignment** — A role assignment record is created for every identified participant, associating their email with their assigned RAPID role on the parent document.
 
 5. **Audit log entry** — An immutable audit log entry is written recording the transcript source, the Fathom call ID, and all AI-assigned roles, giving you a permanent record of how the document was created.
 
@@ -61,7 +61,7 @@ Rather than pasting transcripts manually, you can configure Fathom Video to deli
 POST https://rapid-ledger-production.up.railway.app/api/webhooks/fathom
 ```
 
-**Security:** Every inbound request from Fathom is validated using an **HMAC-SHA256 signature**. Contact your organisation Admin for the `FATHOM_WEBHOOK_SECRET` value to enter in your Fathom Video webhook configuration. Requests with an invalid or missing signature are rejected with a `401` response.
+**Security:** Every inbound request from Fathom is validated using an **HMAC-SHA256 signature**. Your organisation Admin configures the Fathom webhook secret in RAPID Ledger's integration settings — contact your Admin for the value to enter in your Fathom Video webhook configuration. Requests with an invalid or missing signature are rejected with a `401` response.
 
 **Idempotency:** Each Fathom call has a unique `callId`. RAPID Ledger checks the audit log for this ID before processing. If a transcript with the same `callId` has already been processed, the request is silently ignored — so you'll never end up with duplicate documents from a webhook retry.
 
@@ -71,9 +71,9 @@ When the pipeline completes, you'll find the following in RAPID Ledger:
 
 | Item | Details |
 |---|---|
-| **TRANSCRIPT document** | A new `RapidDocument` with `type: TRANSCRIPT`, linked to your parent document via `parentDocumentId` |
+| **TRANSCRIPT document** | A new document of type `TRANSCRIPT`, linked to the parent document you specified |
 | **Structured content** | Decisions, action items, owners, and deadlines extracted by the AI and stored in the document body |
-| **Role assignments** | One `RoleAssignment` record per identified participant, mapping their email to their RAPID role |
+| **Role assignments** | One role assignment per identified participant, mapping their email to their RAPID role |
 | **Audit log entry** | Records the Fathom call ID, transcript source, AI model used, and all role assignments made |
 
 <Note>

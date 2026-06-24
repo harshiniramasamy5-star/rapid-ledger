@@ -1,16 +1,16 @@
 ---
-title: "Integrations — Notion, Linear, and Fathom Webhooks"
+title: "Integrations — Notion, Linear, and Fathom"
 sidebarTitle: "Integrations"
-description: "Reference for RAPID Ledger's outbound integrations: Notion database sync, Linear issue creation on approval, and Fathom Video transcript webhook ingestion."
+description: "Connect RAPID Ledger to Notion, Linear, and Fathom Video. Sync approved decisions automatically, create Linear issues on approval, and ingest meeting transcripts via webhook."
 ---
 
-RAPID Ledger connects to Notion, Linear, and Fathom Video to sync decisions into the tools your team already uses. Integrations fire automatically on document events — no manual triggers required. Configuration (API keys, secrets, and team identifiers) is managed by your Admin in the application settings; there are no public API endpoints to configure integrations directly.
+RAPID Ledger connects to Notion, Linear, and Fathom Video to sync decisions into the tools your team already uses. Integrations fire automatically on document events — no manual triggers required. Your Admin configures each integration in RAPID Ledger's application settings; there are no public API endpoints to configure integrations directly.
 
 ---
 
 ## Health Check
 
-Use the health endpoint to verify that the RAPID Ledger API is awake and reachable. This endpoint requires no authentication and is safe to call at any time.
+Use the health endpoint to verify that the RAPID Ledger API is reachable. This endpoint requires no authentication and is safe to call at any time.
 
 ```bash
 curl https://rapid-ledger-production.up.railway.app/api/health
@@ -25,7 +25,7 @@ curl https://rapid-ledger-production.up.railway.app/api/health
 ```
 
 <Note>
-  The RAPID Ledger API is hosted on Railway. If you are preparing for a demo or automated test run, call this endpoint first to wake the container and avoid a cold-start delay on your first authenticated request.
+  If you are preparing for a demo or automated test run, call this endpoint first to confirm the API is available before sending authenticated requests.
 </Note>
 
 ---
@@ -34,7 +34,7 @@ curl https://rapid-ledger-production.up.railway.app/api/health
 
 ### How it works
 
-When a document is approved in RAPID Ledger, the Notion integration automatically creates or updates a corresponding page in your configured Notion database. The sync is idempotent: if a page was created for a previous version of the same document (tracked via `notionPageId`), RAPID Ledger updates that existing page rather than creating a duplicate.
+When a document is **approved** in RAPID Ledger, the Notion integration automatically creates or updates a corresponding page in your configured Notion database. The sync is idempotent: if a page was already created for this document (tracked via `notionPageId`), RAPID Ledger updates that existing page rather than creating a duplicate.
 
 ### Mapped properties
 
@@ -63,7 +63,7 @@ Each Notion page receives the following 12 properties from the approved document
 
 ### Setup
 
-Contact your Admin to configure the `NOTION_API_KEY` and `NOTION_DATABASE_ID` environment variables in the application settings. The integration activates automatically once both values are present.
+Your Admin configures the Notion integration in RAPID Ledger application settings by supplying your Notion API key and the target database ID. The integration activates automatically once both values are saved.
 
 ---
 
@@ -71,11 +71,11 @@ Contact your Admin to configure the `NOTION_API_KEY` and `NOTION_DATABASE_ID` en
 
 ### How it works
 
-When a `document.approved` event fires, RAPID Ledger calls the Linear GraphQL API using the `issueCreate` mutation to open a new issue in your configured team. The issue title and description are populated from the approved document's metadata.
+When a document is approved, RAPID Ledger calls the Linear GraphQL API using the `issueCreate` mutation to open a new issue in your configured team. The issue title and description are populated from the approved document's metadata.
 
 ### Retry logic
 
-If the Linear API returns an error, RAPID Ledger retries the request up to **3 times** using exponential backoff:
+If the Linear API returns an error, RAPID Ledger retries the request up to **3 times** using incremental backoff:
 
 | Attempt | Delay before retry |
 |---|---|
@@ -94,13 +94,13 @@ If all retry attempts fail, the error is logged to the audit trail and the appro
 
 ### Setup
 
-Contact your Admin to configure the `LINEAR_API_KEY` and `LINEAR_TEAM_ID` environment variables in the application settings. The integration activates automatically once both values are present.
+Your Admin configures the Linear integration in RAPID Ledger application settings by supplying your Linear API key and target team ID. The integration activates automatically once both values are saved.
 
 ---
 
 ## Fathom Video Webhook
 
-RAPID Ledger can receive meeting transcripts directly from Fathom Video. When Fathom delivers a completed transcript to RAPID Ledger, the platform parses the content and can associate it with the relevant decision document.
+RAPID Ledger can receive meeting transcripts directly from Fathom Video. When Fathom delivers a completed transcript, RAPID Ledger parses the content and associates it with the relevant decision document.
 
 ### Endpoint
 
@@ -108,14 +108,14 @@ RAPID Ledger can receive meeting transcripts directly from Fathom Video. When Fa
 POST https://rapid-ledger-production.up.railway.app/api/webhooks/fathom
 ```
 
-This endpoint is **inbound** — Fathom Video calls it, not your application. You do not need to call it directly.
+This endpoint is **inbound** — Fathom Video calls it, not your application. Configure this URL in your Fathom Video account as the webhook destination (see [Setup](#setup) below).
 
 ### Authentication
 
-Every request from Fathom Video must include a valid HMAC-SHA256 signature in the `X-Fathom-Signature` header. RAPID Ledger recomputes the signature using the `FATHOM_WEBHOOK_SECRET` set by your Admin and rejects any request where the signature does not match.
+Every request from Fathom Video must include a valid HMAC-SHA256 signature in the `X-Fathom-Signature` header. RAPID Ledger recomputes the signature using the webhook secret configured by your Admin and rejects any request where the signature does not match.
 
 <Warning>
-  Configure the webhook secret in your Fathom Video account settings to match the `FATHOM_WEBHOOK_SECRET` value set by your Admin in RAPID Ledger. Requests with an invalid or missing signature return `401 Unauthorized` and are not processed.
+  The webhook secret must match between your Fathom Video account settings and the value your Admin has configured in RAPID Ledger. Requests with an invalid or missing signature return `401 Unauthorized` and are not processed.
 </Warning>
 
 ### Example request
@@ -162,4 +162,8 @@ If RAPID Ledger receives a webhook with a `callId` it has already processed, the
 
 ### Setup
 
-Contact your Admin to configure the `FATHOM_WEBHOOK_SECRET` in application settings and to register the RAPID Ledger webhook URL in your Fathom Video account.
+To activate the Fathom Video integration:
+
+1. Your Admin configures the webhook secret in RAPID Ledger application settings.
+2. In your Fathom Video account, set the webhook destination URL to `https://rapid-ledger-production.up.railway.app/api/webhooks/fathom`.
+3. Copy the webhook secret from Fathom Video and provide it to your Admin to enter in RAPID Ledger settings — both sides must share the same secret for signature validation to pass.

@@ -16,7 +16,7 @@ Additional events and handlers will be added in future releases.
 
 ## Linear Integration
 
-When a document is approved, RAPID Ledger's `WebhookDispatcher` automatically creates a new issue in your Linear workspace using Linear's **GraphQL `issueCreate` mutation**. This gives your engineering or operations teams instant visibility into approved decisions that require action.
+When a document is approved, RAPID Ledger automatically creates a new issue in your Linear workspace using Linear's **GraphQL `issueCreate` mutation**. This gives your engineering or operations teams instant visibility into approved decisions that require action.
 
 **Retry behaviour:** If the initial request to Linear's API fails, RAPID Ledger retries the request up to **3 times** with the following backoff schedule:
 
@@ -31,7 +31,7 @@ When a document is approved, RAPID Ledger's `WebhookDispatcher` automatically cr
 **On failure:** If all three retries are exhausted, the error is logged to the audit trail as a `webhook_dispatch_failed` entry. The document approval is **not rolled back** — the approval stands and only the Linear issue creation is affected.
 
 <Note>
-  Linear integration credentials (`LINEAR_API_KEY` and `LINEAR_TEAM_ID`) are configured by your organisation Admin. If Linear issues are not being created after approvals, ask your Admin to verify the credentials and check the audit log for dispatch errors.
+  Linear integration credentials are configured by your organisation Admin in RAPID Ledger's integration settings. If Linear issues are not being created after approvals, ask your Admin to verify the credentials and check the audit log for dispatch errors.
 </Note>
 
 ## Fathom Webhook
@@ -44,10 +44,10 @@ RAPID Ledger accepts inbound webhooks from **Fathom Video** to automatically pro
 POST https://rapid-ledger-production.up.railway.app/api/webhooks/fathom
 ```
 
-**Signature validation:** Every request from Fathom must include a valid **HMAC-SHA256 signature** in the request headers. RAPID Ledger validates this signature against the `FATHOM_WEBHOOK_SECRET` configured by your Admin. Requests with a missing or invalid signature are rejected with a `401 Unauthorised` response.
+**Signature validation:** Every request from Fathom must include a valid **HMAC-SHA256 signature** in the request headers. RAPID Ledger validates this signature against the Fathom webhook secret configured by your Admin in RAPID Ledger's integration settings. Requests with a missing or invalid signature are rejected with a `401 Unauthorised` response.
 
 To configure the webhook in Fathom Video:
-1. Contact your organisation Admin to obtain the webhook secret.
+1. Contact your organisation Admin to obtain the webhook secret from RAPID Ledger's integration settings.
 2. In Fathom Video settings, add the endpoint URL above as a webhook destination.
 3. Paste the secret into the Fathom webhook secret field.
 
@@ -58,7 +58,7 @@ For a full walkthrough of the transcript processing pipeline, see the [Transcrip
 ## Webhook Reliability
 
 <Note>
-  All webhook handler failures — whether from Notion, Linear, or any future integration — are logged as entries in the RAPID Ledger audit trail. They **never block the primary operation**. If a document is approved, it stays approved regardless of whether any downstream webhook handler succeeds. 
+  All webhook handler failures — whether from Notion, Linear, or any future integration — are logged as entries in the RAPID Ledger audit trail. They **never block the primary operation**. If a document is approved, it stays approved regardless of whether any downstream webhook handler succeeds.
 
   To investigate a webhook failure, an Admin or Creator can query the audit log filtered by the relevant `entityId` and look for `webhook_dispatch_failed` or integration-specific error entries.
 </Note>
