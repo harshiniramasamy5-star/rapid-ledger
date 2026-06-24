@@ -1,0 +1,165 @@
+---
+title: "Audit Logs API — Complete Action History"
+sidebarTitle: "Audit Logs"
+description: "Query the immutable audit log in RAPID Ledger. Every user action — from login to finalization — is recorded with actor, timestamp, entity, and action type."
+---
+
+The Audit Logs API provides read-only access to RAPID Ledger's append-only action history. Every significant user action — login attempts, document state transitions, role assignments, evidence uploads, and exports — generates an audit log entry automatically. Use these logs for compliance reviews, security investigations, and governance reporting.
+
+---
+
+## List Audit Log Entries
+
+Retrieve a filtered, paginated list of audit log entries. Filter by actor, action type, entity, or date range to narrow results for specific investigations or reporting periods.
+
+**GET** `/api/audit-logs`
+
+<ParamField query="actor" type="string">
+  Filter by the user ID of the actor who performed the action.
+</ParamField>
+
+<ParamField query="action" type="string">
+  Filter by action type (e.g. `document_finalized`, `role_assigned`). See the full list of action types below.
+</ParamField>
+
+<ParamField query="entityType" type="string">
+  Filter by the type of entity the action was performed on (e.g. `RapidDocument`, `RapidRoleAssignment`).
+</ParamField>
+
+<ParamField query="entityId" type="string">
+  Filter by the ID of a specific entity to see all actions taken on it.
+</ParamField>
+
+<ParamField query="from" type="string">
+  ISO 8601 date. Only return entries created on or after this timestamp (e.g. `2024-01-01T00:00:00.000Z`).
+</ParamField>
+
+<ParamField query="to" type="string">
+  ISO 8601 date. Only return entries created on or before this timestamp (e.g. `2024-06-30T23:59:59.999Z`).
+</ParamField>
+
+<ParamField query="page" type="integer">
+  Page number for pagination. Defaults to `1`.
+</ParamField>
+
+<ParamField query="limit" type="integer">
+  Number of results per page. Defaults to `20`.
+</ParamField>
+
+**Example — retrieve all audit entries (unfiltered):**
+
+```bash
+curl "https://rapid-ledger-production.up.railway.app/api/audit-logs" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+**Example — retrieve all finalization events in a date range:**
+
+```bash
+curl -G "https://rapid-ledger-production.up.railway.app/api/audit-logs" \
+  -H "Authorization: Bearer $TOKEN" \
+  --data-urlencode "action=document_finalized" \
+  --data-urlencode "from=2024-01-01T00:00:00.000Z" \
+  --data-urlencode "to=2024-06-30T23:59:59.999Z"
+```
+
+**Response — 200 OK**
+
+```json
+[
+  {
+    "id": "clxaudit000051",
+    "action": "document_finalized",
+    "entityType": "RapidDocument",
+    "entityId": "clx4k2mn0000008l5hgqf1a2b",
+    "userId": "clxuser0000000001",
+    "createdAt": "2024-06-15T14:30:00.000Z",
+    "user": {
+      "name": "Alice Chen",
+      "email": "alice@company.com"
+    }
+  },
+  {
+    "id": "clxaudit000050",
+    "action": "document_approved",
+    "entityType": "RapidDocument",
+    "entityId": "clx4k2mn0000008l5hgqf1a2b",
+    "userId": "clxuser0000000003",
+    "createdAt": "2024-06-12T11:00:00.000Z",
+    "user": {
+      "name": "Carol Singh",
+      "email": "carol@company.com"
+    }
+  }
+]
+```
+
+---
+
+## Audit Action Types
+
+Every audit log entry has an `action` field drawn from the following set of values. Use these values with the `action` query parameter to filter results.
+
+| Action | Description |
+|--------|-------------|
+| `login` | User successfully authenticated |
+| `login_failed` | Failed login attempt recorded |
+| `document_created` | New decision document created |
+| `document_updated` | Document fields updated |
+| `document_submitted` | Document submitted for review |
+| `document_approved` | Document approved by an Approver |
+| `document_rejected` | Document rejected by an Approver or Admin |
+| `needs_changes_requested` | Changes requested on a document |
+| `document_finalized` | Document finalized — a ledger entry was created |
+| `document_versioned` | A new version was created from a finalized document |
+| `role_assigned` | A RAPID role was assigned to a user on a document |
+| `evidence_added` | An evidence item was attached to a document |
+| `execution_complete` | The Performer marked execution as complete |
+| `ledger_entry_created` | An immutable ledger entry was created at finalization |
+| `report_generated` | A CSV or PDF export was generated |
+
+---
+
+## AuditLog Object
+
+<ResponseField name="id" type="string">
+  The unique ID of the audit log entry.
+</ResponseField>
+
+<ResponseField name="action" type="string">
+  The action that was performed. See [Audit Action Types](#audit-action-types) for all possible values.
+</ResponseField>
+
+<ResponseField name="entityType" type="string">
+  The type of entity the action was performed on (e.g. `RapidDocument`, `RapidRoleAssignment`, `Evidence`).
+</ResponseField>
+
+<ResponseField name="entityId" type="string">
+  The ID of the specific entity that was acted upon.
+</ResponseField>
+
+<ResponseField name="userId" type="string">
+  The ID of the user who performed the action.
+</ResponseField>
+
+<ResponseField name="createdAt" type="string">
+  ISO 8601 timestamp of when the action was recorded.
+</ResponseField>
+
+<ResponseField name="user.name" type="string">
+  The display name of the user who performed the action.
+</ResponseField>
+
+<ResponseField name="user.email" type="string">
+  The email address of the user who performed the action.
+</ResponseField>
+
+---
+
+<Note>
+  Admins, Creators, and Approvers can read audit logs. Performers and Viewers do not have access to the audit log endpoint and will receive a **403 Forbidden** response.
+</Note>
+
+<Tip>
+  Use the `actor` query parameter with a specific `userId` to see the complete history of all actions taken by that user. This is useful for security investigations and access reviews.
+</Tip>

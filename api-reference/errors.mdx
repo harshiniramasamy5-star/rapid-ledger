@@ -1,0 +1,140 @@
+---
+title: "API Error Codes and HTTP Status Reference"
+sidebarTitle: "Errors"
+description: "All RAPID Ledger API errors follow a consistent JSON structure with a machine-readable error code, human-readable message, and optional field-level details."
+---
+
+RAPID Ledger uses a consistent error envelope across every endpoint. Whether you receive a `400` from a bad request body or a `503` from an infrastructure blip, the response will always be a JSON object with an `error` key. Inside that key you will find a machine-readable `code` you can switch on in your error-handling logic, a human-readable `message` suitable for logging, and an optional `details` array that pinpoints exactly which fields failed when the error is `VALIDATION_ERROR`. Building your error handling around `error.code` — rather than HTTP status alone — gives you precise control, because several distinct conditions share the same HTTP status code.
+
+---
+
+## Error Response Format
+
+Every error response from the API follows this structure:
+
+```json
+{
+  "error": {
+    "code": "ERROR_CODE",
+    "message": "Human-readable description of what went wrong.",
+    "details": [
+      {
+        "field": "fieldName",
+        "rule": "ruleDescription"
+      }
+    ]
+  }
+}
+```
+
+<ResponseField name="error" type="object">
+  The top-level error envelope present on every non-successful response.
+
+  <Expandable title="error fields">
+    <ResponseField name="error.code" type="string">
+      A machine-readable constant identifying the error condition. Use this in your application logic — see the [Error Codes Reference](#error-codes-reference) table below for all possible values.
+    </ResponseField>
+
+    <ResponseField name="error.message" type="string">
+      A human-readable sentence describing the error. Suitable for logs and developer-facing output; do not display raw API messages to end users without sanitization.
+    </ResponseField>
+
+    <ResponseField name="error.details" type="array" optional>
+      An array of field-level validation failures. Only populated when `error.code` is `VALIDATION_ERROR`. Omitted or empty on all other error types.
+
+      <Expandable title="details item fields">
+        <ResponseField name="error.details[].field" type="string">
+          The name of the request field that failed validation (e.g. `"email"`, `"approvers"`).
+        </ResponseField>
+
+        <ResponseField name="error.details[].rule" type="string">
+          The validation rule that was violated (e.g. `"required"`, `"minLength"`, `"isEmail"`).
+        </ResponseField>
+      </Expandable>
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+---
+
+## HTTP Status Codes
+
+| Status | Meaning | When It Occurs |
+|--------|---------|----------------|
+| `200` | OK | The request succeeded and the response body contains the result. |
+| `201` | Created | A new resource was successfully created. The response body contains the new object. |
+| `400` | Bad Request | One or more fields failed validation. Inspect `error.details` for field-level specifics. |
+| `401` | Unauthorized | The `Authorization` header is missing, the token is malformed, or the token has expired. |
+| `403` | Forbidden | Your request was authenticated, but your role does not have permission to perform this action. |
+| `404` | Not Found | No resource exists at the given ID or path. |
+| `409` | Conflict | The resource exists but is in a state that is incompatible with the requested action (e.g. editing a finalized document). |
+| `429` | Too Many Requests | You have exceeded the rate limit. Back off and retry after the period indicated in the `Retry-After` header. |
+| `500` | Internal Server Error | An unexpected error occurred on the server. If this persists, contact RAPID Ledger support. |
+
+---
+
+## Error Codes Reference
+
+| Code | HTTP Status | Description |
+|------|-------------|-------------|
+| `INVALID_CREDENTIALS` | `401` | The email and password combination is incorrect. |
+| `UNAUTHORIZED` | `401` | The JWT token is missing, malformed, or expired. Reauthenticate and retry. |
+| `ACCOUNT_LOCKED` | `403` | The account has been locked after too many consecutive failed login attempts. Contact your administrator to unlock it. |
+| `EMAIL_NOT_VERIFIED` | `403` | The account's email address has not been verified. Complete email verification before making API requests. |
+| `FORBIDDEN` | `403` | Your current system role does not permit this action. Request elevated access from an administrator. |
+| `NOT_FOUND` | `404` | The requested resource does not exist or has been deleted. |
+| `VALIDATION_ERROR` | `400` | One or more request fields failed validation. Check the `error.details` array for field names and the rules they violated. |
+| `CONFLICT` | `409` | The document is not in the correct lifecycle state for the requested action (e.g. attempting to edit a document that has already been finalized). |
+| `RATE_LIMIT_EXCEEDED` | `429` | You are sending requests too frequently. Implement exponential backoff and respect the `Retry-After` response header. |
+| `INTERNAL_ERROR` | `500` | An unexpected error occurred on the server. Retry with backoff; if the problem persists, contact support with the request ID from the response headers. |
+
+---
+
+## Example: Validation Error
+
+The following is a `400` response returned when a document is submitted without the required approver roles defined in the workflow configuration.
+
+```json
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "The request body contains one or more invalid fields.",
+    "details": [
+      {
+        "field": "approvers",
+        "rule": "minLength — at least one approver with role 'senior-reviewer' is required to submit this document type"
+      },
+      {
+        "field": "approvers[0].role",
+        "rule": "isValidRole — 'viewer' is not a permitted approver role"
+      }
+    ]
+  }
+}
+```
+
+Iterate over `error.details` to surface precise feedback to your users rather than displaying the generic `message`.
+
+---
+
+## Example: Conflict Error
+
+The following is a `409` response returned when you attempt to edit a document that has already been finalized and locked.
+
+```json
+{
+  "error": {
+    "code": "CONFLICT",
+    "message": "This document has been finalized and can no longer be edited.",
+    "details": []
+  }
+}
+```
+
+When you receive a `CONFLICT` error, inspect the document's current `status` field to determine which actions are valid for its present lifecycle state before retrying.
+
+---
+
+<Tip>
+  Always branch your error-handling logic on `error.code`, not the HTTP status code alone. For example, both `UNAUTHORIZED` and `INVALID_CREDENTIALS` return a `401` status, but they require different responses from your application — one means the user's credentials are wrong, the other means your token needs to be refreshed.
+</Tip>

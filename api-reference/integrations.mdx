@@ -1,0 +1,165 @@
+---
+title: "Integrations — Notion, Linear, and Fathom Webhooks"
+sidebarTitle: "Integrations"
+description: "Reference for RAPID Ledger's outbound integrations: Notion database sync, Linear issue creation on approval, and Fathom Video transcript webhook ingestion."
+---
+
+RAPID Ledger connects to Notion, Linear, and Fathom Video to sync decisions into the tools your team already uses. Integrations fire automatically on document events — no manual triggers required. Configuration (API keys, secrets, and team identifiers) is managed by your Admin in the application settings; there are no public API endpoints to configure integrations directly.
+
+---
+
+## Health Check
+
+Use the health endpoint to verify that the RAPID Ledger API is awake and reachable. This endpoint requires no authentication and is safe to call at any time.
+
+```bash
+curl https://rapid-ledger-production.up.railway.app/api/health
+```
+
+**Response**
+
+```json
+{
+  "status": "ok"
+}
+```
+
+<Note>
+  The RAPID Ledger API is hosted on Railway. If you are preparing for a demo or automated test run, call this endpoint first to wake the container and avoid a cold-start delay on your first authenticated request.
+</Note>
+
+---
+
+## Notion Database Sync
+
+### How it works
+
+When a document is approved in RAPID Ledger, the Notion integration automatically creates or updates a corresponding page in your configured Notion database. The sync is idempotent: if a page was created for a previous version of the same document (tracked via `notionPageId`), RAPID Ledger updates that existing page rather than creating a duplicate.
+
+### Mapped properties
+
+Each Notion page receives the following 12 properties from the approved document:
+
+| Property | Description |
+|---|---|
+| `documentCode` | Unique document identifier (e.g. `RL-0042`) |
+| `title` | Document title |
+| `status` | Current document status (e.g. `approved`) |
+| `approverName` | Display name of the user who approved |
+| `approvalDate` | ISO 8601 timestamp of approval |
+| `rapidRoles` | All RAPID roles assigned to the document |
+| `decisionSummary` | The decision summary field from the document |
+| `riskLevel` | Risk classification (e.g. `low`, `high`, `critical`) |
+| `department` | Owning department |
+| `deadline` | Document deadline, if set |
+| `complianceImpact` | Compliance impact flag and notes |
+| `auditLogReference` | Link back to the RAPID Ledger audit trail entry |
+
+### Error handling
+
+<Note>
+  Notion API errors — including `429 Too Many Requests`, `401 Unauthorized`, and request timeouts — are logged to the RAPID Ledger audit trail but never block a document approval from completing. If the Notion sync fails, the document status is unaffected; your Admin can inspect the audit trail to diagnose and retry.
+</Note>
+
+### Setup
+
+Contact your Admin to configure the `NOTION_API_KEY` and `NOTION_DATABASE_ID` environment variables in the application settings. The integration activates automatically once both values are present.
+
+---
+
+## Linear Issue Creation
+
+### How it works
+
+When a `document.approved` event fires, RAPID Ledger calls the Linear GraphQL API using the `issueCreate` mutation to open a new issue in your configured team. The issue title and description are populated from the approved document's metadata.
+
+### Retry logic
+
+If the Linear API returns an error, RAPID Ledger retries the request up to **3 times** using exponential backoff:
+
+| Attempt | Delay before retry |
+|---|---|
+| 1 (initial) | — |
+| 2 | 1 second |
+| 3 | 2 seconds |
+| 4 | 3 seconds |
+
+### On success
+
+Once the issue is created successfully, RAPID Ledger stores the Linear issue ID and issue URL in the document's audit log entry. You can find these values in the audit trail for any approved document.
+
+### On failure
+
+If all retry attempts fail, the error is logged to the audit trail and the approval is **not** rolled back or blocked. Your Admin can inspect the audit trail for the full error response from Linear.
+
+### Setup
+
+Contact your Admin to configure the `LINEAR_API_KEY` and `LINEAR_TEAM_ID` environment variables in the application settings. The integration activates automatically once both values are present.
+
+---
+
+## Fathom Video Webhook
+
+RAPID Ledger can receive meeting transcripts directly from Fathom Video. When Fathom delivers a completed transcript to RAPID Ledger, the platform parses the content and can associate it with the relevant decision document.
+
+### Endpoint
+
+```
+POST https://rapid-ledger-production.up.railway.app/api/webhooks/fathom
+```
+
+This endpoint is **inbound** — Fathom Video calls it, not your application. You do not need to call it directly.
+
+### Authentication
+
+Every request from Fathom Video must include a valid HMAC-SHA256 signature in the `X-Fathom-Signature` header. RAPID Ledger recomputes the signature using the `FATHOM_WEBHOOK_SECRET` set by your Admin and rejects any request where the signature does not match.
+
+<Warning>
+  Configure the webhook secret in your Fathom Video account settings to match the `FATHOM_WEBHOOK_SECRET` value set by your Admin in RAPID Ledger. Requests with an invalid or missing signature return `401 Unauthorized` and are not processed.
+</Warning>
+
+### Example request
+
+**Headers**
+
+```http
+POST /api/webhooks/fathom HTTP/1.1
+Host: rapid-ledger-production.up.railway.app
+Content-Type: application/json
+X-Fathom-Signature: sha256=abc123def456...
+```
+
+**Payload**
+
+```json
+{
+  "callId": "fathom_abc123",
+  "transcript": "[RAPID] We agreed to migrate the DB to PostgreSQL by end of Q3.",
+  "attendees": [
+    { "email": "alice@company.com", "name": "Alice Chen" },
+    { "email": "bob@company.com", "name": "Bob Martinez" }
+  ]
+}
+```
+
+### Idempotency
+
+If RAPID Ledger receives a webhook with a `callId` it has already processed, the duplicate is **silently ignored** and a `200` response is returned. You do not need to deduplicate on the Fathom side.
+
+### Response
+
+```json
+{
+  "processed": true,
+  "documentId": "clx9f2k3p0000abc123xyz789"
+}
+```
+
+| Field | Type | Description |
+|---|---|---|
+| `processed` | boolean | `true` if the transcript was accepted and queued for processing |
+| `documentId` | string | The RAPID Ledger document ID the transcript was linked to |
+
+### Setup
+
+Contact your Admin to configure the `FATHOM_WEBHOOK_SECRET` in application settings and to register the RAPID Ledger webhook URL in your Fathom Video account.

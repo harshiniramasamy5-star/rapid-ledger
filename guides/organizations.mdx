@@ -1,0 +1,102 @@
+---
+title: "Managing Your Organisation in RAPID Ledger"
+sidebarTitle: "Organizations"
+description: "Learn how to invite users, assign system roles, manage your organisation's members, and control document visibility in RAPID Ledger."
+---
+
+RAPID Ledger is a multi-tenant platform — every account belongs to exactly one organisation, and all data (documents, decisions, audit logs, role assignments) is scoped exclusively to that organisation. No data crosses org boundaries. As an Admin, you are responsible for inviting team members, assigning their system roles, and configuring how documents are shared within and beyond your org.
+
+## Inviting Users
+
+Admins create new users by sending a `POST` request to `/api/users`. Each user requires a name, email address, system role, and department. RAPID Ledger will provision the account and, if your org has email notifications configured, send a welcome email to the new user.
+
+```bash
+curl -X POST https://rapid-ledger-production.up.railway.app/api/users \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Alice Chen",
+    "email": "alice@company.com",
+    "role": "creator",
+    "department": "Engineering"
+  }'
+```
+
+A successful response returns the newly created user object:
+
+```json
+{
+  "id": "clx4f9z0000001a2b3c4d5e6f",
+  "name": "Alice Chen",
+  "email": "alice@company.com",
+  "role": "creator",
+  "department": "Engineering",
+  "orgId": "clx4f9z0000001a2b3c4d5e6g",
+  "createdAt": "2024-06-15T09:00:00.000Z"
+}
+```
+
+## System Roles
+
+Every user in RAPID Ledger is assigned one of six system roles. Roles control which actions a user can take across documents, approvals, and audit logs.
+
+| Role | Description |
+|---|---|
+| **Admin** | Full platform access. Creates and deactivates users, configures integrations, reads all audit logs, and manages org settings. |
+| **Creator** | Authors decision documents, submits them for approval, and tracks progress through the RAPID workflow. |
+| **Recommender** | Provides structured recommendations on documents under review. |
+| **Approver** | Reviews submitted documents and issues approvals, rejections, or change requests. |
+| **Performer** | Executes approved decisions and records evidence of completion. |
+| **Viewer** | Read-only access to documents that are visible to them based on document visibility settings. |
+
+For a full breakdown of what each role can and cannot do, see the [Roles reference](/concepts/roles).
+
+## Managing Users
+
+To retrieve a list of all users in your organisation, send a `GET` request to `/api/users`:
+
+```bash
+curl https://rapid-ledger-production.up.railway.app/api/users \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+The response is an array of user objects, each containing `id`, `name`, `email`, `role`, `department`, and `createdAt`.
+
+```json
+[
+  {
+    "id": "clx4f9z0000001a2b3c4d5e6f",
+    "name": "Alice Chen",
+    "email": "alice@company.com",
+    "role": "creator",
+    "department": "Engineering",
+    "createdAt": "2024-06-15T09:00:00.000Z"
+  },
+  {
+    "id": "clx4f9z0000001a2b3c4d5e7h",
+    "name": "Bob Martinez",
+    "email": "bob@company.com",
+    "role": "approver",
+    "department": "Legal",
+    "createdAt": "2024-06-16T11:30:00.000Z"
+  }
+]
+```
+
+<Note>
+  Only users with the **Admin** role can create or deactivate users. If you need to add a new team member or remove access for a departing employee, contact your organisation's Admin.
+</Note>
+
+## Document Visibility
+
+Every document in RAPID Ledger has a visibility level that determines who can see it. You set visibility when creating a document and can update it at any time (subject to your role permissions).
+
+| Visibility | Who Can See It | When to Use It |
+|---|---|---|
+| **PRIVATE** | The document creator only | Draft decisions, exploratory work, or sensitive proposals not yet ready for review |
+| **ORG** | All members of your organisation | Standard working documents moving through the RAPID approval workflow |
+| **PUBLIC** | All organisations with access to the cross-org portal | Decisions that need to be shared across departments, subsidiaries, or partner organisations |
+
+<Tip>
+  For compliance-sensitive organisations, set **ORG** as your default document visibility. This ensures all Admins can see every document in the audit trail and nothing is inadvertently hidden from governance oversight.
+</Tip>

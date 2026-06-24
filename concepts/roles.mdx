@@ -1,0 +1,78 @@
+---
+title: "User Roles and Permissions in RAPID Ledger"
+sidebarTitle: "Roles"
+description: "RAPID Ledger has six system roles — Admin, Creator, Recommender, Approver, Performer, and Viewer. Each role maps to specific document permissions."
+---
+
+RAPID Ledger uses role-based access control (RBAC) to determine what each user can see and do across the platform. When an Admin creates your account, they assign you one of six system roles. That role governs every action you can take — from creating a document to finalizing it to reading the audit log. Permissions are enforced at both the API middleware layer and the frontend rendering layer, so the interface you see is always consistent with what you are actually authorized to do. There is no way to reach a permission boundary by navigating around the UI.
+
+## Role Overview
+
+<CardGroup cols={2}>
+  <Card title="Admin" icon="crown">
+    Full platform access. Admins can create, submit, approve, and finalize documents, manage all users, assign roles, read every document regardless of department, and access the complete audit log. The Admin is always the Decide (D) owner on every decision document.
+  </Card>
+  <Card title="Creator" icon="pen">
+    Creates and drives documents forward. Creators can draft new documents, assign RAPID roles to contributors, attach evidence, submit documents for review, and create new versions of finalized documents. Creators cannot approve, reject, or finalize.
+  </Card>
+  <Card title="Recommender" icon="comment">
+    Provides formal recommendations on submitted documents. Recommenders can read all documents, write recommendations, and attach supporting evidence. They cannot create documents, approve, or finalize.
+  </Card>
+  <Card title="Approver" icon="check-circle">
+    Formally agrees on high-risk and critical-risk documents in the `awaiting_agreement` state, and can approve or reject documents. Approvers can also read the audit log. They cannot create documents or finalize.
+  </Card>
+  <Card title="Performer" icon="play">
+    Executes finalized decisions. Performers can read documents and the ledger, and they hold the exclusive ability to finalize a document and mark it as `execution_complete` once the decision has been carried out.
+  </Card>
+  <Card title="Viewer" icon="eye">
+    Read-only access across all documents and the ledger. Viewers can provide Input (I) context on documents they are assigned to, but cannot create, edit, submit, approve, or finalize anything.
+  </Card>
+</CardGroup>
+
+## Permissions Table
+
+The table below shows every key permission in RAPID Ledger and which system roles hold it.
+
+| Permission | Admin | Creator | Recommender | Approver | Performer | Viewer |
+|---|:---:|:---:|:---:|:---:|:---:|:---:|
+| `document:read` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `document:create` | ✅ | ✅ | | | | |
+| `document:update` | ✅ | ✅ | | | | |
+| `document:submit` | ✅ | ✅ | | | | |
+| `document:recommend` | ✅ | | ✅ | | | |
+| `document:approve` | ✅ | | | ✅ | | |
+| `document:reject` | ✅ | | | ✅ | | |
+| `document:finalize` | ✅ | | | | ✅ | |
+| `document:version` | ✅ | ✅ | | | | |
+| `document:input` | ✅ | | | | | ✅ |
+| `role:assign` | ✅ | ✅ | | | | |
+| `evidence:add` | ✅ | ✅ | ✅ | | | |
+| `user:create` | ✅ | | | | | |
+| `ledger:read` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `audit:read` | ✅ | ✅ | | ✅ | | |
+
+## RAPID Roles vs. System Roles
+
+There are two distinct layers of roles in RAPID Ledger, and understanding the difference is important.
+
+**System roles** are platform-wide. Your system role is set when your account is created and determines your baseline capabilities across the entire platform. It is what you log in as.
+
+**RAPID roles** (R, A, P, I, D) are per-document. When a Creator builds a decision document, they assign individual users to each RAPID role position on that specific document. These assignments define who participates in the decision and in what capacity — they are not the same as the user's platform-wide permissions.
+
+The two layers work together: a user's system role determines whether they *can* act in a given RAPID role position, and their document-level RAPID assignment determines whether they *are* acting in that position on a specific decision.
+
+For example, a user with the **Recommender** system role has the `document:recommend` permission. If a Creator assigns that user to the **R (Recommend)** position on a document, that user can submit a formal recommendation on that document. If they are not assigned to any document, they can still read all documents — but they have no active RAPID role responsibilities until they are assigned.
+
+<Tip>
+A single user can hold multiple RAPID role assignments on a single document. For instance, a senior engineer might be assigned as both the Recommender (R) and the primary Input (I) provider — providing both the formal proposal and specialized technical context.
+</Tip>
+
+## Role Assignment
+
+Document-level RAPID roles are assigned via `POST /api/documents/:id/roles`. Only users with the `role:assign` permission — Admins and Creators — can make these assignments.
+
+The one exception is the **Decide (D)** role: the Admin is always the D owner on every document. This assignment is automatic and cannot be changed by anyone, including the Admin themselves. It is a structural guarantee that every decision in the ledger has a traceable, authoritative final decision-maker at the Admin level.
+
+<Note>
+Permissions are enforced at both the API middleware layer and the frontend rendering layer. Attempting an unauthorized action via the API returns `403 Forbidden`. The UI suppresses controls that the current user's role does not permit, but API-level enforcement is always the authoritative boundary.
+</Note>

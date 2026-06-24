@@ -1,0 +1,172 @@
+---
+title: "Approvals API — Manage Your Pending Approval Queue"
+sidebarTitle: "Approvals"
+description: "Retrieve your pending approval queue in RAPID Ledger. Approve, reject, or request changes on high-risk decision documents assigned to you."
+---
+
+The Approvals API gives Approvers a consolidated view of every document currently awaiting their formal sign-off. This queue applies specifically to high-risk and critical-risk documents that require an **Agree (A)** role sign-off before an Admin can finalize them. Use this endpoint to build dashboards, notification systems, or automated workflow triggers based on pending actions.
+
+---
+
+## Get Your Pending Approvals
+
+Returns all approval items currently assigned to the authenticated user that have a `pending` status. Each item includes a summary of the associated decision document so you can assess and prioritize without making additional requests.
+
+**GET** `/api/approvals/my`
+
+```bash
+curl "https://rapid-ledger-production.up.railway.app/api/approvals/my" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+**Response — 200 OK**
+
+```json
+[
+  {
+    "id": "clxapprv000010",
+    "status": "pending",
+    "document": {
+      "id": "clx4k2mn0000008l5hgqf9z3c",
+      "documentCode": "RAPID-003",
+      "title": "Decommission legacy payment processor",
+      "riskLevel": "critical",
+      "complianceImpact": true,
+      "decisionSummary": "Retire the legacy Stripe integration in favor of the new provider."
+    }
+  },
+  {
+    "id": "clxapprv000011",
+    "status": "pending",
+    "document": {
+      "id": "clx4k2mn0000008l5hgqf8y2b",
+      "documentCode": "RAPID-007",
+      "title": "Expand data retention policy to 7 years",
+      "riskLevel": "high",
+      "complianceImpact": true,
+      "decisionSummary": "Extend the default data retention period to meet updated GDPR guidance."
+    }
+  }
+]
+```
+
+<ResponseField name="id" type="string">
+  The unique ID of the approval record.
+</ResponseField>
+
+<ResponseField name="status" type="string">
+  The current approval status. Will be `pending` for all items in this queue.
+</ResponseField>
+
+<ResponseField name="document.id" type="string">
+  The unique ID of the associated decision document.
+</ResponseField>
+
+<ResponseField name="document.documentCode" type="string">
+  The human-readable document code (e.g. `RAPID-003`).
+</ResponseField>
+
+<ResponseField name="document.title" type="string">
+  The title of the decision document.
+</ResponseField>
+
+<ResponseField name="document.riskLevel" type="string">
+  Risk classification: `low`, `medium`, `high`, or `critical`.
+</ResponseField>
+
+<ResponseField name="document.complianceImpact" type="boolean">
+  Whether the document has a regulatory or compliance implication.
+</ResponseField>
+
+<ResponseField name="document.decisionSummary" type="string">
+  A concise summary of the decision being approved.
+</ResponseField>
+
+---
+
+## Acting on Approvals
+
+Once you have reviewed a document, use the [Documents API](/api-reference/documents) to record your decision. Every action requires you to reference the document ID from the approval queue response above.
+
+### Approve a Document
+
+Formally agree to the decision. The document transitions to `approved`, and an Admin can subsequently finalize it.
+
+**POST** `/api/documents/:id/approve`
+
+```bash
+curl -X POST "https://rapid-ledger-production.up.railway.app/api/documents/clx4k2mn0000008l5hgqf9z3c/approve" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{ "notes": "Reviewed and approved. Compliance risk has been fully addressed." }'
+```
+
+**Response — 200 OK**
+
+```json
+{
+  "id": "clx4k2mn0000008l5hgqf9z3c",
+  "status": "approved",
+  "updatedAt": "2024-06-12T11:00:00.000Z"
+}
+```
+
+---
+
+### Reject a Document
+
+Reject the document and return it to the creator with a written reason. The document transitions to `rejected`.
+
+**POST** `/api/documents/:id/reject`
+
+```bash
+curl -X POST "https://rapid-ledger-production.up.railway.app/api/documents/clx4k2mn0000008l5hgqf9z3c/reject" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{ "notes": "Missing compliance evidence. Please attach the latest security audit before resubmitting." }'
+```
+
+**Response — 200 OK**
+
+```json
+{
+  "id": "clx4k2mn0000008l5hgqf9z3c",
+  "status": "rejected",
+  "updatedAt": "2024-06-12T13:30:00.000Z"
+}
+```
+
+---
+
+### Provide a Recommendation
+
+Users assigned to the **R** (Recommend) role use this endpoint to provide their formal recommendation before the document moves to the agreement stage.
+
+**POST** `/api/documents/:id/recommend`
+
+```bash
+curl -X POST "https://rapid-ledger-production.up.railway.app/api/documents/clx4k2mn0000008l5hgqf9z3c/recommend" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{ "notes": "I recommend proceeding. The proposed approach has been validated against our compliance framework." }'
+```
+
+**Response — 200 OK**
+
+```json
+{
+  "id": "clx4k2mn0000008l5hgqf9z3c",
+  "status": "awaiting_agreement",
+  "updatedAt": "2024-06-11T10:00:00.000Z"
+}
+```
+
+---
+
+<Note>
+  Only users with the **Approver** system role or **Admin** role can approve or reject documents. If you attempt to approve a document without the correct role assignment, you will receive a **403 Forbidden** response.
+</Note>
+
+<Tip>
+  Poll `GET /api/approvals/my` on a schedule or after receiving an in-app notification to keep your approval queue up to date. Documents approved or rejected will no longer appear in subsequent responses.
+</Tip>

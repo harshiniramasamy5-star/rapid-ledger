@@ -1,0 +1,64 @@
+---
+title: "Webhook Events and External Integrations"
+sidebarTitle: "Webhooks"
+description: "RAPID Ledger fires webhooks on document approval. Learn which events are available, how Linear issues are created automatically, and how to validate Fathom webhook signatures."
+---
+
+RAPID Ledger fires webhooks when key document lifecycle events occur, allowing your external tools to react in real time. Currently, the **document.approved** event triggers two outbound integrations — a Notion database sync and a Linear issue creation — and RAPID Ledger also accepts an inbound webhook from Fathom Video for automated transcript processing. All webhook failures are non-blocking: your primary operation always completes, and errors are captured in the audit trail.
+
+## Supported Events
+
+| Event | When It Fires | Registered Handlers |
+|---|---|---|
+| `document.approved` | A document transitions to the `approved` status | Notion sync, Linear issue creation |
+
+Additional events and handlers will be added in future releases.
+
+## Linear Integration
+
+When a document is approved, RAPID Ledger's `WebhookDispatcher` automatically creates a new issue in your Linear workspace using Linear's **GraphQL `issueCreate` mutation**. This gives your engineering or operations teams instant visibility into approved decisions that require action.
+
+**Retry behaviour:** If the initial request to Linear's API fails, RAPID Ledger retries the request up to **3 times** with the following backoff schedule:
+
+| Attempt | Delay Before Retry |
+|---|---|
+| 1st retry | 1 second |
+| 2nd retry | 2 seconds |
+| 3rd retry | 3 seconds |
+
+**On success:** The Linear issue URL is stored in the audit log entry for the approval event, giving you a permanent link between the RAPID decision and the Linear issue.
+
+**On failure:** If all three retries are exhausted, the error is logged to the audit trail as a `webhook_dispatch_failed` entry. The document approval is **not rolled back** — the approval stands and only the Linear issue creation is affected.
+
+<Note>
+  Linear integration credentials (`LINEAR_API_KEY` and `LINEAR_TEAM_ID`) are configured by your organisation Admin. If Linear issues are not being created after approvals, ask your Admin to verify the credentials and check the audit log for dispatch errors.
+</Note>
+
+## Fathom Webhook
+
+RAPID Ledger accepts inbound webhooks from **Fathom Video** to automatically process meeting transcripts. When a meeting ends, Fathom can POST the transcript directly to RAPID Ledger without any manual copy-paste step.
+
+**Endpoint:**
+
+```
+POST https://rapid-ledger-production.up.railway.app/api/webhooks/fathom
+```
+
+**Signature validation:** Every request from Fathom must include a valid **HMAC-SHA256 signature** in the request headers. RAPID Ledger validates this signature against the `FATHOM_WEBHOOK_SECRET` configured by your Admin. Requests with a missing or invalid signature are rejected with a `401 Unauthorised` response.
+
+To configure the webhook in Fathom Video:
+1. Contact your organisation Admin to obtain the webhook secret.
+2. In Fathom Video settings, add the endpoint URL above as a webhook destination.
+3. Paste the secret into the Fathom webhook secret field.
+
+**Idempotency:** Fathom assigns a unique `callId` to every meeting. RAPID Ledger checks the audit log for this `callId` before processing each incoming webhook. If a transcript with the same `callId` has already been processed, the request is acknowledged and silently ignored — protecting you from duplicate documents if Fathom retries a delivery.
+
+For a full walkthrough of the transcript processing pipeline, see the [Transcript Pipeline guide](/guides/fathom-transcript).
+
+## Webhook Reliability
+
+<Note>
+  All webhook handler failures — whether from Notion, Linear, or any future integration — are logged as entries in the RAPID Ledger audit trail. They **never block the primary operation**. If a document is approved, it stays approved regardless of whether any downstream webhook handler succeeds. 
+
+  To investigate a webhook failure, an Admin or Creator can query the audit log filtered by the relevant `entityId` and look for `webhook_dispatch_failed` or integration-specific error entries.
+</Note>

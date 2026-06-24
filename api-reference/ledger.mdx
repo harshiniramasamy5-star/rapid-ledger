@@ -1,0 +1,176 @@
+---
+title: "Ledger API — Immutable Finalized Decision Records"
+sidebarTitle: "Ledger"
+description: "Query RAPID Ledger's append-only compliance ledger. Every finalized decision is permanently recorded with its documentCode, version, and finalization details."
+---
+
+The Ledger API provides read-only access to RAPID Ledger's compliance ledger — the permanent, immutable record of every finalized decision across your organisation. Ledger entries are created automatically and atomically when an Admin finalizes a document. Once written, a ledger entry cannot be modified or removed. The ledger is the authoritative source of truth for audits and compliance reviews.
+
+---
+
+## List Ledger Entries
+
+Retrieve a paginated list of finalized ledger entries. Use the `search`, `from`, and `to` parameters to scope results for compliance exports or period-specific audits.
+
+**GET** `/api/ledger`
+
+<ParamField query="page" type="integer">
+  Page number for pagination. Defaults to `1`.
+</ParamField>
+
+<ParamField query="limit" type="integer">
+  Number of results per page. Defaults to `20`.
+</ParamField>
+
+<ParamField query="search" type="string">
+  Free-text search against `documentCode` and document title.
+</ParamField>
+
+<ParamField query="from" type="string">
+  ISO 8601 date. Only return entries finalized on or after this date (e.g. `2024-01-01T00:00:00.000Z`).
+</ParamField>
+
+<ParamField query="to" type="string">
+  ISO 8601 date. Only return entries finalized on or before this date (e.g. `2024-06-30T23:59:59.999Z`).
+</ParamField>
+
+```bash
+curl -G "https://rapid-ledger-production.up.railway.app/api/ledger" \
+  -H "Authorization: Bearer $TOKEN" \
+  --data-urlencode "from=2024-01-01T00:00:00.000Z" \
+  --data-urlencode "to=2024-06-30T23:59:59.999Z" \
+  --data-urlencode "search=RAPID-001" \
+  --data-urlencode "page=1" \
+  --data-urlencode "limit=20"
+```
+
+**Response — 200 OK**
+
+```json
+{
+  "data": [
+    {
+      "id": "clxledger000001",
+      "documentId": "clx4k2mn0000008l5hgqf1a2b",
+      "finalizedAt": "2024-06-15T14:30:00.000Z",
+      "finalizedBy": "clxuser0000000001",
+      "document": {
+        "documentCode": "RAPID-001",
+        "title": "Migrate production database to PostgreSQL 16",
+        "riskLevel": "high",
+        "version": 1,
+        "department": "Engineering"
+      }
+    },
+    {
+      "id": "clxledger000002",
+      "documentId": "clx4k2mn0000008l5hgqf9z3c",
+      "finalizedAt": "2024-06-20T09:00:00.000Z",
+      "finalizedBy": "clxuser0000000001",
+      "document": {
+        "documentCode": "RAPID-003",
+        "title": "Decommission legacy payment processor",
+        "riskLevel": "critical",
+        "version": 1,
+        "department": "Finance"
+      }
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "limit": 20,
+    "total": 2,
+    "totalPages": 1
+  }
+}
+```
+
+<Note>
+  All system roles — including Performers and Viewers — can read ledger entries. The ledger is read-only: entries cannot be edited or deleted by any role.
+</Note>
+
+---
+
+## Export Ledger as CSV
+
+Download the full ledger (or a filtered subset) as a CSV file. This is the primary export format for compliance reports and external audit submissions.
+
+**GET** `/api/ledger/export.csv`
+
+You can use the same `search`, `from`, and `to` query parameters as `GET /api/ledger` to scope the export to a specific audit period.
+
+The response has `Content-Type: text/csv`. Use curl's `-o` flag to write the file to disk.
+
+```bash
+curl -G "https://rapid-ledger-production.up.railway.app/api/ledger/export.csv" \
+  -H "Authorization: Bearer $TOKEN" \
+  --data-urlencode "from=2024-01-01T00:00:00.000Z" \
+  --data-urlencode "to=2024-06-30T23:59:59.999Z" \
+  --output-dir . \
+  -o ledger.csv
+```
+
+**Example CSV output:**
+
+```csv
+id,documentCode,title,riskLevel,version,department,finalizedAt,finalizedBy
+clxledger000001,RAPID-001,Migrate production database to PostgreSQL 16,high,1,Engineering,2024-06-15T14:30:00.000Z,clxuser0000000001
+clxledger000002,RAPID-003,Decommission legacy payment processor,critical,1,Finance,2024-06-20T09:00:00.000Z,clxuser0000000001
+```
+
+**CSV columns:**
+
+| Column | Description |
+|--------|-------------|
+| `id` | Unique ledger entry ID |
+| `documentCode` | Human-readable document code (e.g. `RAPID-001`) |
+| `title` | Document title |
+| `riskLevel` | Risk classification: `low`, `medium`, `high`, or `critical` |
+| `version` | Document version number at the time of finalization |
+| `department` | Owning department |
+| `finalizedAt` | ISO 8601 timestamp of finalization |
+| `finalizedBy` | User ID of the Admin who finalized the document |
+
+<Tip>
+  Use the `from` and `to` parameters with `GET /api/ledger/export.csv` to scope compliance exports to specific audit periods — for example, a full calendar year or a fiscal quarter.
+</Tip>
+
+---
+
+## LedgerEntry Object
+
+<ResponseField name="id" type="string">
+  The unique ID of the ledger entry.
+</ResponseField>
+
+<ResponseField name="documentId" type="string">
+  The ID of the finalized document this entry corresponds to.
+</ResponseField>
+
+<ResponseField name="finalizedAt" type="string">
+  ISO 8601 timestamp of when the document was finalized and the ledger entry was created.
+</ResponseField>
+
+<ResponseField name="finalizedBy" type="string">
+  The user ID of the Admin who performed the finalization.
+</ResponseField>
+
+<ResponseField name="document.documentCode" type="string">
+  The human-readable document code at the time of finalization (e.g. `RAPID-001`).
+</ResponseField>
+
+<ResponseField name="document.title" type="string">
+  The document title at the time of finalization.
+</ResponseField>
+
+<ResponseField name="document.riskLevel" type="string">
+  Risk level at finalization: `low`, `medium`, `high`, or `critical`.
+</ResponseField>
+
+<ResponseField name="document.version" type="integer">
+  The version number of the document that was finalized.
+</ResponseField>
+
+<ResponseField name="document.department" type="string">
+  The department recorded on the document at the time of finalization.
+</ResponseField>

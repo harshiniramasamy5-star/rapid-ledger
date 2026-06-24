@@ -1,0 +1,49 @@
+# Source: https://github.com/harshiniramasamy5-star/black-box/search?l=python
+
+# issues Search Results · repo:harshiniramasamy5-star/black-box language:Python
+
+## Filter by
+
+- - [Code... (...)results](https://github.com/search?q=repo%3Aharshiniramasamy5-star%2Fblack-box++language%3APython&type=code)
+ - [Issues0 (0)results](https://github.com/search?q=repo%3Aharshiniramasamy5-star%2Fblack-box++language%3APython&type=issues)
+ - [Pull requests0 (0)results](https://github.com/search?q=repo%3Aharshiniramasamy5-star%2Fblack-box++language%3APython&type=pullrequests)
+ - [Discussions0 (0)results](https://github.com/search?q=repo%3Aharshiniramasamy5-star%2Fblack-box++language%3APython&type=discussions)
+ - [Commits0 (0)results](https://github.com/search?q=repo%3Aharshiniramasamy5-star%2Fblack-box++language%3APython&type=commits)
+ - [Packages0 (0)results](https://github.com/search?q=repo%3Aharshiniramasamy5-star%2Fblack-box++language%3APython&type=registrypackages)
+ - [Wikis0 (0)results](https://github.com/search?q=repo%3Aharshiniramasamy5-star%2Fblack-box++language%3APython&type=wikis)
+
+- [Advanced search](https://github.com/search/advanced)
+
+Filter:Issues0 (0)
+
+0 results  (49 ms)
+
+## 0 results
+
+in[harshiniramasamy5-star/black-box (press backspace or delete to remove)](https://github.com/harshiniramasamy5-star/black-box)
+
+Sort by: Best match
+
+Filter
+
+![Mona looking through a globe hologram for code](https://github.com/images/modules/search/light.png)
+
+### Your search did not match any issues
+
+You could try one of the tips below.
+
+Search across repositories
+
+Within a repository:
+
+repo:github/linguist
+
+Across several:
+
+repo:github/linguist OR repo:github/fetch
+
+Note that we don't currently support regular expressions in the repo or org qualifiers. For more information on search syntax, see our [syntax guide](https://docs.github.com/search-github/github-code-search/understanding-github-code-search-syntax).
+
+Search across an organizationSaved searches
+
+You could try an [advanced search](https://github.com/search/advanced?q=repo%3Aharshiniramasamy5-star%2Fblack-box++language%3APython).

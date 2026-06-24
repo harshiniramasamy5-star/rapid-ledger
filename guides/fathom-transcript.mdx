@@ -1,0 +1,81 @@
+---
+title: "Turn Meeting Transcripts into Decision Documents with AI"
+sidebarTitle: "Transcript Pipeline"
+description: "Paste a Fathom Video meeting transcript into RAPID Ledger to automatically extract decisions, assign RAPID roles, and create linked decision documents using AI."
+---
+
+The RAPID Ledger transcript pipeline transforms raw meeting transcripts from Fathom Video into structured decision documents — automatically. When you submit a transcript, RAPID Ledger's AI (powered by **Groq's llama-3.3-70b-versatile** model) scans for sections you've tagged with `[RAPID]`, extracts decisions and action items, maps attendee emails to RAPID roles, and produces a **TRANSCRIPT-type document** linked to the parent decision document you specify. No manual data entry required.
+
+## How It Works
+
+The pipeline runs through five stages every time a transcript is submitted:
+
+1. **Tag filtering** — The transcript text is scanned for lines and sections prefixed with `[RAPID]`. Only tagged content is sent to the AI; the rest of the conversation is ignored. This keeps the AI focused on the decisions your team deliberately flagged.
+
+2. **Dual parallel AI analysis** — Two extractions run simultaneously in parallel:
+   - **Role assignment** — The AI maps each attendee's email address to a RAPID role (Decide, Recommend, Approve, Perform, Input, or Delegate) based on context from the tagged sections.
+   - **Structured extraction** — The AI pulls out discrete decisions, action items, owners, and deadlines from the tagged content.
+
+3. **Document creation** — A new document of type `TRANSCRIPT` is created in your organisation and linked to the parent document via `parentDocumentId`.
+
+4. **Role assignment creation** — `RoleAssignment` records are created for every identified participant, associating their email with their assigned RAPID role on the parent document.
+
+5. **Audit log entry** — An immutable audit log entry is written recording the transcript source, the Fathom call ID, and all AI-assigned roles, giving you a permanent record of how the document was created.
+
+## Tagging Your Transcript
+
+The `[RAPID]` prefix is the signal that tells RAPID Ledger which parts of your meeting matter for governance. Place it at the start of any line or paragraph containing a decision, action item, or role assignment that should be captured.
+
+Here's an example of a well-tagged transcript excerpt:
+
+```
+Alice: We should probably revisit the database question before the end of Q3.
+Bob: Agreed, we've been putting it off too long.
+
+[RAPID] We agreed to migrate the database to PostgreSQL 16 in Q3.
+Action: Engineering team (perform)
+Owner: alice@company.com (decide)
+Deadline: 2024-09-30
+
+Bob: Great. Let's also think about caching.
+Alice: That can wait until after the migration.
+
+[RAPID] Bob to evaluate Redis as a caching layer by 2024-08-01.
+Owner: bob@company.com (perform)
+Deadline: 2024-08-01
+```
+
+Only the two `[RAPID]`-tagged blocks will be processed by the AI. The rest of the conversation is disregarded.
+
+<Note>
+  Be as specific as possible in your tagged sections. Including owner email addresses, RAPID role labels (decide, perform, recommend, approve), and concrete deadlines gives the AI the clearest signal and produces the most accurate role assignments and action items.
+</Note>
+
+## Fathom Webhook Setup
+
+Rather than pasting transcripts manually, you can configure Fathom Video to deliver transcripts to RAPID Ledger automatically via webhook as soon as a meeting ends.
+
+**Webhook endpoint:**
+
+```
+POST https://rapid-ledger-production.up.railway.app/api/webhooks/fathom
+```
+
+**Security:** Every inbound request from Fathom is validated using an **HMAC-SHA256 signature**. Contact your organisation Admin for the `FATHOM_WEBHOOK_SECRET` value to enter in your Fathom Video webhook configuration. Requests with an invalid or missing signature are rejected with a `401` response.
+
+**Idempotency:** Each Fathom call has a unique `callId`. RAPID Ledger checks the audit log for this ID before processing. If a transcript with the same `callId` has already been processed, the request is silently ignored — so you'll never end up with duplicate documents from a webhook retry.
+
+## What Gets Created
+
+When the pipeline completes, you'll find the following in RAPID Ledger:
+
+| Item | Details |
+|---|---|
+| **TRANSCRIPT document** | A new `RapidDocument` with `type: TRANSCRIPT`, linked to your parent document via `parentDocumentId` |
+| **Structured content** | Decisions, action items, owners, and deadlines extracted by the AI and stored in the document body |
+| **Role assignments** | One `RoleAssignment` record per identified participant, mapping their email to their RAPID role |
+| **Audit log entry** | Records the Fathom call ID, transcript source, AI model used, and all role assignments made |
+
+<Note>
+  The AI pipeline processes transcripts asynchronously. If attendee email addresses do not match existing users in your organisation, RAPID Ledger will automatically create new accounts for them. New accounts are assigned the **Viewer** role by default — your Admin can update their roles once the document is created.
+</Note>

@@ -1,0 +1,90 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "name": "RAPID Ledger",
+  "theme": "luma",
+  "logo": {
+    "light": "https://media.brand.dev/5ffd6ce4-2434-4b4b-920a-f8cacac8b48b.svg",
+    "dark": "https://media.brand.dev/5ffd6ce4-2434-4b4b-920a-f8cacac8b48b.svg"
+  },
+  "favicon": "/favicon.svg",
+  "colors": {
+    "primary": "#848c8e",
+    "light": "#cfd0d2",
+    "dark": "#11161e"
+  },
+  "navbar": {
+    "primary": {
+      "type": "github",
+      "href": "https://github.com/harshiniramasamy5-star/rapid-ledger"
+    }
+  },
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "quickstart"
+            ]
+          },
+          {
+            "group": "Core Concepts",
+            "pages": [
+              "concepts/rapid-framework",
+              "concepts/roles",
+              "concepts/document-lifecycle"
+            ]
+          },
+          {
+            "group": "Guides",
+            "pages": [
+              "guides/organizations",
+              "guides/totp",
+              "guides/fathom-transcript",
+              "guides/notion-integration",
+              "guides/webhooks",
+              "guides/audit-log"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Overview",
+            "pages": [
+              "api-reference/auth",
+              "api-reference/errors"
+            ]
+          },
+          {
+            "group": "Resources",
+            "pages": [
+              "api-reference/documents",
+              "api-reference/approvals",
+              "api-reference/transcripts",
+              "api-reference/ledger",
+              "api-reference/audit"
+            ]
+          },
+          {
+            "group": "Integrations",
+            "pages": [
+              "api-reference/integrations",
+              "api-reference/organizations"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "footer": {
+    "socials": {
+      "github": "https://github.com/harshiniramasamy5-star/rapid-ledger"
+    }
+  }
+}

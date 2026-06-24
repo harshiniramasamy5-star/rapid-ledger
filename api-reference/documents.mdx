@@ -1,0 +1,641 @@
+---
+title: "Documents API — Create, Manage, and Advance Decisions"
+sidebarTitle: "Documents"
+description: "Full reference for RAPID document endpoints: create, list, update, assign roles, attach evidence, submit, approve, finalize, and export decision documents."
+---
+
+The Documents API is the core of RAPID Ledger. Use these endpoints to create decision documents, assign RAPID roles, attach evidence, and advance documents through the full approval workflow — from initial draft all the way to an immutable ledger entry.
+
+---
+
+## List Documents
+
+Retrieve a paginated list of decision documents. Use the query parameters to filter by status, risk level, department, or a free-text search term.
+
+**GET** `/api/documents`
+
+<ParamField query="status" type="string">
+  Filter by document status. One of: `draft`, `submitted`, `awaiting_agreement`, `approved`, `rejected`, `needs_changes`, `finalized`, `execution_complete`.
+</ParamField>
+
+<ParamField query="search" type="string">
+  Full-text search against document title and `documentCode`.
+</ParamField>
+
+<ParamField query="riskLevel" type="string">
+  Filter by risk level. One of: `low`, `medium`, `high`, `critical`.
+</ParamField>
+
+<ParamField query="department" type="string">
+  Filter by department name (e.g. `Engineering`, `Finance`).
+</ParamField>
+
+<ParamField query="page" type="integer">
+  Page number for pagination. Defaults to `1`.
+</ParamField>
+
+<ParamField query="limit" type="integer">
+  Number of results per page. Defaults to `20`.
+</ParamField>
+
+```bash
+curl -G "https://rapid-ledger-production.up.railway.app/api/documents" \
+  -H "Authorization: Bearer $TOKEN" \
+  --data-urlencode "status=submitted" \
+  --data-urlencode "riskLevel=high" \
+  --data-urlencode "page=1" \
+  --data-urlencode "limit=10"
+```
+
+**Response — 200 OK**
+
+```json
+{
+  "data": [
+    {
+      "id": "clx4k2mn0000008l5hgqf1a2b",
+      "documentCode": "RAPID-001",
+      "title": "Migrate production database to PostgreSQL 16",
+      "status": "submitted",
+      "riskLevel": "high",
+      "complianceImpact": true,
+      "version": 1,
+      "department": "Engineering",
+      "deadline": "2024-09-30T00:00:00.000Z",
+      "createdAt": "2024-06-01T10:00:00.000Z",
+      "updatedAt": "2024-06-15T14:30:00.000Z"
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "limit": 10,
+    "total": 42,
+    "totalPages": 5
+  }
+}
+```
+
+---
+
+## Create a Document
+
+Create a new decision document. All new documents start in `draft` status and are assigned an auto-generated `documentCode` (e.g. `RAPID-042`).
+
+**POST** `/api/documents`
+
+<ParamField body="title" type="string" required>
+  A short, descriptive title for the decision document.
+</ParamField>
+
+<ParamField body="decisionSummary" type="string" required>
+  A concise summary of the decision being made.
+</ParamField>
+
+<ParamField body="businessContext" type="string" required>
+  Background and strategic context that explains why this decision is relevant.
+</ParamField>
+
+<ParamField body="problemStatement" type="string" required>
+  A clear statement of the problem or opportunity that necessitates this decision.
+</ParamField>
+
+<ParamField body="proposedDecision" type="string" required>
+  The specific action or outcome being proposed.
+</ParamField>
+
+<ParamField body="alternativesConsidered" type="string">
+  A description of other options that were evaluated before settling on the proposed decision.
+</ParamField>
+
+<ParamField body="riskLevel" type="string" required>
+  Risk classification. One of: `low`, `medium`, `high`, `critical`.
+</ParamField>
+
+<ParamField body="complianceImpact" type="boolean" required>
+  Set to `true` if this decision has regulatory or compliance implications.
+</ParamField>
+
+<ParamField body="department" type="string">
+  The department responsible for this decision (e.g. `Engineering`, `Finance`).
+</ParamField>
+
+<ParamField body="deadline" type="string">
+  Target completion date in ISO 8601 format (e.g. `2024-09-30T00:00:00.000Z`).
+</ParamField>
+
+```bash
+curl -X POST "https://rapid-ledger-production.up.railway.app/api/documents" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "title": "Migrate production database to PostgreSQL 16",
+    "decisionSummary": "Upgrade the primary database cluster from PostgreSQL 14 to 16 for long-term support and performance gains.",
+    "businessContext": "PostgreSQL 14 reaches end-of-life in November 2025. Continued use presents a security and compliance risk.",
+    "problemStatement": "Our production cluster is running an unsupported PostgreSQL version, exposing us to unpatched CVEs.",
+    "proposedDecision": "Migrate to PostgreSQL 16 on the next quarterly maintenance window using pg_upgrade with a blue-green deployment strategy.",
+    "alternativesConsidered": "1. Stay on PG14 — rejected due to EOL risk. 2. Move to Aurora PostgreSQL — rejected due to cost and vendor lock-in.",
+    "riskLevel": "high",
+    "complianceImpact": true,
+    "department": "Engineering",
+    "deadline": "2024-09-30T00:00:00.000Z"
+  }'
+```
+
+**Response — 201 Created**
+
+```json
+{
+  "id": "clx4k2mn0000008l5hgqf1a2b",
+  "documentCode": "RAPID-001",
+  "title": "Migrate production database to PostgreSQL 16",
+  "status": "draft",
+  "riskLevel": "high",
+  "complianceImpact": true,
+  "version": 1,
+  "department": "Engineering",
+  "deadline": "2024-09-30T00:00:00.000Z",
+  "createdAt": "2024-06-01T10:00:00.000Z",
+  "updatedAt": "2024-06-01T10:00:00.000Z"
+}
+```
+
+---
+
+## Get a Document
+
+Retrieve the full document record, including nested RAPID role assignments, attached evidence, and approval history.
+
+**GET** `/api/documents/:id`
+
+<ParamField path="id" type="string" required>
+  The unique document ID (`clx...`).
+</ParamField>
+
+```bash
+curl "https://rapid-ledger-production.up.railway.app/api/documents/clx4k2mn0000008l5hgqf1a2b" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+**Response — 200 OK**
+
+```json
+{
+  "id": "clx4k2mn0000008l5hgqf1a2b",
+  "documentCode": "RAPID-001",
+  "title": "Migrate production database to PostgreSQL 16",
+  "status": "finalized",
+  "riskLevel": "high",
+  "complianceImpact": true,
+  "version": 1,
+  "decisionSummary": "Upgrade the primary database cluster from PostgreSQL 14 to 16.",
+  "businessContext": "PostgreSQL 14 reaches end-of-life in November 2025.",
+  "problemStatement": "Our production cluster is running an unsupported PostgreSQL version.",
+  "proposedDecision": "Migrate to PostgreSQL 16 using pg_upgrade with blue-green deployment.",
+  "alternativesConsidered": "Evaluated Aurora PostgreSQL and staying on PG14.",
+  "department": "Engineering",
+  "deadline": "2024-09-30T00:00:00.000Z",
+  "createdBy": "clxuser0000000001",
+  "createdAt": "2024-06-01T10:00:00.000Z",
+  "updatedAt": "2024-06-15T14:30:00.000Z",
+  "RapidRoleAssignment": [
+    {
+      "id": "clxrole000001",
+      "role": "D",
+      "userId": "clxuser0000000001",
+      "user": { "name": "Alice Chen", "email": "alice@company.com" }
+    },
+    {
+      "id": "clxrole000002",
+      "role": "R",
+      "userId": "clxuser0000000002",
+      "user": { "name": "Bob Martinez", "email": "bob@company.com" }
+    }
+  ],
+  "Evidence": [
+    {
+      "id": "clxevid000001",
+      "type": "link",
+      "urlOrPath": "https://internal.wiki/pg16-compliance-report",
+      "description": "Internal compliance risk assessment for PG16 migration"
+    }
+  ],
+  "Approval": [
+    {
+      "id": "clxapprv000001",
+      "status": "approved",
+      "notes": "Reviewed and approved. Blue-green strategy mitigates downtime risk.",
+      "userId": "clxuser0000000003",
+      "user": { "name": "Carol Singh" }
+    }
+  ]
+}
+```
+
+---
+
+## Update a Document
+
+Update the fields of an existing document. You can only update a document while it is in `draft` or `needs_changes` status.
+
+**PATCH** `/api/documents/:id`
+
+<ParamField path="id" type="string" required>
+  The unique document ID.
+</ParamField>
+
+<Warning>
+  Attempting to update a `finalized` document returns **403 Forbidden**. Attempting to update a document in any other non-editable state (e.g. `submitted`, `approved`) returns **409 Conflict**.
+</Warning>
+
+Any of the fields accepted by [Create a Document](#create-a-document) can be included in the request body. Only the fields you include are updated — all other fields are left unchanged.
+
+```bash
+curl -X PATCH "https://rapid-ledger-production.up.railway.app/api/documents/clx4k2mn0000008l5hgqf1a2b" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "riskLevel": "critical",
+    "alternativesConsidered": "Added evaluation of AWS RDS PostgreSQL 16 as a third option."
+  }'
+```
+
+**Response — 200 OK**
+
+Returns the updated document object.
+
+---
+
+## Delete a Document
+
+Permanently delete a document. Only Admins can call this endpoint, and only while the document is in `draft` status.
+
+**DELETE** `/api/documents/:id`
+
+<ParamField path="id" type="string" required>
+  The unique document ID.
+</ParamField>
+
+<Warning>
+  This action is irreversible. Deletion is restricted to Admin users and only permitted on `draft` documents.
+</Warning>
+
+```bash
+curl -X DELETE "https://rapid-ledger-production.up.railway.app/api/documents/clx4k2mn0000008l5hgqf1a2b" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+**Response — 204 No Content**
+
+---
+
+## Submit for Review
+
+Submit a `draft` document for review. Before transitioning the document to `submitted`, the validation engine runs a set of completeness checks.
+
+**POST** `/api/documents/:id/submit`
+
+<ParamField path="id" type="string" required>
+  The unique document ID.
+</ParamField>
+
+**Validation rules enforced at submission:**
+
+1. `title`, `decisionSummary`, `businessContext`, `problemStatement`, and `proposedDecision` must all be non-empty.
+2. At least one user must be assigned to the **D** (Decide) role.
+3. At least one user must be assigned to the **R** (Recommend) role.
+4. At least one user must be assigned to the **P** (Perform) role.
+5. `riskLevel` must be set.
+
+```bash
+curl -X POST "https://rapid-ledger-production.up.railway.app/api/documents/clx4k2mn0000008l5hgqf1a2b/submit" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+**Response — 200 OK**
+
+```json
+{
+  "id": "clx4k2mn0000008l5hgqf1a2b",
+  "status": "submitted",
+  "updatedAt": "2024-06-10T09:15:00.000Z"
+}
+```
+
+**Response — 400 Bad Request** (validation failure)
+
+```json
+{
+  "error": "Validation failed",
+  "details": [
+    "Missing required RAPID role: D (Decide)",
+    "Missing required RAPID role: P (Perform)"
+  ]
+}
+```
+
+---
+
+## Workflow Actions
+
+Once a document is submitted, it moves through a structured workflow. Use the endpoints below to advance the document status at each stage.
+
+### Recommend
+
+The user assigned to the **R** (Recommend) role provides their formal recommendation.
+
+**POST** `/api/documents/:id/recommend`
+
+```bash
+curl -X POST "https://rapid-ledger-production.up.railway.app/api/documents/clx4k2mn0000008l5hgqf1a2b/recommend" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{ "notes": "I recommend proceeding. The compliance risk of inaction outweighs the migration cost." }'
+```
+
+**Response — 200 OK**
+
+```json
+{
+  "id": "clx4k2mn0000008l5hgqf1a2b",
+  "status": "awaiting_agreement",
+  "updatedAt": "2024-06-11T10:00:00.000Z"
+}
+```
+
+---
+
+### Approve
+
+An Approver (user with the **A** role or Admin) formally agrees to the decision.
+
+**POST** `/api/documents/:id/approve`
+
+```bash
+curl -X POST "https://rapid-ledger-production.up.railway.app/api/documents/clx4k2mn0000008l5hgqf1a2b/approve" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{ "notes": "Reviewed the compliance report. Approved." }'
+```
+
+**Response — 200 OK**
+
+```json
+{
+  "id": "clx4k2mn0000008l5hgqf1a2b",
+  "status": "approved",
+  "updatedAt": "2024-06-12T11:00:00.000Z"
+}
+```
+
+---
+
+### Reject
+
+An Approver or Admin rejects the document, returning it to the creator with a reason.
+
+**POST** `/api/documents/:id/reject`
+
+```bash
+curl -X POST "https://rapid-ledger-production.up.railway.app/api/documents/clx4k2mn0000008l5hgqf1a2b/reject" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{ "notes": "Missing compliance evidence. Please attach the latest security audit before resubmitting." }'
+```
+
+**Response — 200 OK**
+
+```json
+{
+  "id": "clx4k2mn0000008l5hgqf1a2b",
+  "status": "rejected",
+  "updatedAt": "2024-06-12T13:00:00.000Z"
+}
+```
+
+---
+
+### Finalize
+
+An Admin finalizes an `approved` document. Finalization is an atomic operation — it simultaneously locks the document and creates a permanent, immutable entry in the compliance ledger.
+
+**POST** `/api/documents/:id/finalize`
+
+<Warning>
+  Finalization is irreversible. Once finalized, the document cannot be edited. To make further changes, use the [Versioning](#versioning) endpoint to create a new draft version.
+</Warning>
+
+```bash
+curl -X POST "https://rapid-ledger-production.up.railway.app/api/documents/clx4k2mn0000008l5hgqf1a2b/finalize" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+**Response — 200 OK**
+
+```json
+{
+  "id": "clx4k2mn0000008l5hgqf1a2b",
+  "status": "finalized",
+  "updatedAt": "2024-06-15T14:30:00.000Z",
+  "ledgerEntryId": "clxledger000001"
+}
+```
+
+---
+
+### Complete Execution
+
+The user assigned to the **P** (Perform) role marks the decision as executed.
+
+**POST** `/api/documents/:id/complete`
+
+```bash
+curl -X POST "https://rapid-ledger-production.up.railway.app/api/documents/clx4k2mn0000008l5hgqf1a2b/complete" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{ "notes": "Migration completed successfully on 2024-09-28. Zero downtime achieved." }'
+```
+
+**Response — 200 OK**
+
+```json
+{
+  "id": "clx4k2mn0000008l5hgqf1a2b",
+  "status": "execution_complete",
+  "updatedAt": "2024-09-28T18:00:00.000Z"
+}
+```
+
+---
+
+## Assign RAPID Roles
+
+Assign a RAPID role to a user on a specific document. Each role represents a distinct accountability in the decision process.
+
+| Role | Code | Responsibility |
+|------|------|---------------|
+| Recommend | `R` | Gathers information and provides a formal recommendation |
+| Agree | `A` | Formal approver who must sign off before finalization |
+| Perform | `P` | Executes the decision after it is finalized |
+| Input | `I` | Provides input or data without accountability for the outcome |
+| Decide | `D` | The final decision-maker |
+
+**POST** `/api/documents/:id/roles`
+
+<ParamField path="id" type="string" required>
+  The unique document ID.
+</ParamField>
+
+<ParamField body="userId" type="string" required>
+  The ID of the user to assign.
+</ParamField>
+
+<ParamField body="role" type="string" required>
+  The RAPID role code. One of: `R`, `A`, `P`, `I`, `D`.
+</ParamField>
+
+```bash
+curl -X POST "https://rapid-ledger-production.up.railway.app/api/documents/clx4k2mn0000008l5hgqf1a2b/roles" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "userId": "clxuser0000000002",
+    "role": "A"
+  }'
+```
+
+**Response — 201 Created**
+
+```json
+{
+  "id": "clxrole000003",
+  "role": "A",
+  "userId": "clxuser0000000002",
+  "documentId": "clx4k2mn0000008l5hgqf1a2b",
+  "user": { "name": "Carol Singh", "email": "carol@company.com" }
+}
+```
+
+### Remove a Role Assignment
+
+**DELETE** `/api/documents/:id/roles/:roleId`
+
+<ParamField path="id" type="string" required>
+  The unique document ID.
+</ParamField>
+
+<ParamField path="roleId" type="string" required>
+  The unique role assignment ID returned when the role was created.
+</ParamField>
+
+```bash
+curl -X DELETE "https://rapid-ledger-production.up.railway.app/api/documents/clx4k2mn0000008l5hgqf1a2b/roles/clxrole000003" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+**Response — 204 No Content**
+
+---
+
+## Attach Evidence
+
+Attach supporting evidence to a document. Evidence can be an external link, a plain-text note, or a file path.
+
+**POST** `/api/documents/:id/evidence`
+
+<ParamField path="id" type="string" required>
+  The unique document ID.
+</ParamField>
+
+<ParamField body="type" type="string" required>
+  The evidence type. One of: `link`, `note`, `file`.
+</ParamField>
+
+<ParamField body="urlOrPath" type="string" required>
+  The URL (for `link` and `file`) or the text content (for `note`).
+</ParamField>
+
+<ParamField body="description" type="string">
+  A short label describing what this evidence represents.
+</ParamField>
+
+```bash
+curl -X POST "https://rapid-ledger-production.up.railway.app/api/documents/clx4k2mn0000008l5hgqf1a2b/evidence" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "type": "link",
+    "urlOrPath": "https://internal.wiki/pg16-compliance-report",
+    "description": "Internal compliance risk assessment for PG16 migration"
+  }'
+```
+
+**Response — 201 Created**
+
+```json
+{
+  "id": "clxevid000002",
+  "type": "link",
+  "urlOrPath": "https://internal.wiki/pg16-compliance-report",
+  "description": "Internal compliance risk assessment for PG16 migration",
+  "documentId": "clx4k2mn0000008l5hgqf1a2b"
+}
+```
+
+---
+
+## Versioning
+
+Create a new editable version of a finalized document. The new document is created as a `draft` with an incremented version number (v+1) and is linked to the original.
+
+**POST** `/api/documents/:id/version`
+
+<ParamField path="id" type="string" required>
+  The ID of the finalized document to version.
+</ParamField>
+
+<Note>
+  Versioning is only available on `finalized` documents. The original document remains unchanged and visible in the ledger.
+</Note>
+
+```bash
+curl -X POST "https://rapid-ledger-production.up.railway.app/api/documents/clx4k2mn0000008l5hgqf1a2b/version" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+**Response — 201 Created**
+
+```json
+{
+  "id": "clx4k2mn0000008l5hgqf1a2c",
+  "documentCode": "RAPID-001",
+  "title": "Migrate production database to PostgreSQL 16",
+  "status": "draft",
+  "version": 2,
+  "parentDocumentId": "clx4k2mn0000008l5hgqf1a2b",
+  "createdAt": "2024-10-01T08:00:00.000Z"
+}
+```
+
+---
+
+## Export PDF
+
+Download a formatted PDF export of a document, suitable for offline sharing or compliance archives.
+
+**GET** `/api/documents/:id/export-pdf`
+
+<ParamField path="id" type="string" required>
+  The unique document ID.
+</ParamField>
+
+The response has `Content-Type: application/pdf`. Use curl's `-o` flag to write it directly to a file.
+
+```bash
+curl "https://rapid-ledger-production.up.railway.app/api/documents/clx4k2mn0000008l5hgqf1a2b/export-pdf" \
+  -H "Authorization: Bearer $TOKEN" \
+  -o document.pdf
+```
+
+<Tip>
+  PDF exports capture the document at its current state. For a permanent record of a finalized decision, use the [Ledger API](/api-reference/ledger) instead.
+</Tip>

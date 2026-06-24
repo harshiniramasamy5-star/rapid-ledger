@@ -1,0 +1,108 @@
+---
+title: "Using the Audit Log for Compliance and Monitoring"
+sidebarTitle: "Audit Log"
+description: "Every action in RAPID Ledger generates an immutable audit log entry. Learn how to read, filter, and export audit logs for compliance and monitoring."
+---
+
+Every significant action taken in RAPID Ledger — from logging in to finalising a decision — generates an immutable audit log entry. These entries cannot be edited or deleted, giving you a tamper-proof record of everything that happened in your organisation and when. Admins, Creators, and Approvers can read the audit log, making it your primary tool for compliance reviews, incident investigations, and governance reporting.
+
+## Querying the Audit Log
+
+Send a `GET` request to `/api/audit-logs` with your Bearer token to retrieve your organisation's audit log. Results are returned as an array of audit log entries in reverse chronological order.
+
+```bash
+curl https://rapid-ledger-production.up.railway.app/api/audit-logs \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+Each entry in the response contains the action type, the entity it affected, the user who performed it, and a precise timestamp:
+
+```json
+[
+  {
+    "id": "clx4f9z0000001a2b3c4d5e6f",
+    "action": "document_finalized",
+    "entityType": "RapidDocument",
+    "entityId": "clx4f9z0000001a2b3c4d5e7h",
+    "userId": "clx4f9z0000001a2b3c4d5e8i",
+    "createdAt": "2024-06-15T10:23:11.000Z",
+    "user": {
+      "name": "Alice Chen",
+      "email": "alice@company.com"
+    }
+  }
+]
+```
+
+## Audit Action Types
+
+RAPID Ledger records 15 distinct action types covering authentication, document lifecycle, role management, and integrations.
+
+| Action | Description |
+|---|---|
+| `login` | A user successfully authenticated |
+| `login_failed` | A failed login attempt (wrong password or invalid TOTP code) |
+| `document_created` | A new document was created |
+| `document_updated` | A document's content or metadata was modified |
+| `document_submitted` | A document was submitted for approval |
+| `document_approved` | A document was approved by an Approver |
+| `document_rejected` | A document was rejected by an Approver |
+| `needs_changes_requested` | An Approver requested changes before re-submission |
+| `document_finalized` | A document was marked as final and locked |
+| `document_versioned` | A new version of a document was created |
+| `role_assigned` | A RAPID role was assigned to a participant on a document |
+| `evidence_added` | Evidence was attached to a document by a Performer |
+| `execution_complete` | A Performer marked execution of a decision as complete |
+| `ledger_entry_created` | A new ledger entry was written to the audit trail |
+| `report_generated` | A compliance or governance report was generated |
+
+## Filtering
+
+Use query parameters to narrow the audit log to exactly the entries you need. All filters are optional and can be combined.
+
+| Parameter | Type | Description |
+|---|---|---|
+| `actor` | `userId` string | Return only entries for a specific user |
+| `action` | Audit action type | Filter by a specific action (e.g. `document_approved`) |
+| `entityType` | String | Filter by entity type (e.g. `RapidDocument`) |
+| `entityId` | String | Return all audit events for a specific entity |
+| `from` | ISO 8601 date string | Return entries on or after this date |
+| `to` | ISO 8601 date string | Return entries on or before this date |
+
+**Example:** Retrieve all approval events for a specific document within a date range:
+
+```bash
+curl "https://rapid-ledger-production.up.railway.app/api/audit-logs\
+?action=document_approved\
+&entityType=RapidDocument\
+&entityId=clx4f9z0000001a2b3c4d5e7h\
+&from=2024-06-01T00:00:00.000Z\
+&to=2024-06-30T23:59:59.000Z" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+**Example:** Find all failed login attempts by a specific user:
+
+```bash
+curl "https://rapid-ledger-production.up.railway.app/api/audit-logs\
+?action=login_failed\
+&actor=clx4f9z0000001a2b3c4d5e8i" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+## Access Control
+
+<Note>
+  Access to the audit log is restricted by role:
+
+  - **Admin** — Full read access to all audit log entries across the organisation.
+  - **Creator** — Can read audit log entries for documents they created and their own account activity.
+  - **Approver** — Can read audit log entries related to approval actions.
+  - **Recommender, Performer, Viewer** — Cannot access the audit log API.
+
+  If you need audit log access and your role does not permit it, contact your organisation Admin.
+</Note>
+
+<Tip>
+  Export audit logs regularly for your compliance records. Use the `from` and `to` date range filters to scope each export to a specific review period — for example, a calendar quarter or a regulatory reporting window. Store the exported JSON files in your organisation's document management system alongside the relevant decision records.
+</Tip>

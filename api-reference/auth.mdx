@@ -1,0 +1,264 @@
+---
+title: "Authentication API — Login, Refresh, and MFA"
+sidebarTitle: "Authentication"
+description: "Authenticate with RAPID Ledger to receive a JWT token. All API requests require a Bearer token in the Authorization header."
+---
+
+RAPID Ledger uses JWT-based authentication. You begin by exchanging your email and password for a signed token at `/api/auth/login`. Every subsequent request must include that token in the `Authorization` header as `Bearer <token>`. Tokens are valid for 24 hours — use `/api/auth/refresh` to obtain a new one before yours expires. If your organization has TOTP-based MFA enabled, login is a two-step process: the initial login call returns a challenge, and you complete authentication by submitting your one-time code to `/api/auth/totp/validate`.
+
+---
+
+## Base URL
+
+```
+https://rapid-ledger-production.up.railway.app/api
+```
+
+---
+
+## POST /api/auth/login
+
+Exchange your credentials for a JWT token. On success, include the returned `token` value in all subsequent requests.
+
+### Request Body
+
+<ParamField body="email" type="string" required>
+  The email address associated with your RAPID Ledger account.
+</ParamField>
+
+<ParamField body="password" type="string" required>
+  Your account password.
+</ParamField>
+
+### Example Request
+
+```bash
+curl -X POST https://rapid-ledger-production.up.railway.app/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "alice@company.com",
+    "password": "your-password"
+  }'
+```
+
+### 200 — Success
+
+<ResponseField name="token" type="string">
+  A signed JWT to include as `Authorization: Bearer <token>` in all API requests. Expires after 24 hours.
+</ResponseField>
+
+<ResponseField name="user" type="object">
+  The authenticated user record.
+
+  <Expandable title="user fields">
+    <ResponseField name="user.id" type="string">
+      Unique identifier for the user (CUID format).
+    </ResponseField>
+
+    <ResponseField name="user.name" type="string">
+      The user's display name.
+    </ResponseField>
+
+    <ResponseField name="user.email" type="string">
+      The user's email address.
+    </ResponseField>
+
+    <ResponseField name="user.role" type="string">
+      The user's system role (e.g. `admin`, `reviewer`, `viewer`).
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+```json
+{
+  "token": "eyJ...",
+  "user": {
+    "id": "clx4k2n0e0000abcd1234efgh",
+    "name": "Alice Chen",
+    "email": "alice@company.com",
+    "role": "admin"
+  }
+}
+```
+
+### 401 — Invalid Credentials
+
+```json
+{
+  "error": {
+    "code": "INVALID_CREDENTIALS",
+    "message": "The email or password you entered is incorrect.",
+    "details": []
+  }
+}
+```
+
+### 403 — Account Locked
+
+```json
+{
+  "error": {
+    "code": "ACCOUNT_LOCKED",
+    "message": "Your account has been locked after too many failed login attempts. Contact your administrator.",
+    "details": []
+  }
+}
+```
+
+<Note>
+  Tokens expire **24 hours** after they are issued. Use [POST /api/auth/refresh](#post-apiauthrefresh) to obtain a new token without re-entering credentials.
+</Note>
+
+---
+
+## POST /api/auth/refresh
+
+Exchange a valid refresh token for a new JWT. Use this to keep sessions alive without prompting the user to log in again.
+
+### Request Body
+
+<ParamField body="refreshToken" type="string" required>
+  The refresh token issued alongside your original JWT.
+</ParamField>
+
+### Example Request
+
+```bash
+curl -X POST https://rapid-ledger-production.up.railway.app/api/auth/refresh \
+  -H "Content-Type: application/json" \
+  -d '{
+    "refreshToken": "your-refresh-token"
+  }'
+```
+
+### 200 — Success
+
+<ResponseField name="token" type="string">
+  A new signed JWT. The previous token is invalidated immediately upon refresh.
+</ResponseField>
+
+```json
+{
+  "token": "eyJ..."
+}
+```
+
+---
+
+## GET /api/auth/me
+
+Return the user record associated with the current Bearer token. Use this to confirm a token is valid or to retrieve up-to-date profile information.
+
+### Example Request
+
+```bash
+curl https://rapid-ledger-production.up.railway.app/api/auth/me \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+### 200 — Success
+
+<ResponseField name="id" type="string">
+  Unique identifier for the user (CUID format).
+</ResponseField>
+
+<ResponseField name="name" type="string">
+  The user's display name.
+</ResponseField>
+
+<ResponseField name="email" type="string">
+  The user's email address.
+</ResponseField>
+
+<ResponseField name="role" type="string">
+  The user's system role (e.g. `admin`, `reviewer`, `viewer`).
+</ResponseField>
+
+<ResponseField name="department" type="string">
+  The department this user belongs to, if set.
+</ResponseField>
+
+<ResponseField name="createdAt" type="string">
+  ISO 8601 timestamp of when the account was created.
+</ResponseField>
+
+```json
+{
+  "id": "clx4k2n0e0000abcd1234efgh",
+  "name": "Alice Chen",
+  "email": "alice@company.com",
+  "role": "admin",
+  "department": "Finance",
+  "createdAt": "2024-06-01T09:00:00.000Z"
+}
+```
+
+---
+
+## MFA — TOTP Validation
+
+When TOTP-based multi-factor authentication is enabled for an account, login is a two-step process. The first request to `/api/auth/login` returns a challenge rather than a token. You then submit the user's six-digit TOTP code to `/api/auth/totp/validate` to complete authentication and receive the JWT.
+
+### Step 1 — Initiate Login
+
+Send the same login request as usual. When MFA is required, the response will look like this instead of returning a token:
+
+```bash
+curl -X POST https://rapid-ledger-production.up.railway.app/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "alice@company.com",
+    "password": "your-password"
+  }'
+```
+
+```json
+{
+  "requiresMfa": true,
+  "userId": "clx4k2n0e0000abcd1234efgh"
+}
+```
+
+### Step 2 — Validate the TOTP Code
+
+POST the `userId` from Step 1 along with the current code from the user's authenticator app. On success, you receive the standard token response.
+
+```bash
+curl -X POST https://rapid-ledger-production.up.railway.app/api/auth/totp/validate \
+  -H "Content-Type: application/json" \
+  -d '{
+    "userId": "clx4k2n0e0000abcd1234efgh",
+    "code": "123456"
+  }'
+```
+
+```json
+{
+  "token": "eyJ...",
+  "user": {
+    "id": "clx4k2n0e0000abcd1234efgh",
+    "name": "Alice Chen",
+    "email": "alice@company.com",
+    "role": "admin"
+  }
+}
+```
+
+<Tip>
+  Enable TOTP for your account to add a second layer of protection against credential theft. See the **Two-Factor Authentication** guide for setup instructions.
+</Tip>
+
+---
+
+## Using the Token
+
+Once you have a token, pass it in the `Authorization` header of every API request using the `Bearer` scheme. Requests that are missing a token, or that present an expired or malformed token, will receive a `401 UNAUTHORIZED` response.
+
+```bash
+export TOKEN="eyJ..."
+
+curl https://rapid-ledger-production.up.railway.app/api/documents \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+All endpoints except `POST /api/auth/login` and `GET /api/health` require this header.

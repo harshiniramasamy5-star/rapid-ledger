@@ -1,0 +1,173 @@
+---
+title: "Users and Organisation Management API"
+sidebarTitle: "Organizations"
+description: "Manage users in your RAPID Ledger organisation. List all members, create new users, assign system roles, and control access across your team."
+---
+
+The Organisation API lets Admins manage users within their organisation. All data in RAPID Ledger is scoped to your organisation — no data is shared across org boundaries. Use these endpoints to list current members, onboard new users, and assign the roles that control what each person can see and do across the platform.
+
+---
+
+## GET /api/users
+
+Returns an array of all users in your organisation.
+
+**Access:** Admin and Creator roles.
+
+```bash
+curl https://rapid-ledger-production.up.railway.app/api/users \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+### Query parameters
+
+<ParamField query="page" type="integer">
+  Page number for paginated results. Defaults to `1`.
+</ParamField>
+
+<ParamField query="limit" type="integer">
+  Number of users to return per page. Defaults to `20`.
+</ParamField>
+
+### Response
+
+```json
+[
+  {
+    "id": "clx9f2k3p0000abc123xyz789",
+    "name": "Alice Chen",
+    "email": "alice@company.com",
+    "role": "admin",
+    "department": "Engineering",
+    "isActive": true,
+    "createdAt": "2024-01-15T09:00:00.000Z"
+  },
+  {
+    "id": "clx9f2k3p0001def456uvw012",
+    "name": "Bob Martinez",
+    "email": "bob@company.com",
+    "role": "creator",
+    "department": "Product",
+    "isActive": true,
+    "createdAt": "2024-02-03T14:22:00.000Z"
+  }
+]
+```
+
+<ResponseField name="id" type="string">
+  Unique identifier for the user (CUID format).
+</ResponseField>
+
+<ResponseField name="name" type="string">
+  The user's display name.
+</ResponseField>
+
+<ResponseField name="email" type="string">
+  The user's email address. Used for login and notifications.
+</ResponseField>
+
+<ResponseField name="role" type="string">
+  The user's system role. One of: `admin`, `creator`, `recommender`, `approver`, `performer`, `viewer`.
+</ResponseField>
+
+<ResponseField name="department" type="string">
+  The department the user belongs to, if set.
+</ResponseField>
+
+<ResponseField name="isActive" type="boolean">
+  Whether the user account is currently active.
+</ResponseField>
+
+<ResponseField name="createdAt" type="string">
+  ISO 8601 timestamp of when the user account was created.
+</ResponseField>
+
+---
+
+## POST /api/users
+
+Creates a new user in your organisation. The new user can log in immediately using the credentials you provide.
+
+**Access:** Admin only.
+
+### Request body
+
+<ParamField body="name" type="string" required>
+  The user's full display name.
+</ParamField>
+
+<ParamField body="email" type="string" required>
+  The user's email address. Must be unique within your organisation.
+</ParamField>
+
+<ParamField body="password" type="string" required>
+  Initial password for the new account. Communicate this securely to the user — RAPID Ledger does not send a welcome email automatically.
+</ParamField>
+
+<ParamField body="role" type="string" required>
+  The system role to assign. Must be one of: `admin`, `creator`, `recommender`, `approver`, `performer`, `viewer`. See [System Roles](#system-roles) for a full description of each.
+</ParamField>
+
+<ParamField body="department" type="string">
+  The department the user belongs to. Optional, but recommended for filtering and reporting.
+</ParamField>
+
+### Example request
+
+```bash
+curl -X POST https://rapid-ledger-production.up.railway.app/api/users \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Priya Nair",
+    "email": "priya@company.com",
+    "password": "Str0ng!nitialPass",
+    "role": "approver",
+    "department": "Legal"
+  }'
+```
+
+### Response `201 Created`
+
+```json
+{
+  "id": "clx9f2k3p0002ghi789rst345",
+  "name": "Priya Nair",
+  "email": "priya@company.com",
+  "role": "approver",
+  "department": "Legal",
+  "isActive": true,
+  "createdAt": "2024-06-10T11:45:00.000Z"
+}
+```
+
+<Note>
+  Only Admins can create new users. Assigning the `admin` role grants the new user full platform access — including the ability to create and deactivate other users, configure integrations, and finalise documents. Grant this role deliberately.
+</Note>
+
+---
+
+## System Roles
+
+RAPID Ledger uses a structured role model that maps to the RAPID decision framework. Each role determines which actions a user can take across the platform.
+
+| Role | Description | Key Capabilities |
+|---|---|---|
+| `admin` | Full access — the Decide owner in RAPID | Create users, finalise documents, configure settings, read everything |
+| `creator` | Creates and submits decision documents | Create, submit, and assign roles; add evidence and supporting material |
+| `recommender` | Provides formal recommendations | Recommend on submitted documents |
+| `approver` | Formally agrees on high and critical risk documents | Agree or reject documents in `awaiting_agreement` status |
+| `performer` | Executes finalised decisions | Mark execution complete on approved documents |
+| `viewer` | Read-only access with contextual input | View all documents, read the full ledger |
+
+<Tip>
+  Assign the `viewer` role to stakeholders who need visibility into decisions without the ability to take actions. Viewers can still provide Input context on documents, making them useful participants in the decision process without granting write access.
+</Tip>
+
+---
+
+## Multi-Tenancy
+
+Every API call you make is automatically scoped to your organisation. RAPID Ledger extracts your organisation context from the JWT in your `Authorization` header — you never need to pass an org ID explicitly.
+
+Cross-organisation data access is not possible. A user authenticated in Organisation A cannot read, write, or enumerate any resource belonging to Organisation B, regardless of role. If you manage multiple organisations, each requires its own set of credentials and API tokens.

@@ -1,0 +1,64 @@
+---
+title: "What is the RAPID Framework?"
+sidebarTitle: "RAPID Framework"
+description: "The RAPID framework assigns five distinct roles to every decision: Recommend, Agree, Perform, Input, and Decide — eliminating ambiguity and ensuring clear accountability."
+---
+
+Most organizations lose decisions to Slack threads, email chains, and hallway conversations — nobody can say who made the call, what information they had, or who was responsible for following through. The RAPID framework solves this by giving every decision a structured cast of named contributors, each with a clearly defined responsibility. RAPID Ledger enforces that structure automatically: before a decision document can move forward, every required role must be filled, every piece of supporting evidence must be attached, and every stakeholder must take their designated action in the right order. The result is a complete, tamper-proof record of how your organization makes its most important decisions.
+
+## The Five Roles
+
+Each letter in RAPID represents a distinct role in the decision-making process. A single person may hold multiple roles on a document, but the responsibilities of each role remain separate.
+
+| Letter | Role Name | Responsibility | When Required |
+|--------|-----------|----------------|---------------|
+| **R** | Recommend | Proposes the decision with supporting context and evidence. Sets the framing for all other participants. | Always — at least one R is required on every document |
+| **A** | Agree | A formal high-stakes approver who must sign off before the Decider can act. Adds an additional checkpoint for sensitive decisions. | Required when the document's risk level is **high** or **critical** |
+| **P** | Perform | Executes the decision once it has been finalized. Marks the decision as complete after execution. | Always — at least one P is required on every document |
+| **I** | Input | Provides expert context, data, or perspective to inform the decision. Does not vote or block — purely advisory. | Optional, but recommended for decisions that touch specialized domains |
+| **D** | Decide | The single owner who makes the final call. There can be only one D per document. This role is always held by a system Admin. | Always — exactly one D is required on every document |
+
+## Document Rules
+
+Before a document can be submitted for review, RAPID Ledger validates that it satisfies five structural requirements. These rules exist to ensure every document has the complete accountability structure the RAPID framework demands — a document that skips a required role is not a governed decision, it's a note.
+
+The five constraints that must be satisfied at submission are:
+
+1. **Exactly one Decide (D) owner.** Every document needs a single, unambiguous final decision-maker.
+2. **At least one Recommend (R) role.** Someone must formally own the proposal and its supporting rationale.
+3. **At least one Perform (P) role.** There must be a named executor who will carry the decision through to completion.
+4. **An Agree (A) role if the risk level is `high` or `critical`.** High-stakes decisions require an explicit secondary checkpoint before the Decider acts.
+5. **At least one evidence item if `complianceImpact` is `true`.** Compliance-relevant decisions must be substantiated with documented evidence — assertions alone are not sufficient.
+
+<Note>
+If any of these constraints are violated at submission, RAPID Ledger returns a `400 Bad Request` response with a details object that identifies each specific violation. The document remains in `draft` status until all constraints are resolved.
+</Note>
+
+## Risk Levels
+
+Every document carries a `riskLevel` that describes the potential organizational impact of the decision. Risk level directly determines which workflow path the document follows and whether the Agree role is required.
+
+| Risk Level | Agree (A) Role Required | Workflow Path |
+|------------|:-----------------------:|---------------|
+| `low` | No | Standard: `draft → submitted → approved → finalized → execution_complete` |
+| `medium` | No | Standard: `draft → submitted → approved → finalized → execution_complete` |
+| `high` | **Yes** | High-risk: `draft → submitted → awaiting_agreement → approved → finalized → execution_complete` |
+| `critical` | **Yes** | High-risk: `draft → submitted → awaiting_agreement → approved → finalized → execution_complete` |
+
+When a document with risk level `high` or `critical` is submitted, it automatically enters the `awaiting_agreement` state rather than moving directly to `approved`. The assigned Agree role holder must formally agree before the Decider can take action. This creates a mandatory secondary checkpoint that cannot be bypassed.
+
+## Compliance Impact
+
+The `complianceImpact` flag indicates that a decision touches regulatory, legal, or audit-relevant territory. When `complianceImpact` is set to `true`, RAPID Ledger requires at least one piece of attached evidence before the document can be submitted.
+
+Evidence can take many forms — a regulatory memo, a legal opinion, a risk assessment, an external audit finding, or a policy reference. The requirement exists because compliance decisions have consequences beyond the immediate organization: they may need to be disclosed to regulators, reviewed in audits, or defended in legal proceedings. A finalized compliance decision with no supporting evidence is a liability; RAPID Ledger prevents that outcome by making evidence a hard gate at submission.
+
+You can attach evidence to a document at any point while it is in `draft` status using `POST /api/documents/:id/evidence`.
+
+## Why One Decider?
+
+The single Decide owner rule is one of the most deliberate constraints in the RAPID framework. It is common in organizations for decisions to be made by "consensus" — a process that often means no one is truly accountable, and revisiting the decision is always on the table.
+
+By requiring exactly one D per document, RAPID Ledger makes accountability unambiguous. When something goes well, there is a clear owner to credit. When something goes wrong, there is a clear owner to learn from. The Decider is not a dictator — they act only after hearing from Recommenders, Agreers, and Input providers — but they are the single person whose signature closes the decision. This structure eliminates the diffusion of responsibility that allows poorly-governed decisions to persist unchallenged.
+
+In RAPID Ledger, the Decide role is always held by a user with the **Admin** system role, ensuring that the person making final calls has the organizational authority to back them up.

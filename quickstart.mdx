@@ -1,0 +1,229 @@
+---
+title: "Get Started with RAPID Ledger"
+sidebarTitle: "Quickstart"
+description: "Create your first decision document, assign RAPID roles, and walk a decision to finalization in under 10 minutes."
+---
+
+This quickstart walks you through the core RAPID Ledger workflow end-to-end: authenticating, creating a decision document, assigning roles, attaching evidence, and advancing the document all the way to a finalized, immutable ledger entry. You can follow along using the live demo environment or against your own organisation's instance. All examples use the live API directly — no SDK or frontend required.
+
+<Steps>
+
+  <Step title="Authenticate">
+    Start by exchanging your credentials for a JWT access token. Every subsequent API call requires this token in the `Authorization` header.
+
+    ```bash
+    curl -s -X POST https://rapid-ledger-production.up.railway.app/api/auth/login \
+      -H "Content-Type: application/json" \
+      -d '{
+        "email": "admin@rapid.com",
+        "password": "password123"
+      }'
+    ```
+
+    A successful response returns your access token:
+
+    ```json
+    {
+      "success": true,
+      "data": {
+        "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+        "user": {
+          "id": "usr_01",
+          "email": "admin@rapid.com",
+          "role": "Admin"
+        }
+      }
+    }
+    ```
+
+    Copy the `token` value and export it as an environment variable so you can reuse it in every step below:
+
+    ```bash
+    export TOKEN="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+    ```
+  </Step>
+
+  <Step title="Create a Decision Document">
+    Create a new decision document by posting its core fields. The `riskLevel` and `complianceImpact` fields determine which additional workflow steps will be enforced — in this example, both `high` risk and `complianceImpact: true` apply, so you will need an Agree role and attached evidence before the document can be submitted.
+
+    ```bash
+    curl -s -X POST https://rapid-ledger-production.up.railway.app/api/documents \
+      -H "Content-Type: application/json" \
+      -H "Authorization: Bearer $TOKEN" \
+      -d '{
+        "title": "Migrate production database to PostgreSQL 16",
+        "decisionSummary": "Upgrade the production database from PostgreSQL 14 to 16 for performance and security improvements.",
+        "businessContext": "Current version reaches end-of-life in Q4. Staying unpatched creates compliance risk.",
+        "problemStatement": "PostgreSQL 14 will not receive security patches after November 2024.",
+        "proposedDecision": "Schedule migration for the Q3 maintenance window with a 2-hour downtime.",
+        "riskLevel": "high",
+        "complianceImpact": true,
+        "department": "Engineering"
+      }'
+    ```
+
+    A `201 Created` response confirms the document was created and assigned a unique code:
+
+    ```json
+    {
+      "success": true,
+      "data": {
+        "id": "doc_abc123",
+        "documentCode": "RAPID-001",
+        "title": "Migrate production database to PostgreSQL 16",
+        "status": "draft",
+        "riskLevel": "high",
+        "complianceImpact": true,
+        "department": "Engineering",
+        "createdAt": "2024-07-15T10:22:00Z"
+      }
+    }
+    ```
+
+    Note the `id` value (`doc_abc123` in this example) — you will use it as `:id` in every subsequent request.
+  </Step>
+
+  <Step title="Assign RAPID Roles">
+    Assign the required RAPID roles to your document. Each assignment maps a user to one of the five framework roles: `Recommend`, `Agree`, `Perform`, `Input`, or `Decide`. You must assign at least one Recommender, one Performer, and exactly one Decide owner before the document can be submitted.
+
+    Assign a Recommender:
+
+    ```bash
+    curl -s -X POST https://rapid-ledger-production.up.railway.app/api/documents/doc_abc123/roles \
+      -H "Content-Type: application/json" \
+      -H "Authorization: Bearer $TOKEN" \
+      -d '{
+        "userId": "usr_recommender",
+        "role": "Recommend"
+      }'
+    ```
+
+    Assign a Performer:
+
+    ```bash
+    curl -s -X POST https://rapid-ledger-production.up.railway.app/api/documents/doc_abc123/roles \
+      -H "Content-Type: application/json" \
+      -H "Authorization: Bearer $TOKEN" \
+      -d '{
+        "userId": "usr_performer",
+        "role": "Perform"
+      }'
+    ```
+
+    <Tip>
+      Because this document has a `riskLevel` of `high`, you must also assign at least one **Agree (A)** role. Without it, the document will be blocked at submission and will not advance to `awaiting_agreement`. Assign an Approver the same way, using `"role": "Agree"` and the appropriate `userId`.
+    </Tip>
+  </Step>
+
+  <Step title="Attach Evidence">
+    Because `complianceImpact` is set to `true` on this document, at least one piece of evidence must be attached before submission. Evidence substantiates the decision and satisfies compliance requirements. You can attach a URL link, an uploaded file, or a reference to an external system.
+
+    ```bash
+    curl -s -X POST https://rapid-ledger-production.up.railway.app/api/documents/doc_abc123/evidence \
+      -H "Content-Type: application/json" \
+      -H "Authorization: Bearer $TOKEN" \
+      -d '{
+        "type": "link",
+        "title": "PostgreSQL 14 End-of-Life Announcement",
+        "url": "https://www.postgresql.org/support/versioning/",
+        "description": "Official PostgreSQL versioning policy confirming PostgreSQL 14 end-of-life date."
+      }'
+    ```
+
+    A successful response returns the created evidence record:
+
+    ```json
+    {
+      "success": true,
+      "data": {
+        "id": "ev_xyz789",
+        "documentId": "doc_abc123",
+        "type": "link",
+        "title": "PostgreSQL 14 End-of-Life Announcement",
+        "url": "https://www.postgresql.org/support/versioning/",
+        "createdAt": "2024-07-15T10:28:00Z"
+      }
+    }
+    ```
+  </Step>
+
+  <Step title="Submit for Review">
+    Once all required roles are assigned and evidence is attached, submit the document to move it out of `draft` and into the review workflow.
+
+    ```bash
+    curl -s -X POST https://rapid-ledger-production.up.railway.app/api/documents/doc_abc123/submit \
+      -H "Authorization: Bearer $TOKEN"
+    ```
+
+    Because this document has a `riskLevel` of `high`, the platform routes it to the `awaiting_agreement` state rather than directly to `approved`:
+
+    ```json
+    {
+      "success": true,
+      "data": {
+        "id": "doc_abc123",
+        "documentCode": "RAPID-001",
+        "status": "awaiting_agreement",
+        "submittedAt": "2024-07-15T10:30:00Z"
+      }
+    }
+    ```
+
+    <Note>
+      Submission is not unconditional. The platform validates all document rules at this point. If any of the following are missing, the request is rejected with a descriptive error: a Decide (D) role assignment, at least one Recommend (R) assignment, at least one Perform (P) assignment, an Agree (A) assignment (for high/critical risk), or attached evidence (when `complianceImpact` is `true`).
+    </Note>
+
+    The assigned Approver must now review and formally agree to the document before it can advance to `approved`. They do this through the application UI or via the `/api/documents/:id/agree` endpoint.
+  </Step>
+
+  <Step title="Finalize">
+    Once the document has been agreed and approved, the Decide owner finalizes it. Finalization is a one-way, irreversible action: it creates a permanent ledger entry, locks the document against further edits, and triggers any configured integrations (Notion sync, Linear issue creation).
+
+    ```bash
+    curl -s -X POST https://rapid-ledger-production.up.railway.app/api/documents/doc_abc123/finalize \
+      -H "Authorization: Bearer $TOKEN"
+    ```
+
+    The response confirms finalization and returns the ledger entry reference:
+
+    ```json
+    {
+      "success": true,
+      "data": {
+        "id": "doc_abc123",
+        "documentCode": "RAPID-001",
+        "status": "finalized",
+        "finalizedAt": "2024-07-15T11:05:00Z",
+        "ledgerEntry": {
+          "id": "ldg_001",
+          "documentCode": "RAPID-001",
+          "immutable": true,
+          "createdAt": "2024-07-15T11:05:00Z"
+        }
+      }
+    }
+    ```
+
+    Your decision is now permanently recorded. The ledger entry is visible in the audit log, exportable as CSV or PDF, and cannot be modified by any user or role.
+  </Step>
+
+</Steps>
+
+## Next Steps
+
+You've walked a decision document from creation to a finalized ledger entry. From here, explore the core concepts behind the platform, dig into the full role permission model, or browse the complete API reference.
+
+<CardGroup cols={2}>
+  <Card title="Core Concepts" icon="book" href="/concepts/rapid-framework">
+    Deep-dive into the RAPID framework, how the state machine works, and the rules that govern every document.
+  </Card>
+  <Card title="Roles Guide" icon="users" href="/concepts/roles">
+    Understand what each of the six platform roles can see and do — and how to assign them effectively.
+  </Card>
+  <Card title="Document Lifecycle" icon="arrow-right-arrow-left" href="/concepts/document-lifecycle">
+    Trace every state transition a document can take, from first draft through execution complete.
+  </Card>
+  <Card title="API Reference" icon="code" href="/api-reference/documents">
+    Browse the full documents API — all endpoints, parameters, request bodies, and response schemas.
+  </Card>
+</CardGroup>

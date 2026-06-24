@@ -1,0 +1,124 @@
+---
+title: "Decision Document Lifecycle and Workflow States"
+sidebarTitle: "Lifecycle"
+description: "Every RAPID document follows a structured workflow from draft through execution. Learn each status, who transitions it, and what happens at finalization."
+---
+
+Every decision document in RAPID Ledger moves through a defined sequence of states, from initial creation to final execution. This state machine is not just organizational scaffolding — it is the enforcement mechanism that ensures every stakeholder takes their required action in the right order, and that no step is skipped or bypassed. When a document reaches the `finalized` state, it becomes permanently immutable: a ledger entry is created in an atomic transaction, and neither the document nor its ledger record can ever be edited or deleted. The full history of how your organization arrived at that decision is preserved exactly as it happened.
+
+## Workflow States
+
+The table below describes every possible document status, who is authorized to trigger the transition into that state, and where the document can go next.
+
+| Status | Description | Who Can Transition | Next States |
+|---|---|---|---|
+| `draft` | The initial editable state. All document fields can be updated freely. | Creator / Admin | `submitted` |
+| `submitted` | The document has been submitted for review. Editing is locked. The system routes to the appropriate next state based on risk level. | System (on submit) | `awaiting_agreement`, `approved`, `rejected`, `needs_changes` |
+| `awaiting_agreement` | The document's risk level is `high` or `critical`. The assigned Agree (A) role holder must formally agree before the Decider can act. | Approver | `approved`, `rejected` |
+| `approved` | The Decider (Admin) has made the final call. The document is ready to be finalized and executed. | Admin (Decide) | `finalized`, `rejected` |
+| `rejected` | The document has been sent back and cannot be revised in its current version. A new version must be created to continue. | Admin / Approver | — *(terminal for this version)* |
+| `needs_changes` | The document has been returned to the Creator for edits before resubmission. | Admin / Approver | `draft` |
+| `finalized` | The decision is locked and immutable. A LedgerEntry has been automatically created. The document cannot be edited or deleted. | — *(system-locked)* | `execution_complete` |
+| `execution_complete` | The Performer has carried out the decision and marked it complete. This is the terminal state for a successfully executed decision. | Performer | — *(terminal)* |
+
+## Standard vs. High-Risk Workflow
+
+The path a document takes through the state machine depends on its `riskLevel`. Low and medium risk documents follow a streamlined path directly to approval. High and critical risk documents include a mandatory agreement checkpoint that must be cleared before the Decider acts.
+
+<Tabs>
+  <Tab title="Standard (Low / Medium Risk)">
+    <Steps>
+      <Step title="Create the document">
+        A Creator drafts the document, fills in all required fields, assigns RAPID roles (R, P, D, and optionally I), and attaches any necessary evidence. The document is in `draft` status and can be freely edited.
+      </Step>
+      <Step title="Submit for review">
+        The Creator (or Admin) calls `POST /api/documents/:id/submit`. RAPID Ledger validates that all document rules are satisfied. On success, the document moves to `submitted` status and editing is locked.
+      </Step>
+      <Step title="Recommender provides recommendation">
+        The assigned Recommend (R) role holder formally submits their recommendation via `POST /api/documents/:id/recommend`. This provides the Decider with the structured proposal and rationale.
+      </Step>
+      <Step title="Decider approves">
+        The Admin (Decide owner) reviews the document, the recommendation, and any Input context. They approve the document via `POST /api/documents/:id/approve`, moving it to `approved` status.
+      </Step>
+      <Step title="Finalize the document">
+        The Performer calls `POST /api/documents/:id/finalize`. RAPID Ledger atomically updates the status to `finalized`, creates a LedgerEntry, and writes an audit log entry. The document is now immutable.
+      </Step>
+      <Step title="Mark execution complete">
+        After carrying out the decision, the Performer calls `POST /api/documents/:id/execute`, moving the document to `execution_complete`. The decision lifecycle is fully closed.
+      </Step>
+    </Steps>
+  </Tab>
+  <Tab title="High-Risk (High / Critical Risk)">
+    <Steps>
+      <Step title="Create the document">
+        A Creator drafts the document, sets `riskLevel` to `high` or `critical`, assigns RAPID roles — including a mandatory Agree (A) role holder in addition to R, P, and D — and attaches required evidence.
+      </Step>
+      <Step title="Submit for review">
+        The Creator (or Admin) calls `POST /api/documents/:id/submit`. Validation confirms the Agree role is assigned and all other constraints are met. The document moves to `submitted`, then immediately transitions to `awaiting_agreement` because of its risk level.
+      </Step>
+      <Step title="Recommender provides recommendation">
+        The assigned Recommend (R) role holder formally submits their recommendation. Given the elevated risk, this step is especially important for surfacing the full context the Approver and Decider will need.
+      </Step>
+      <Step title="Approver formally agrees">
+        The assigned Agree (A) role holder — a user with the Approver system role — reviews the document and formally agrees via `POST /api/documents/:id/agree`. This moves the document from `awaiting_agreement` to `approved`. The Approver can also reject at this stage, which sends the document to `rejected` status.
+      </Step>
+      <Step title="Decider approves">
+        With the Approver's agreement on record, the Admin (Decide owner) makes the final call via `POST /api/documents/:id/approve`. The document moves to `approved` status.
+      </Step>
+      <Step title="Finalize the document">
+        The Performer calls `POST /api/documents/:id/finalize`. RAPID Ledger atomically finalizes the document, creates a LedgerEntry, and writes an audit log entry. The document is now immutable.
+      </Step>
+      <Step title="Mark execution complete">
+        After executing the decision, the Performer calls `POST /api/documents/:id/execute` to close the lifecycle at `execution_complete`.
+      </Step>
+    </Steps>
+  </Tab>
+</Tabs>
+
+## Finalization and the Immutable Ledger
+
+Finalization is the most consequential event in a document's lifecycle. When the Performer calls `POST /api/documents/:id/finalize`, RAPID Ledger performs the following operations in a single atomic transaction:
+
+1. **Status update** — The document status is set to `finalized`.
+2. **LedgerEntry creation** — A permanent, tamper-proof LedgerEntry is written capturing the complete state of the document at the moment of finalization, including all role assignments, evidence references, and the full decision content.
+3. **Audit log entry** — A timestamped audit event is recorded identifying the Performer who triggered finalization.
+
+Because these three operations happen atomically, there is no possible state where a document is marked finalized without a corresponding ledger entry, or vice versa.
+
+Once finalized, a document is permanently locked. Any attempt to edit or delete a finalized document returns `403 Forbidden`. This immutability is not a policy — it is a hard technical constraint enforced at both the API and database layers.
+
+If circumstances change and a finalized decision needs to be revisited, you do not modify the original. Instead, you create a new version:
+
+```
+POST /api/documents/:id/version
+```
+
+This creates a new document in `draft` status with an incremented version number, while the original finalized document and its LedgerEntry remain completely untouched.
+
+## Validation at Submit
+
+When you submit a document, RAPID Ledger runs a validation pass before accepting the submission. This check ensures the document satisfies all RAPID framework constraints before it enters the review workflow.
+
+The validation engine checks:
+
+- **Exactly one Decide (D) role** is assigned to the document.
+- **At least one Recommend (R) role** is assigned.
+- **At least one Perform (P) role** is assigned.
+- **An Agree (A) role** is assigned if the document's `riskLevel` is `high` or `critical`.
+- **At least one evidence item** is attached if the document's `complianceImpact` field is `true`.
+
+<Warning>
+If any validation constraint is not met at submission, RAPID Ledger returns `400 Bad Request` with a details object listing each specific violation. The document stays in `draft` status and is not moved forward. You must resolve all listed violations and resubmit. Partial submissions are never accepted.
+</Warning>
+
+## Document Versioning
+
+Every document carries an integer `version` field that starts at `1`. For most documents, this number never changes — a decision is made, executed, and closed at version 1.
+
+When a finalized decision needs to be superseded — because circumstances have changed, a policy has been updated, or execution revealed new information — you create a new version via `POST /api/documents/:id/version`. The new document is created in `draft` status with the version number incremented by 1 (for example, version 1 becomes version 2). All original field values are carried forward as a starting point, but every field is editable before the new version is submitted.
+
+The original finalized document is never touched. It remains in the immutable ledger at its original version number, providing a complete historical record of every decision your organization has made and revised over time. Auditors, reviewers, and future decision-makers can trace the full evolution of any decision by reading through its version history.
+
+<Tip>
+You can retrieve all versions of a document family using `GET /api/documents?documentCode=RAPID-001`, which returns every version associated with that document code in chronological order.
+</Tip>

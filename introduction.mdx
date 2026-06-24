@@ -1,0 +1,75 @@
+---
+title: "RAPID Ledger: Decision Governance Without Compromise"
+sidebarTitle: "Introduction"
+description: "Learn what RAPID Ledger is, how the RAPID framework works, and which roles are involved in the decision-making process."
+---
+
+RAPID Ledger is a full-stack decision governance platform designed for organisations that need more than a paper trail — they need a process they can prove. Teams in regulated industries, fast-scaling companies, and any organisation where a bad decision carries real consequences use RAPID Ledger to replace informal, untracked decision-making with structured, role-enforced, immutably recorded governance. Every decision document captures who recommended it, who approved it, who will execute it, and who made the final call — and that record can never be altered after finalization.
+
+## What is the RAPID Framework?
+
+RAPID is a decision-making framework that assigns a specific, non-overlapping role to every participant in a decision. Rather than letting authority blur across a group, RAPID forces clarity: one person decides, others contribute in clearly defined ways. RAPID Ledger enforces this framework programmatically — you cannot finalize a document that violates the rules.
+
+| Letter | Role | Responsibility |
+|---|---|---|
+| **R** | Recommend | Proposes the decision with supporting context, evidence, and rationale. At least one Recommender is required on every document. |
+| **A** | Agree | A high-risk approver who must formally sign off before the decision can be finalized. Required on all high-risk and critical-risk documents. |
+| **P** | Perform | Executes the approved decision once it has been finalized. At least one Performer is required on every document. |
+| **I** | Input | Provides expert context and information to inform the decision. Input contributors have no voting rights and cannot block or approve. |
+| **D** | Decide | The single Admin who makes the final call. Exactly one Decide owner is permitted per document — no more, no less. |
+
+## Document Rules
+
+Every decision document in RAPID Ledger must satisfy the following constraints before it can be submitted or finalized. The platform enforces these rules automatically — documents that violate them cannot progress through the workflow.
+
+- **Exactly one Decide (D) role** must be assigned. Multiple D assignments or zero D assignments are both rejected.
+- **At least one Recommend (R) role** must be assigned before submission.
+- **At least one Perform (P) role** must be assigned before submission.
+- **An Agree (A) role is required** on all documents with a risk level of `high` or `critical`. Without it, the document will not advance past `submitted`.
+- **Evidence must be attached** if the document has `complianceImpact` set to `true`. Submitting without evidence on a compliance-impacting decision is blocked.
+- **A single user cannot hold conflicting roles** on the same document. The platform prevents role conflicts that would undermine separation of concerns.
+
+## Key Features
+
+<CardGroup cols={2}>
+  <Card title="Immutable Audit Log" icon="shield-check">
+    Every action taken on a document — from creation through finalization — is logged with actor identity, timestamp, and metadata. Over 15 distinct action types are tracked. Logs cannot be edited or deleted.
+  </Card>
+  <Card title="State Machine Workflow" icon="arrow-right-arrow-left">
+    Documents follow a strict lifecycle: `draft` → `submitted` → `awaiting_agreement` (high/critical risk) → `approved` → `finalized` → `execution_complete`. No step can be skipped.
+  </Card>
+  <Card title="Role-Based Access Control" icon="user-shield">
+    Six roles — Admin, Creator, Recommender, Approver, Performer, and Viewer — govern what each user can see and do. Permissions are enforced at the API level, not just the UI.
+  </Card>
+  <Card title="TOTP Two-Factor Auth" icon="mobile">
+    Protect sensitive accounts with time-based one-time password (TOTP) two-factor authentication. 2FA is configurable per user and enforced at login for enrolled accounts.
+  </Card>
+  <Card title="Integrations (Notion, Linear, Fathom)" icon="plug">
+    Sync finalized decisions to Notion, create Linear issues from action items, and ingest Fathom meeting transcripts through the AI pipeline to pre-populate decision documents.
+  </Card>
+  <Card title="CSV & PDF Export" icon="file-export">
+    Export decision documents and audit logs as CSV or PDF for offline review, compliance submissions, or board reporting. Export is available to authorised roles at any document stage.
+  </Card>
+</CardGroup>
+
+## Try the Demo
+
+RAPID Ledger provides a live demo environment pre-loaded with sample data and one account for each role. You can log in as any of the following users to explore the platform from different permission levels.
+
+<Note>
+  All demo accounts share the same password: `password123`. This environment is publicly accessible — do not enter real or sensitive information.
+</Note>
+
+| Role | Email |
+|---|---|
+| Admin | admin@rapid.com |
+| Creator | creator@rapid.com |
+| Recommender | recommender@rapid.com |
+| Approver | approver@rapid.com |
+| Performer | performer@rapid.com |
+| Viewer | viewer@rapid.com |
+
+## Live Links
+
+- **Application:** [https://rapid-ledger.vercel.app](https://rapid-ledger.vercel.app)
+- **API Health:** [https://rapid-ledger-production.up.railway.app/api/health](https://rapid-ledger-production.up.railway.app/api/health)

@@ -1,0 +1,114 @@
+{
+  "projectType": "saas",
+  "projectName": "RAPID Ledger",
+  "projectDescription": "A full-stack decision governance platform that enforces the RAPID framework — structured accountability for high-stakes decisions with immutable audit trails, role-based access control, and compliance-grade record keeping.",
+  "theme": "luma",
+  "primaryColor": "#848c8e",
+  "lightColor": "#11161e",
+  "darkColor": "#cfd0d2",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "quickstart"
+            ]
+          },
+          {
+            "group": "Core Concepts",
+            "pages": [
+              "concepts/rapid-framework",
+              "concepts/roles",
+              "concepts/document-lifecycle"
+            ]
+          },
+          {
+            "group": "Guides",
+            "pages": [
+              "guides/organizations",
+              "guides/totp",
+              "guides/fathom-transcript",
+              "guides/notion-integration",
+              "guides/webhooks",
+              "guides/audit-log"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Overview",
+            "pages": [
+              "api-reference/auth",
+              "api-reference/errors"
+            ]
+          },
+          {
+            "group": "Resources",
+            "pages": [
+              "api-reference/documents",
+              "api-reference/approvals",
+              "api-reference/transcripts",
+              "api-reference/ledger",
+              "api-reference/audit"
+            ]
+          },
+          {
+            "group": "Integrations",
+            "pages": [
+              "api-reference/integrations",
+              "api-reference/organizations"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "RAPID framework enforcement — exactly one Decide owner, mandatory Recommend/Perform roles per document",
+    "Immutable ledger — audit-proof finalization via atomic transaction",
+    "Role-based access control — 6 system roles with 16 permissions enforced at API and frontend layers",
+    "Decision workflow state machine — draft → submitted → approved → finalized → execution_complete",
+    "TOTP two-factor authentication",
+    "Fathom Video transcript pipeline — paste meeting notes, AI extracts RAPID roles and decisions",
+    "Notion sync — approved documents auto-push to your Notion database",
+    "Linear integration — approved decisions create Linear issues automatically",
+    "CSV and PDF export for ledger and decision documents",
+    "Full-text search and filters across all decisions",
+    "Multi-tenant organisation support with invite flow",
+    "15+ audit action types across the full document lifecycle"
+  ],
+  "publicApiSurface": [
+    "POST /api/auth/login",
+    "POST /api/auth/refresh",
+    "GET /api/auth/me",
+    "GET /api/documents",
+    "POST /api/documents",
+    "GET /api/documents/:id",
+    "PATCH /api/documents/:id",
+    "DELETE /api/documents/:id",
+    "POST /api/documents/:id/submit",
+    "POST /api/documents/:id/recommend",
+    "POST /api/documents/:id/approve",
+    "POST /api/documents/:id/reject",
+    "POST /api/documents/:id/finalize",
+    "POST /api/documents/:id/complete",
+    "POST /api/documents/:id/version",
+    "POST /api/documents/:id/roles",
+    "POST /api/documents/:id/evidence",
+    "GET /api/documents/:id/export-pdf",
+    "GET /api/ledger",
+    "GET /api/ledger/export.csv",
+    "GET /api/audit-logs",
+    "GET /api/users",
+    "POST /api/users",
+    "GET /api/health",
+    "POST /api/webhooks/fathom"
+  ]
+}
