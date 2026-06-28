@@ -1,21 +1,28 @@
-import nodemailer from "nodemailer";
+import { SESClient, SendEmailCommand } from "@aws-sdk/client-ses";
 import crypto from "crypto";
 
-const transport = nodemailer.createTransport({
-  host: "smtp.resend.com",
-  port: 465,
-  secure: true,
-  auth: {
-    user: "resend",
-    pass: process.env.RESEND_API_KEY,
+const ses = new SESClient({
+  region: process.env.AWS_REGION ?? "ap-south-1",
+  credentials: {
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
   },
 });
 
-const FROM = "RAPID Ledger <onboarding@resend.dev>";
+const FROM = process.env.EMAIL_FROM ?? "RAPID Ledger <info@complyance.io>";
 const APP = () => process.env.FRONTEND_URL ?? "https://rapid-ledger.vercel.app";
 
 async function sendEmail(to: string, subject: string, html: string) {
-  await transport.sendMail({ from: FROM, to, subject, html });
+  await ses.send(
+    new SendEmailCommand({
+      Source: FROM,
+      Destination: { ToAddresses: [to] },
+      Message: {
+        Subject: { Data: subject, Charset: "UTF-8" },
+        Body: { Html: { Data: html, Charset: "UTF-8" } },
+      },
+    })
+  );
 }
 
 export function generateVerificationToken(): string {
