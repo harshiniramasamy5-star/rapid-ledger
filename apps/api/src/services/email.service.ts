@@ -1,28 +1,21 @@
-import { SESClient, SendEmailCommand } from "@aws-sdk/client-ses";
+import nodemailer from "nodemailer";
 import crypto from "crypto";
 
-const ses = new SESClient({
-  region: process.env.AWS_REGION ?? "ap-south-1",
-  credentials: {
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
+const transport = nodemailer.createTransport({
+  host: "smtp.resend.com",
+  port: 465,
+  secure: true,
+  auth: {
+    user: "resend",
+    pass: process.env.RESEND_API_KEY,
   },
 });
 
-const FROM = "RAPID Ledger <info@complyance.io>";
+const FROM = "RAPID Ledger <onboarding@resend.dev>";
 const APP = () => process.env.FRONTEND_URL ?? "https://rapid-ledger.vercel.app";
 
 async function sendEmail(to: string, subject: string, html: string) {
-  await ses.send(
-    new SendEmailCommand({
-      Source: FROM,
-      Destination: { ToAddresses: [to] },
-      Message: {
-        Subject: { Data: subject, Charset: "UTF-8" },
-        Body: { Html: { Data: html, Charset: "UTF-8" } },
-      },
-    })
-  );
+  await transport.sendMail({ from: FROM, to, subject, html });
 }
 
 export function generateVerificationToken(): string {
@@ -62,6 +55,22 @@ export async function sendInviteEmail(to: string, orgName: string, role: string,
   );
 }
 
+export async function sendSubmissionEmail(
+  to: string,
+  name: string,
+  docTitle: string,
+  docCode: string,
+  submitterName: string
+) {
+  await sendEmail(
+    to,
+    `Review requested: ${docTitle}`,
+    `<p>Hi ${name},</p>
+     <p><strong>${submitterName}</strong> submitted <strong>${docTitle}</strong> (${docCode}) for your review.</p>
+     <p><a href="${APP()}/documents">Review in RAPID Ledger</a></p>`
+  );
+}
+
 export async function sendApprovalNotificationEmail(
   to: string,
   name: string,
@@ -71,7 +80,7 @@ export async function sendApprovalNotificationEmail(
 ) {
   await sendEmail(
     to,
-    `Document Approved: ${docTitle}`,
+    `Document approved: ${docTitle}`,
     `<p>Hi ${name},</p>
      <p>Your document <strong>${docTitle}</strong> (${docCode}) was approved by <strong>${approverName}</strong>.</p>
      <p><a href="${APP()}/documents">View in RAPID Ledger</a></p>`
@@ -88,7 +97,7 @@ export async function sendRejectionNotificationEmail(
 ) {
   await sendEmail(
     to,
-    `Document Rejected: ${docTitle}`,
+    `Document rejected: ${docTitle}`,
     `<p>Hi ${name},</p>
      <p>Your document <strong>${docTitle}</strong> (${docCode}) was rejected by <strong>${approverName}</strong>.</p>
      ${reason ? `<p><strong>Reason:</strong> ${reason}</p>` : ""}
@@ -106,7 +115,7 @@ export async function sendChangesRequestedEmail(
 ) {
   await sendEmail(
     to,
-    `Changes Requested: ${docTitle}`,
+    `Changes requested: ${docTitle}`,
     `<p>Hi ${name},</p>
      <p><strong>${reviewerName}</strong> requested changes on <strong>${docTitle}</strong> (${docCode}).</p>
      ${comment ? `<p><strong>Notes:</strong> ${comment}</p>` : ""}

@@ -7,6 +7,7 @@ import type { CreateDocumentBody } from "../types";
 import { webhookDispatcher } from "./webhookDispatcher";
 import { notionSyncService } from "./notion.service";
 import {
+  sendSubmissionEmail,
   sendApprovalNotificationEmail,
   sendRejectionNotificationEmail,
   sendChangesRequestedEmail,
@@ -101,6 +102,30 @@ export async function submitDocument(documentId: string, actorId: string) {
     return result;
   });
 
+  // Notify agree-role participants that a doc is waiting for their review
+  if (updated.status === "awaiting_agreement") {
+    try {
+      const submittedDoc = await prisma.rapidDocument.findUnique({
+        where: { id: documentId },
+        include: {
+          createdBy: { select: { name: true } },
+          roleAssignments: { include: { user: { select: { name: true, email: true } } } },
+        },
+      });
+      if (submittedDoc) {
+        const submitterName = submittedDoc.createdBy.name ?? "Someone";
+        const agreeRecipients = submittedDoc.roleAssignments
+          .filter((ra: { roleType: string }) => ra.roleType === "agree")
+          .map((ra: { user: { name: string; email: string } }) => ra.user);
+        await Promise.allSettled(
+          agreeRecipients.map(({ email, name }: { email: string; name: string }) =>
+            sendSubmissionEmail(email, name, submittedDoc.title, submittedDoc.documentCode, submitterName)
+          )
+        );
+      }
+    } catch (e) { console.error("[DocService] Submission email failed:", e); }
+  }
+
   // Fire webhook when no agree role — doc goes draft → approved directly
   if (updated.status === "approved") {
     // Direct sync — guaranteed regardless of dispatcher handler registration timing,
@@ -154,11 +179,11 @@ export async function approveDocument(documentId: string, approverId: string, co
       });
       if (doc) {
         const approverName = doc.approvals.find((a: { approverId: string; approver: { name: string } }) => a.approverId === approverId)?.approver.name ?? "An approver";
-        const recipients = new Set([doc.createdBy.email]);
-        doc.roleAssignments.forEach((ra: { user: { email: string } }) => recipients.add(ra.user.email));
+        const recipientMap = new Map<string, string>([[doc.createdBy.email, doc.createdBy.name ?? doc.createdBy.email.split("@")[0]]]);
+        doc.roleAssignments.forEach((ra: { user: { name: string; email: string } }) => recipientMap.set(ra.user.email, ra.user.name ?? ra.user.email.split("@")[0]));
         await Promise.allSettled(
-          [...recipients].map(email =>
-            sendApprovalNotificationEmail(email, email.split("@")[0], doc.title, doc.documentCode, approverName)
+          [...recipientMap.entries()].map(([email, name]) =>
+            sendApprovalNotificationEmail(email, name, doc.title, doc.documentCode, approverName)
           )
         );
       }
@@ -191,11 +216,11 @@ export async function rejectDocument(documentId: string, approverId: string, com
       });
       if (rejectDoc) {
         const approverName = rejectDoc.approvals.find((a: { approverId: string; approver: { name: string } }) => a.approverId === approverId)?.approver.name ?? "An approver";
-        const recipients = new Set([rejectDoc.createdBy.email]);
-        rejectDoc.roleAssignments.forEach((ra: { user: { email: string } }) => recipients.add(ra.user.email));
+        const recipientMap = new Map<string, string>([[rejectDoc.createdBy.email, rejectDoc.createdBy.name ?? rejectDoc.createdBy.email.split("@")[0]]]);
+        rejectDoc.roleAssignments.forEach((ra: { user: { name: string; email: string } }) => recipientMap.set(ra.user.email, ra.user.name ?? ra.user.email.split("@")[0]));
         await Promise.allSettled(
-          [...recipients].map(email =>
-            sendRejectionNotificationEmail(email, email.split("@")[0], rejectDoc.title, rejectDoc.documentCode, approverName, comment)
+          [...recipientMap.entries()].map(([email, name]) =>
+            sendRejectionNotificationEmail(email, name, rejectDoc.title, rejectDoc.documentCode, approverName, comment)
           )
         );
       }
@@ -227,11 +252,11 @@ export async function requestChanges(documentId: string, approverId: string, com
       });
       if (changesDoc) {
         const reviewerName = changesDoc.approvals.find((a: { approverId: string; approver: { name: string } }) => a.approverId === approverId)?.approver.name ?? "A reviewer";
-        const recipients = new Set([changesDoc.createdBy.email]);
-        changesDoc.roleAssignments.forEach((ra: { user: { email: string } }) => recipients.add(ra.user.email));
+        const recipientMap = new Map<string, string>([[changesDoc.createdBy.email, changesDoc.createdBy.name ?? changesDoc.createdBy.email.split("@")[0]]]);
+        changesDoc.roleAssignments.forEach((ra: { user: { name: string; email: string } }) => recipientMap.set(ra.user.email, ra.user.name ?? ra.user.email.split("@")[0]));
         await Promise.allSettled(
-          [...recipients].map(email =>
-            sendChangesRequestedEmail(email, email.split("@")[0], changesDoc.title, changesDoc.documentCode, reviewerName, comment)
+          [...recipientMap.entries()].map(([email, name]) =>
+            sendChangesRequestedEmail(email, name, changesDoc.title, changesDoc.documentCode, reviewerName, comment)
           )
         );
       }
