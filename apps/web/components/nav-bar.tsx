@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { getToken, clearAuth } from "@/lib/api";
+import { WorkspaceSwitcher } from "@/components/workspace-switcher";
 
 const LINKS = [
   { href: "/dashboard", label: "Dashboard" },
@@ -31,7 +32,9 @@ export function NavBar() {
     <nav className="border-b bg-background">
       <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
         <div className="flex items-center gap-1">
-          <span className="font-bold mr-4">RAPID Ledger</span>
+          <span className="font-bold mr-2">RAPID Ledger</span>
+          <WorkspaceSwitcher />
+          <span className="w-px h-5 bg-border mx-2" />
           {LINKS.map((l) => (
             <Link
               key={l.href}
