@@ -127,7 +127,7 @@ export async function registerUser(
       name,
       email,
       password: hashed,
-      role: "admin",
+      role: "viewer",
       emailVerified: false,
       verificationToken: token,
     },
