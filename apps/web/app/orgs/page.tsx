@@ -11,8 +11,9 @@ function getToken(){ const m=document.cookie.match(/(?:^|;\s*)rapid_token=([^;]*
 
 export default function OrgsPage() {
   const router = useRouter();
-  const [org, setOrg]           = useState<{id:string;name:string;domain?:string;_count?:{users:number}}|null>(null);
-  const [members, setMembers]   = useState<{id:string;name:string;email:string;role:string}[]>([]);
+  const [org, setOrg]           = useState<{id:string;name:string;domain?:string;memberCount?:number}|null>(null);
+  const [myAccessType, setMyAccessType] = useState<"admin"|"member"|null>(null);
+  const [members, setMembers]   = useState<{id:string;name:string;email:string;role:string;accessType:string}[]>([]);
   const [me, setMe]             = useState<{id:string;role:string;orgId?:string}|null>(null);
   const [loading, setLoading]   = useState(true);
   const [orgName, setOrgName]   = useState("");
@@ -28,16 +29,18 @@ export default function OrgsPage() {
   const load = useCallback(async () => {
     const t = token();
     if (!t) { router.replace("/login"); return; }
-    const [meRes, orgRes] = await Promise.all([
+    const [meRes, mineRes] = await Promise.all([
       fetch(`${API}/auth/me`, { headers: { Authorization: `Bearer ${t}` } }),
-      fetch(`${API}/orgs/my`, { headers: { Authorization: `Bearer ${t}` } }),
+      fetch(`${API}/orgs/mine`, { headers: { Authorization: `Bearer ${t}` } }),
     ]);
-    const meData  = await meRes.json();
-    const orgData = await orgRes.json();
+    const meData   = await meRes.json();
+    const mineData = await mineRes.json();
     setMe(meData);
-    setOrg(orgData?.org ?? null);
-    if (orgData?.org) {
-      const mRes = await fetch(`${API}/orgs/${orgData.org.id}/members`, { headers: { Authorization: `Bearer ${t}` } });
+    const activeWs = (mineData?.workspaces ?? []).find((w: {isActive: boolean}) => w.isActive) ?? null;
+    setOrg(activeWs ? { id: activeWs.id, name: activeWs.name, domain: activeWs.domain, memberCount: activeWs.memberCount } : null);
+    setMyAccessType(activeWs?.accessType ?? null);
+    if (activeWs) {
+      const mRes = await fetch(`${API}/orgs/${activeWs.id}/members`, { headers: { Authorization: `Bearer ${t}` } });
       const mData = await mRes.json();
       setMembers(mData?.members ?? []);
     }
@@ -55,8 +58,8 @@ export default function OrgsPage() {
       body: JSON.stringify({ name: orgName.trim(), domain: orgDomain.trim() || undefined }),
     });
     const data = await res.json();
-    if (res.ok) { toast.success("Organisation created!"); await load(); }
-    else toast.error(data?.error?.message ?? data?.error ?? "Failed to create org");
+    if (res.ok) { toast.success("Workspace created!"); await load(); }
+    else toast.error(data?.error?.message ?? data?.error ?? "Failed to create workspace");
     setCreating(false);
   }
 
@@ -105,6 +108,8 @@ export default function OrgsPage() {
     setInviting(false);
   }
 
+  const isAdmin = myAccessType === "admin";
+
   if (loading) return <div className="min-h-screen bg-slate-50 flex items-center justify-center"><div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin"/></div>;
 
   return (
@@ -115,7 +120,7 @@ export default function OrgsPage() {
             <div className="w-9 h-9 rounded-xl bg-primary flex items-center justify-center">
               <span className="text-primary-foreground font-bold text-sm">RL</span>
             </div>
-            <p className="font-semibold text-slate-900 text-sm">Organisation</p>
+            <p className="font-semibold text-slate-900 text-sm">Workspace</p>
           </div>
           <Button variant="ghost" size="sm" onClick={() => router.push("/dashboard")}>← Dashboard</Button>
         </div>
@@ -124,12 +129,12 @@ export default function OrgsPage() {
       <main className="max-w-3xl mx-auto px-6 py-8 space-y-6">
         {!org ? (
           <Card className="border-slate-200 shadow-sm">
-            <CardHeader><CardTitle>Create your organisation</CardTitle></CardHeader>
+            <CardHeader><CardTitle>Create your workspace</CardTitle></CardHeader>
             <CardContent className="space-y-3">
-              <input className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" placeholder="Organisation name *" value={orgName} onChange={e => setOrgName(e.target.value)} />
+              <input className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" placeholder="Workspace name *" value={orgName} onChange={e => setOrgName(e.target.value)} />
               <input className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" placeholder="Domain (optional, e.g. acme.com)" value={orgDomain} onChange={e => setOrgDomain(e.target.value)} />
               <Button className="w-full" disabled={creating || !orgName.trim()} onClick={createOrg}>
-                {creating ? "Creating…" : "Create Organisation"}
+                {creating ? "Creating…" : "Create Workspace"}
               </Button>
             </CardContent>
           </Card>
@@ -142,12 +147,13 @@ export default function OrgsPage() {
               <CardContent>
                 <div className="flex gap-6 text-sm text-slate-600">
                   {org.domain && <span>🌐 {org.domain}</span>}
-                  <span>👥 {org._count?.users ?? members.length} member{(org._count?.users ?? members.length) !== 1 ? "s" : ""}</span>
+                  <span>👥 {org.memberCount ?? members.length} member{(org.memberCount ?? members.length) !== 1 ? "s" : ""}</span>
+                  <span className="capitalize">🔑 You: {myAccessType}</span>
                 </div>
               </CardContent>
             </Card>
 
-            {me?.role === "admin" && (
+            {isAdmin && (
               <Card className="border-slate-200 shadow-sm">
                 <CardHeader className="pb-3"><CardTitle className="text-base">Invite member</CardTitle></CardHeader>
                 <CardContent className="space-y-3">
@@ -171,12 +177,12 @@ export default function OrgsPage() {
                           <p className="text-xs text-slate-400">{m.email}</p>
                         </div>
                         <div className="flex items-center gap-2">
-                          {me?.role === "admin" && m.id !== me?.id && (
-                            <>
+                          {isAdmin && m.id !== me?.id && (
+                                  <>
                               <button
                                 className="text-xs text-red-500 hover:text-red-700 font-medium px-2 py-1 rounded hover:bg-red-50"
                                 onClick={async () => {
-                                  if (!confirm(`Remove ${m.name} from org?`)) return;
+                                  if (!confirm(`Remove ${m.name} from workspace?`)) return;
                                   const res = await fetch(`${API}/orgs/${org!.id}/members/${m.id}`, {
                                     method: "DELETE",
                                     headers: { Authorization: `Bearer ${token()}` },
@@ -188,7 +194,7 @@ export default function OrgsPage() {
                               </button>
                             </>
                           )}
-                          <Badge variant="outline" className="capitalize text-xs">{m.role}</Badge>
+                          <Badge variant="outline" className="capitalize text-xs">{m.accessType}</Badge>
                         </div>
                       </div>
                     ))}
