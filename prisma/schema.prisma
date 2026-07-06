@@ -9,15 +9,37 @@ datasource db {
 }
 
 model Organization {
-  id        String          @id @default(cuid())
-  name      String
-  domain    String?         @unique
-  createdAt DateTime        @default(now())
-  updatedAt DateTime        @updatedAt
-  users     User[]
-  documents RapidDocument[]
-  auditLogs AuditLog[]
-  invites   Invite[]
+  id          String            @id @default(cuid())
+  name        String
+  domain      String?           @unique
+  logoUrl     String?
+  description String?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  users       User[]
+  documents   RapidDocument[]
+  auditLogs   AuditLog[]
+  invites     Invite[]
+  members     WorkspaceMember[]
+}
+
+enum WorkspaceAccessType {
+  admin
+  member
+}
+
+model WorkspaceMember {
+  id         String              @id @default(cuid())
+  userId     String
+  orgId      String
+  accessType WorkspaceAccessType @default(member)
+  joinedAt   DateTime            @default(now())
+  user       User                @relation(fields: [userId], references: [id])
+  org        Organization        @relation(fields: [orgId], references: [id])
+
+  @@unique([userId, orgId])
+  @@index([orgId])
+  @@index([userId])
 }
 
 model Invite {
@@ -60,6 +82,7 @@ model User {
   refreshTokens   RefreshToken[]   @relation("UserRefreshTokens")
   roleAssignments RoleAssignment[]
   org             Organization?    @relation(fields: [orgId], references: [id])
+  workspaces      WorkspaceMember[]
 }
 
 model RapidDocument {
@@ -265,6 +288,10 @@ enum AuditAction {
   webhook_retried
   sync_failed
   sync_recovered
+  workspace_created
+  workspace_member_promoted
+  workspace_member_demoted
+  workspace_member_removed
 }
 
 enum DocumentType {
