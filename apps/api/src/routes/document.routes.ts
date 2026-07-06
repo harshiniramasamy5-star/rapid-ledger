@@ -18,6 +18,7 @@ import {
 import { prisma } from "../lib/prisma";
 import { Errors } from "../lib/errors";
 import { finalizeDocument } from "../services/ledger.service";
+import { suggestRolesForDocument } from "../services/role-classification.service";
 import { generateDocumentPdf } from "../services/pdf.service";
 
 export const documentRoutes = new Elysia({ prefix: "/documents" })
@@ -259,6 +260,17 @@ export const documentRoutes = new Elysia({ prefix: "/documents" })
     set.status = 204;
     return null;
   })
+  // ── GET /documents/:id/suggest-roles ──────────────────────────────────────
+  // AI-suggests RAPID roles for workspace members on this document. Returns
+  // suggestions only (never persists) -- admin reviews/edits, then commits each
+  // via POST /documents/:id/roles below.
+  .get("/:id/suggest-roles", async ({ user, params, set }) => {
+    requirePermission(user, "role:assign", set);
+    const result = await suggestRolesForDocument(params.id);
+    if (result.ok === false) { set.status = 404; return Errors.notFound(result.error); }
+    return { suggestions: result.suggestions };
+  })
+
   // ── POST /documents/:id/roles ─────────────────────────────────────────────
   .post("/:id/roles", async ({ user, params, body: _body, set }) => {
     requirePermission(user, "role:assign", set);
