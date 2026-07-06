@@ -160,7 +160,7 @@ export async function registerUser(
         }
       }
     }
-  } catch (_) { /* non-fatal — org assign fails silently */ }
+  } catch (e) { console.error('[Register] domain org-assign failed:', e); }
 
   return { success: true, token };
 }
