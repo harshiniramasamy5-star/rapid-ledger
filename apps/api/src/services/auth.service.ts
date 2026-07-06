@@ -147,7 +147,17 @@ export async function registerUser(
         where: { domain: { in: [emailDomain, emailDomain === 'antna.co.in' ? 'complyance.io' : emailDomain] } }
       });
       if (matchedOrg) {
-        await prisma.user.update({ where: { email }, data: { orgId: matchedOrg.id } });
+        const newUser = await prisma.user.findUnique({ where: { email } });
+        if (newUser) {
+          await prisma.$transaction([
+            prisma.user.update({ where: { email }, data: { orgId: matchedOrg.id } }),
+            prisma.workspaceMember.upsert({
+              where: { userId_orgId: { userId: newUser.id, orgId: matchedOrg.id } },
+              create: { userId: newUser.id, orgId: matchedOrg.id, accessType: "member" },
+              update: {},
+            }),
+          ]);
+        }
       }
     }
   } catch (_) { /* non-fatal — org assign fails silently */ }
