@@ -9,7 +9,6 @@ export const orgRoutes = new Elysia({ prefix: "/orgs" })
 
   // POST /orgs — create org (admin only), creator becomes workspace admin
   .post("/", async ({ user, body, set }) => {
-    requirePermission(user, "user:create", set);
     const { name, domain } = body as { name: string; domain?: string };
     if (!name) { set.status = 400; return { error: "name required" }; }
     if (domain) {
