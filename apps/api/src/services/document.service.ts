@@ -11,6 +11,7 @@ import {
   sendApprovalNotificationEmail,
   sendRejectionNotificationEmail,
   sendChangesRequestedEmail,
+  sendTaskUnlockedEmail,
 } from "./email.service";
 
 const INCLUDE = {
@@ -158,6 +159,7 @@ export async function approveDocument(documentId: string, approverId: string, co
     await tx.auditLog.create({ data: { userId: approverId, action: "document_approved", entityType: "RapidDocument", entityId: documentId, details: JSON.stringify({ comment, allApproved }) } });
     return result;
   });
+  await notifyNextStageIfUnlocked(documentId, ROLE_STAGE_ORDER.agree);
   // Fire webhook after transaction — only when doc fully transitions to approved
   if (updated?.status === "approved") {
     // Direct sync — guaranteed regardless of dispatcher handler registration timing
@@ -333,7 +335,7 @@ const ROLE_ACTION_LABELS: Record<string, string> = {
 // number run in parallel with each other; a stage only unlocks once every
 // assignment at a lower stage number on the same document is completed.
 // Irrelevant for workflowMode=parallel, where every task is visible immediately.
-const ROLE_STAGE_ORDER: Record<string, number> = {
+export const ROLE_STAGE_ORDER: Record<string, number> = {
   recommend: 0,
   input: 0,
   review: 1,
@@ -343,6 +345,44 @@ const ROLE_STAGE_ORDER: Record<string, number> = {
   acknowledge: 5,
   inform: 5,
 };
+
+// Fires exactly once at the moment a stage fully completes: if any assignment
+// remains pending at completedStageOrder, no transition has happened yet, so
+// this is a no-op. Only when the last pending item at that stage clears does
+// it look up the next stage's assignees and notify them. No-op for parallel
+// documents, where every task is already visible.
+export async function notifyNextStageIfUnlocked(documentId: string, completedStageOrder: number) {
+  const doc = await prisma.rapidDocument.findUnique({
+    where: { id: documentId },
+    select: { workflowMode: true, title: true, documentCode: true },
+  });
+  if (!doc || doc.workflowMode === "parallel") return;
+
+  const stillPendingAtStage = await prisma.roleAssignment.count({
+    where: { documentId, stageOrder: completedStageOrder, status: "pending" },
+  });
+  if (stillPendingAtStage > 0) return;
+
+  const nextAssignments = await prisma.roleAssignment.findMany({
+    where: { documentId, status: "pending", stageOrder: { gt: completedStageOrder } },
+    include: { user: { select: { name: true, email: true } } },
+    orderBy: { stageOrder: "asc" },
+  });
+  if (nextAssignments.length === 0) return;
+
+  const nextStage = nextAssignments[0].stageOrder;
+  const toNotify = nextAssignments.filter((a) => a.stageOrder === nextStage);
+
+  try {
+    await Promise.allSettled(
+      toNotify.map((a) =>
+        sendTaskUnlockedEmail(a.user.email, a.user.name ?? a.user.email.split("@")[0], doc.title, doc.documentCode, a.actionLabel ?? a.roleType)
+      )
+    );
+  } catch (e) {
+    console.error("[DocService] Stage-unlock email failed:", e);
+  }
+}
 
 export async function assignRole(documentId: string, roleType: string, userId: string, actorId: string) {
   const doc = await prisma.rapidDocument.findUnique({ where: { id: documentId } });
@@ -374,6 +414,7 @@ export async function completeRoleTask(documentId: string, userId: string, roleT
     data: { status: "completed", completedAt: new Date() },
   });
   await createAuditLog(userId, "task_completed", "RoleAssignment", updated.id, { documentId, roleType, comment });
+  await notifyNextStageIfUnlocked(documentId, ROLE_STAGE_ORDER[roleType] ?? 0);
   return { ok: true as const, assignment: updated };
 }
 

@@ -78,6 +78,22 @@ export async function sendSubmissionEmail(
   );
 }
 
+export async function sendTaskUnlockedEmail(
+  to: string,
+  name: string,
+  docTitle: string,
+  docCode: string,
+  actionRequired: string
+) {
+  await sendEmail(
+    to,
+    `Action needed: ${docTitle}`,
+    `<p>Hi ${name},</p>
+     <p>The previous stage on <strong>${docTitle}</strong> (${docCode}) is complete — it's now your turn to <strong>${actionRequired}</strong>.</p>
+     <p><a href="${APP()}/tasks">View in Pending Tasks</a></p>`
+  );
+}
+
 export async function sendApprovalNotificationEmail(
   to: string,
   name: string,

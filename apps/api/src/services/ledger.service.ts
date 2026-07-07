@@ -1,4 +1,5 @@
 import { prisma } from "../lib/prisma";
+import { notifyNextStageIfUnlocked, ROLE_STAGE_ORDER } from "./document.service";
 
 export async function finalizeDocument(documentId: string, actorId: string) {
   const doc = await prisma.rapidDocument.findUnique({ where: { id: documentId } });
@@ -20,6 +21,7 @@ export async function finalizeDocument(documentId: string, actorId: string) {
     await tx.auditLog.create({ data: { userId: actorId, action: "ledger_entry_created", entityType: "LedgerEntry", entityId: entry.id, details: JSON.stringify({ documentId, documentCode: doc.documentCode, version: doc.version, title: doc.title }) } });
     return { updated: result, ledgerEntry: entry };
   });
+  await notifyNextStageIfUnlocked(documentId, ROLE_STAGE_ORDER.decide);
 
   return { ok: true as const, document: updated, ledgerEntry };
 }

@@ -15,6 +15,8 @@ import {
   assignRole,
   addEvidence,
   completeRoleTask,
+  notifyNextStageIfUnlocked,
+  ROLE_STAGE_ORDER,
   runValidation } from "../services/document.service";
 import { prisma } from "../lib/prisma";
 import { Errors } from "../lib/errors";
@@ -172,6 +174,7 @@ export const documentRoutes = new Elysia({ prefix: "/documents" })
       where: { id: params.id },
       data: { recommendationNotes: (body as { notes?: string }).notes ?? "" } });
     await prisma.roleAssignment.update({ where: { id: assignment.id }, data: { status: "completed", completedAt: new Date() } });
+    await notifyNextStageIfUnlocked(params.id, ROLE_STAGE_ORDER.recommend);
     await createAuditLog(user.id, "document_recommended", "RapidDocument", params.id, { documentCode: updated.documentCode });
     return updated;
   })
@@ -191,6 +194,7 @@ export const documentRoutes = new Elysia({ prefix: "/documents" })
       where: { id: params.id },
       data: { inputNotes: (body as { notes?: string }).notes ?? "" } });
     await prisma.roleAssignment.update({ where: { id: assignment.id }, data: { status: "completed", completedAt: new Date() } });
+    await notifyNextStageIfUnlocked(params.id, ROLE_STAGE_ORDER.input);
     await createAuditLog(user.id, "document_input_provided", "RapidDocument", params.id, { documentCode: updated.documentCode });
     return updated;
   })
@@ -206,6 +210,7 @@ export const documentRoutes = new Elysia({ prefix: "/documents" })
       where: { id: params.id },
       data: { status: "execution_complete" } }));
     await prisma.roleAssignment.updateMany({ where: { documentId: params.id, roleType: "perform" }, data: { status: "completed", completedAt: new Date() } });
+    await notifyNextStageIfUnlocked(params.id, ROLE_STAGE_ORDER.perform);
     await createAuditLog(user.id, "execution_complete", "RapidDocument", params.id, { documentCode: updated.documentCode });
     return updated;
   })
