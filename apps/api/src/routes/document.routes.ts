@@ -14,6 +14,7 @@ import {
   createDocumentVersion,
   assignRole,
   addEvidence,
+  completeRoleTask,
   runValidation } from "../services/document.service";
 import { prisma } from "../lib/prisma";
 import { Errors } from "../lib/errors";
@@ -170,6 +171,7 @@ export const documentRoutes = new Elysia({ prefix: "/documents" })
     const updated = await prisma.rapidDocument.update({
       where: { id: params.id },
       data: { recommendationNotes: (body as { notes?: string }).notes ?? "" } });
+    await prisma.roleAssignment.update({ where: { id: assignment.id }, data: { status: "completed", completedAt: new Date() } });
     await createAuditLog(user.id, "document_recommended", "RapidDocument", params.id, { documentCode: updated.documentCode });
     return updated;
   })
@@ -188,6 +190,7 @@ export const documentRoutes = new Elysia({ prefix: "/documents" })
     const updated = await prisma.rapidDocument.update({
       where: { id: params.id },
       data: { inputNotes: (body as { notes?: string }).notes ?? "" } });
+    await prisma.roleAssignment.update({ where: { id: assignment.id }, data: { status: "completed", completedAt: new Date() } });
     await createAuditLog(user.id, "document_input_provided", "RapidDocument", params.id, { documentCode: updated.documentCode });
     return updated;
   })
@@ -202,6 +205,7 @@ export const documentRoutes = new Elysia({ prefix: "/documents" })
     const updated = await import("../lib/prisma").then(m => m.prisma.rapidDocument.update({
       where: { id: params.id },
       data: { status: "execution_complete" } }));
+    await prisma.roleAssignment.updateMany({ where: { documentId: params.id, roleType: "perform" }, data: { status: "completed", completedAt: new Date() } });
     await createAuditLog(user.id, "execution_complete", "RapidDocument", params.id, { documentCode: updated.documentCode });
     return updated;
   })
@@ -282,6 +286,20 @@ export const documentRoutes = new Elysia({ prefix: "/documents" })
       if ("invalidStatus" in result) { set.status = 409; return Errors.invalidStatus(result.invalidStatus ?? "unknown", ["draft", "needs_changes"]); }
     }
     set.status = 201;
+    return result.assignment;
+  })
+
+  // ── POST /documents/:id/tasks/complete ───────────────────────────────────
+  // Generic completion endpoint for roles with no dedicated action route:
+  // review, acknowledge, inform. Body: { roleType, comment? }
+  .post("/:id/tasks/complete", async ({ user, params, body: _body, set }) => {
+    const { roleType, comment } = (_body ?? {}) as { roleType?: string; comment?: string };
+    if (!roleType) { set.status = 400; return Errors.badRequest("roleType is required"); }
+    const result = await completeRoleTask(params.id, user.id, roleType, comment);
+    if (!result.ok) {
+      if ("invalidRole" in result) { set.status = 400; return Errors.badRequest("roleType must be one of review, acknowledge, inform"); }
+      if ("notFound" in result) { set.status = 404; return Errors.notFound("Pending task for this role on this document"); }
+    }
     return result.assignment;
   })
 

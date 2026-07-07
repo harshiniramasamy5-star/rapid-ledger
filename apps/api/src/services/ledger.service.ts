@@ -15,6 +15,7 @@ export async function finalizeDocument(documentId: string, actorId: string) {
       include: { roleAssignments: { include: { user: { select: { id: true, name: true } } } }, evidence: true, ledgerEntries: true } });
     const entry = await tx.ledgerEntry.create({
       data: { documentId, documentCode: doc.documentCode, version: doc.version, title: doc.title, finalizedBy: actorId, finalizedAt: now } });
+    await tx.roleAssignment.updateMany({ where: { documentId, roleType: "decide" }, data: { status: "completed", completedAt: now } });
     await tx.auditLog.create({ data: { userId: actorId, action: "document_finalized", entityType: "RapidDocument", entityId: documentId, details: JSON.stringify({ documentCode: doc.documentCode, version: doc.version, ledgerEntryId: entry.id }) } });
     await tx.auditLog.create({ data: { userId: actorId, action: "ledger_entry_created", entityType: "LedgerEntry", entityId: entry.id, details: JSON.stringify({ documentId, documentCode: doc.documentCode, version: doc.version, title: doc.title }) } });
     return { updated: result, ledgerEntry: entry };

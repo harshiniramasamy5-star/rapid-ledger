@@ -149,6 +149,7 @@ export async function approveDocument(documentId: string, approverId: string, co
   // Atomic: approval update + optional status change + audit log
   const updated = await prisma.$transaction(async (tx) => {
     await tx.approval.updateMany({ where: { documentId, approverId }, data: { decision: "approved", comment } });
+    await tx.roleAssignment.updateMany({ where: { documentId, userId: approverId, roleType: "agree" }, data: { status: "completed", completedAt: new Date() } });
     const allApprovals = await tx.approval.findMany({ where: { documentId } });
     const allApproved = allApprovals.every((a: { decision: string }) => a.decision === "approved");
     const result = allApproved
@@ -199,6 +200,7 @@ export async function rejectDocument(documentId: string, approverId: string, com
   if (doc.status !== "awaiting_agreement") return { ok: false as const, invalidStatus: doc.status };
   const updated = await prisma.$transaction(async (tx) => {
     await tx.approval.updateMany({ where: { documentId, approverId }, data: { decision: "rejected", comment } });
+    await tx.roleAssignment.updateMany({ where: { documentId, userId: approverId, roleType: "agree" }, data: { status: "completed", completedAt: new Date() } });
     const result = await tx.rapidDocument.update({ where: { id: documentId }, data: { status: "rejected" }, include: INCLUDE });
     await createAuditLog(approverId, "document_rejected", "RapidDocument", documentId, { comment }, tx);
     return result;
@@ -341,6 +343,22 @@ export async function assignRole(documentId: string, roleType: string, userId: s
   });
   await createAuditLog(actorId, "role_assigned", "RoleAssignment", assignment.id, { documentId, roleType, assignedUserId: userId });
   return { ok: true as const, assignment };
+}
+
+export async function completeRoleTask(documentId: string, userId: string, roleType: string, comment?: string) {
+  if (!["review", "acknowledge", "inform"].includes(roleType)) {
+    return { ok: false as const, invalidRole: true };
+  }
+  const assignment = await prisma.roleAssignment.findFirst({
+    where: { documentId, userId, roleType: roleType as "review" | "acknowledge" | "inform", status: "pending" },
+  });
+  if (!assignment) return { ok: false as const, notFound: true };
+  const updated = await prisma.roleAssignment.update({
+    where: { id: assignment.id },
+    data: { status: "completed", completedAt: new Date() },
+  });
+  await createAuditLog(userId, "task_completed", "RoleAssignment", updated.id, { documentId, roleType, comment });
+  return { ok: true as const, assignment: updated };
 }
 
 export async function addEvidence(documentId: string, data: { type: string; title: string; urlOrPath?: string; description?: string }, actorId: string) {
