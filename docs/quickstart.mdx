@@ -1,0 +1,90 @@
+---
+title: "Quickstart"
+description: "Get RAPID Ledger running locally in a few minutes."
+---
+
+## Prerequisites
+
+- [Bun](https://bun.sh) (the API and dev scripts run on Bun, not Node directly)
+- PostgreSQL 16+
+- A [Groq](https://console.groq.com) API key (for transcript role classification)
+
+## 1. Clone the repository
+
+```bash
+git clone https://github.com/harshiniramasamy5-star/rapid-ledger.git
+cd rapid-ledger
+```
+
+## 2. Configure environment variables
+
+Two `.env` files are read by different parts of the toolchain — both need `DATABASE_URL` and `JWT_SECRET`.
+
+**`.env`** (repo root — read by the Prisma CLI when you run schema commands from root)
+```env
+DATABASE_URL="postgresql://USER:PASSWORD@HOST:PORT/DATABASE"
+JWT_SECRET="your-secret-key-min-32-chars"
+FRONTEND_URL="http://localhost:3000"
+```
+
+**`apps/api/.env`** (read by the API process itself)
+```env
+DATABASE_URL=
+JWT_SECRET=
+GROQ_API_KEY=
+NOTION_API_KEY=
+NOTION_DB_ID=
+AWS_ACCESS_KEY_ID=
+AWS_SECRET_ACCESS_KEY=
+AWS_REGION=ap-south-1
+```
+
+**`apps/web/.env.local`**
+```env
+NEXT_PUBLIC_API_URL=http://localhost:3001
+```
+
+<Note>
+Notion, AWS SES, and Groq credentials are only needed for the compliance-archive sync, email notifications, and AI role classification respectively — the app runs without them, those features just no-op or log a warning.
+</Note>
+
+## 3. Install, generate, seed — one command
+
+```bash
+bun run setup
+```
+
+This runs `bun install`, generates the Prisma client, pushes the schema to your database, and seeds demo data.
+
+## 4. Run the app
+
+```bash
+bun run dev
+```
+
+This starts the API and frontend together (`concurrently`, prefixed `api`/`web` in your terminal). Open [http://localhost:3000](http://localhost:3000).
+
+## 5. Run the test suite
+
+```bash
+bun run test
+```
+
+Runs the API's Vitest suite and the frontend's Jest suite back to back. For end-to-end tests:
+
+```bash
+bun run test:e2e
+```
+
+## Other useful scripts
+
+| Command | What it does |
+|---|---|
+| `bun run db:studio` | Opens Prisma Studio against your local database |
+| `bun run db:reset` | Drops and recreates the schema, then reseeds |
+| `bun run typecheck` | Runs `tsc --noEmit` across all workspaces |
+
+## Next steps
+
+- [Authentication reference](/api-reference/auth) — login, MFA, and session flow
+- [Live demo](https://rapid-ledger.vercel.app) — see it running in production

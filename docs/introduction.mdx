@@ -1,0 +1,49 @@
+---
+title: "Introduction"
+description: "Decision governance without compromise."
+---
+
+## What is RAPID Ledger?
+
+RAPID Ledger is a decision governance platform for organisations that need structured, auditable, and immutable records of high-stakes decisions. It enforces the **RAPID decision-making framework**, ensuring every decision has clear ownership, documented reasoning, appropriate review, and a permanent compliance record.
+
+<CardGroup cols={2}>
+  <Card title="Structured accountability" icon="sitemap">
+    Every decision is assigned exactly one `Decide` owner, with clear `Recommend`, `Agree`, `Perform`, and `Input` roles around it.
+  </Card>
+  <Card title="Immutable audit trail" icon="lock">
+    Every action — creation, submission, approval, rejection, finalization — is logged with actor, timestamp, and context. Finalized documents cannot be edited or deleted.
+  </Card>
+  <Card title="Compliance-grade records" icon="shield-check">
+    High-risk and compliance-impacting decisions require formal agreement and supporting evidence before they can be finalized.
+  </Card>
+  <Card title="Role-based access" icon="users">
+    Permissions are enforced at the API layer via `requirePermission()`, not just hidden in the UI.
+  </Card>
+</CardGroup>
+
+## Why RAPID Ledger?
+
+| Problem | RAPID Ledger's approach |
+|---|---|
+| Decisions made in Slack, with no audit trail | Every action is immutably logged with actor, timestamp, and context |
+| No clear ownership of decisions | Exactly one `Decide` owner is enforced per document |
+| Approvals forgotten or bypassed | A workflow engine enforces state machine transitions at the service layer |
+| Compliance reviews are manual | Ledger entries are auto-generated at finalization |
+| High-risk decisions lack scrutiny | An `Agree` role and evidence are mandatory for `high`/`critical` risk decisions |
+
+## How it's built
+
+RAPID Ledger is a full-stack TypeScript monorepo:
+
+- **Frontend** — Next.js (App Router) + Tailwind CSS, deployed on Vercel
+- **API** — Elysia running on Bun, deployed on Railway
+- **Database** — PostgreSQL, accessed through Prisma
+- **AI** — Groq (`llama-3.3-70b-versatile`) for meeting-transcript role classification
+- **Integrations** — Notion (compliance archive), Fathom (meeting transcript import), AWS SES (email)
+
+For the full architecture diagram and RAPID role model, see the [project README](https://github.com/harshiniramasamy5-star/rapid-ledger#2-the-rapid-framework) — or jump straight to [Quickstart](/quickstart).
+
+<Card title="Try the live demo" icon="rocket" href="https://rapid-ledger.vercel.app">
+  See RAPID Ledger running in production.
+</Card>

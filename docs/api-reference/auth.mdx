@@ -1,0 +1,135 @@
+---
+title: "Authentication"
+description: "Login, MFA, registration, and session endpoints."
+---
+
+Base URL (local): `http://localhost:3001`
+Base URL (production): `https://rapid-ledgerapi-production.up.railway.app`
+
+All endpoints below except `/auth/login`, `/auth/register`, `/auth/verify-email`, and `/auth/resend-verification` require an `Authorization: Bearer <token>` header.
+
+## POST /auth/login
+
+Authenticate with email and password. Rate-limited per IP (15-minute lockout window on repeated failures).
+
+**Request body**
+```json
+{ "email": "string", "password": "string" }
+```
+
+**Response 200 — no MFA enabled**
+```json
+{
+  "token": "string",
+  "user": {
+    "id": "string",
+    "name": "string",
+    "email": "string",
+    "role": "admin | creator | approver | decider | performer | viewer",
+    "totpEnabled": false,
+    "orgId": "string | null"
+  }
+}
+```
+
+**Response 200 — MFA required**
+
+No token is issued yet. Complete the flow with [`/auth/totp/validate`](#post-auth-totp-validate).
+```json
+{ "requiresMfa": true, "userId": "string" }
+```
+
+**Error responses**
+
+| Status | Code | Meaning |
+|---|---|---|
+| 401 | `UNAUTHORIZED` | Invalid email or password |
+| 403 | `EMAIL_NOT_VERIFIED` | Account exists but email isn't verified yet |
+| 403 | `ACCOUNT_INACTIVE` | Account has been deactivated by an admin |
+| 423 | `ACCOUNT_LOCKED` | Too many failed attempts — includes minutes remaining in the message |
+| 429 | `RATE_LIMITED` | Too many login attempts from this IP |
+
+## POST /auth/totp/validate
+
+Second step of the MFA flow. Validates the 6-digit TOTP code and issues the session token.
+
+**Request body**
+```json
+{ "userId": "string", "code": "string" }
+```
+
+**Response 200**
+```json
+{ "valid": true, "token": "string", "user": { "...": "same shape as /auth/login" } }
+```
+
+**Response 401** — invalid code. **Response 400** — TOTP not enabled for this user.
+
+## POST /auth/register
+
+Creates an account and sends a verification email. Does not log the user in — email must be verified before login is allowed.
+
+**Request body**
+```json
+{ "name": "string", "email": "string", "password": "string (min 8 chars)" }
+```
+
+**Response 201**
+```json
+{ "message": "Account created. Check your email to verify your account." }
+```
+
+## GET /auth/verify-email?token=...
+
+Verifies the account from the emailed link, then triggers a welcome email.
+
+**Response 200**
+```json
+{ "message": "Email verified successfully. You can now log in." }
+```
+
+**Response 400** — `INVALID_TOKEN` or `ALREADY_USED`.
+
+## POST /auth/resend-verification
+
+Re-sends the verification email. Always returns 200, whether or not the email is registered, to avoid leaking which emails exist in the system.
+
+**Request body**
+```json
+{ "email": "string" }
+```
+
+## GET /auth/me
+
+_Requires auth._ Returns the current user's profile, including `orgId`, `role`, and `totpEnabled` — used by the frontend to decide whether to route to onboarding, TOTP setup, or the dashboard after login.
+
+**Response 200**
+```json
+{
+  "id": "string",
+  "name": "string",
+  "email": "string",
+  "role": "string",
+  "orgId": "string | null",
+  "totpEnabled": true
+}
+```
+
+## Two-factor authentication (TOTP)
+
+| Endpoint | Auth required | Purpose |
+|---|---|---|
+| `POST /auth/totp/setup` | Yes | Generates a secret + QR code, doesn't enable TOTP yet |
+| `POST /auth/totp/verify` | Yes | Confirms the first code and flips `totpEnabled` to `true` |
+| `POST /auth/totp/disable` | Yes | Requires a valid current code to turn MFA back off |
+| `POST /auth/totp/validate` | No (uses `userId`) | Second factor during login — see above |
+
+## Post-login routing
+
+The frontend decides where to send the user right after authentication (either straight from `/auth/login` or after `/auth/totp/validate`):
+
+1. `totpEnabled === false` → `/settings/totp?required=1` (must set up MFA)
+2. `orgId === null` → `/onboarding` (must create or join a workspace)
+3. Otherwise → `/dashboard`
+
+There is no separate "success" screen between MFA and the dashboard — once both checks pass, the user lands on `/dashboard` directly.
