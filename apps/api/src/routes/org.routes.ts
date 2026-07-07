@@ -173,6 +173,48 @@ export const orgRoutes = new Elysia({ prefix: "/orgs" })
     return { message: "joined org successfully", orgId: invite.orgId };
   })
 
+  // GET /orgs/invites/me — list my pending invitations (across all orgs, by email)
+  .get("/invites/me", async ({ user }) => {
+    const invites = await prisma.invite.findMany({
+      where: { email: user.email, usedAt: null, expiresAt: { gt: new Date() } },
+      include: { org: { select: { name: true, domain: true, logoUrl: true } } },
+      orderBy: { createdAt: "desc" },
+    });
+    return {
+      invites: invites.map(i => ({
+        id: i.id,
+        orgId: i.orgId,
+        orgName: i.org.name,
+        orgDomain: i.org.domain,
+        orgLogoUrl: i.org.logoUrl,
+        role: i.role,
+        token: i.token,
+        expiresAt: i.expiresAt,
+        createdAt: i.createdAt,
+      })),
+    };
+  })
+
+  // POST /orgs/invites/:inviteId/decline — decline my own invite
+  .post("/invites/:inviteId/decline", async ({ user, params, set }) => {
+    const invite = await prisma.invite.findUnique({ where: { id: params.inviteId } });
+    if (!invite) { set.status = 404; return { error: "invite not found" }; }
+    if (invite.email !== user.email) { set.status = 403; return { error: "not your invite" }; }
+    if (invite.usedAt) { set.status = 410; return { error: "invite already used" }; }
+    await prisma.invite.delete({ where: { id: params.inviteId } });
+    await prisma.auditLog.create({
+      data: {
+        userId: user.id,
+        action: "invite_sent" as any,
+        entityType: "Invite",
+        entityId: params.inviteId,
+        orgId: invite.orgId,
+        details: JSON.stringify({ action: "declined", email: user.email }),
+      },
+    });
+    return { message: "invite declined" };
+  })
+
   // GET /orgs/:id/invites — list pending invites
   .get("/:id/invites", async ({ user, params, set }) => {
     requirePermission(user, "user:read", set);

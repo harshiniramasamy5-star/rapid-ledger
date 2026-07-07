@@ -3,6 +3,7 @@ import { NotificationBell } from "@/components/notification-bell";
 import { getToken, clearAuth } from "@/lib/api";;
 import { useEffect, useState, useCallback } from "react";
 import { AnalyticsCharts } from "@/components/analytics-charts";
+import { PendingInvites } from "@/components/pending-invites";
 import type { ApiDocument, ApiUser } from "@/lib/types";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -137,6 +138,8 @@ export default function DashboardPage() {
           <h1 className="text-2xl font-bold text-slate-900">Welcome back, {me?.name?.split(" ")[0]} 👋</h1>
           <p className="text-slate-500 text-sm mt-1">Here is what is happening in your decision governance workspace.</p>
         </div>
+
+        <PendingInvites onAccepted={() => window.location.reload()} />
 
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {stats.map(s => (
