@@ -329,6 +329,21 @@ const ROLE_ACTION_LABELS: Record<string, string> = {
   inform: "Acknowledge Notice",
 };
 
+// Stage precedence for sequential/hybrid workflows. Roles sharing a stage
+// number run in parallel with each other; a stage only unlocks once every
+// assignment at a lower stage number on the same document is completed.
+// Irrelevant for workflowMode=parallel, where every task is visible immediately.
+const ROLE_STAGE_ORDER: Record<string, number> = {
+  recommend: 0,
+  input: 0,
+  review: 1,
+  agree: 2,
+  decide: 3,
+  perform: 4,
+  acknowledge: 5,
+  inform: 5,
+};
+
 export async function assignRole(documentId: string, roleType: string, userId: string, actorId: string) {
   const doc = await prisma.rapidDocument.findUnique({ where: { id: documentId } });
   if (!doc) return { ok: false as const, notFound: true };
@@ -339,6 +354,7 @@ export async function assignRole(documentId: string, roleType: string, userId: s
       roleType: roleType as "recommend" | "agree" | "perform" | "input" | "decide" | "review" | "acknowledge" | "inform",
       userId,
       actionLabel: ROLE_ACTION_LABELS[roleType] ?? roleType,
+      stageOrder: ROLE_STAGE_ORDER[roleType] ?? 0,
     },
   });
   await createAuditLog(actorId, "role_assigned", "RoleAssignment", assignment.id, { documentId, roleType, assignedUserId: userId });
