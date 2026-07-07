@@ -7,7 +7,7 @@ import { WorkspaceSwitcher } from "@/components/workspace-switcher";
 
 const LINKS = [
   { href: "/dashboard", label: "Dashboard" },
-  
+  { href: "/tasks", label: "Tasks" },
   { href: "/approvals", label: "Approvals" },
   { href: "/ledger", label: "Ledger" },
   { href: "/audit-log", label: "Audit" },
