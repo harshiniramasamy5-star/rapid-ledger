@@ -132,63 +132,6 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <header className="bg-white border-b border-slate-200 sticky top-0 z-20 shadow-sm">
-        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-primary flex items-center justify-center shadow-sm">
-              <span className="text-primary-foreground font-bold text-sm">RL</span>
-            </div>
-            <div>
-              <p className="font-semibold text-slate-900 text-sm leading-none">RAPID Ledger</p>
-              <p className="text-xs text-slate-400 mt-0.5">Decision Governance Platform</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-1">
-            {me && navItems.filter(n => n.roles.includes(me.role)).map(n => (
-              <Button key={n.path} variant="ghost" size="sm"
-                className="text-slate-600 hover:text-slate-900 text-sm"
-                onClick={() => router.push(n.path)}>
-                {n.label}
-              </Button>
-            ))}
-            <NotificationBell />
-            <Separator orientation="vertical" className="h-5 mx-2" />
-            <DropdownMenu>
-              <DropdownMenuTrigger>
-                <div role="button" tabIndex={0}
-                  className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-slate-100 cursor-pointer transition-colors select-none"
-                  onKeyDown={e => e.key === "Enter" && (e.currentTarget as HTMLElement).click()}>
-                  <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center">
-                    <span className="text-primary-foreground text-xs font-bold">{me?.name?.[0] ?? "U"}</span>
-                  </div>
-                  <div className="hidden sm:block text-left">
-                    <p className="text-xs font-semibold text-slate-800 leading-none">{me?.name}</p>
-                    <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded mt-1 inline-block ${ROLE_BADGE[me?.role ?? ""] ?? ""}`}>
-                      {me?.role}
-                    </span>
-                  </div>
-                </div>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-44">
-                <DropdownMenuGroup>
-                  <DropdownMenuItem className="text-sm font-medium text-slate-700 focus:bg-slate-50">
-                    {me?.email}
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => router.push("/orgs")} className="text-sm font-medium text-slate-700 focus:bg-slate-50">
-                    🏢 Organisation
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={logout} className="text-red-600 focus:text-red-600 focus:bg-red-50 text-sm font-medium">
-                    Sign out
-                  </DropdownMenuItem>
-                </DropdownMenuGroup>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        </div>
-      </header>
-
       <main className="max-w-7xl mx-auto px-6 py-8 space-y-6">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Welcome back, {me?.name?.split(" ")[0]} 👋</h1>
