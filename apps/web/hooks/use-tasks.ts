@@ -21,11 +21,12 @@ interface PendingTasksResponse {
   tasks: PendingTask[];
 }
 
-export function useMyPendingTasks() {
+export function useMyPendingTasks(enabled: boolean = true) {
   return useQuery({
     queryKey: TASKS_KEY,
     queryFn: () => api.get<PendingTasksResponse>("/tasks/pending"),
     select: (data) => data.tasks,
+    enabled,
   });
 }
 

@@ -317,6 +317,7 @@ enum AuditAction {
   workspace_member_removed
   task_completed
   workflow_stage_advanced
+  deadline_reminder_sent
 }
 
 enum DocumentType {

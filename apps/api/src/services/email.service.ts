@@ -94,6 +94,25 @@ export async function sendTaskUnlockedEmail(
   );
 }
 
+export async function sendDeadlineReminderEmail(
+  to: string,
+  name: string,
+  docTitle: string,
+  docCode: string,
+  actionRequired: string,
+  deadlineIso: string,
+  overdue: boolean
+) {
+  const deadlineStr = new Date(deadlineIso).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+  await sendEmail(
+    to,
+    overdue ? `Overdue: ${docTitle}` : `Reminder: ${docTitle} due soon`,
+    `<p>Hi ${name},</p>
+     <p>${overdue ? "This is now <strong>overdue</strong>" : "This is <strong>due soon</strong>"} on <strong>${docTitle}</strong> (${docCode}) — your <strong>${actionRequired}</strong> action is still pending. Deadline: ${deadlineStr}.</p>
+     <p><a href="${APP()}/tasks">View in Pending Tasks</a></p>`
+  );
+}
+
 export async function sendApprovalNotificationEmail(
   to: string,
   name: string,

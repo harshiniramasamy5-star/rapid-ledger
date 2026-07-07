@@ -12,6 +12,7 @@ import {
   sendRejectionNotificationEmail,
   sendChangesRequestedEmail,
   sendTaskUnlockedEmail,
+  sendDeadlineReminderEmail,
 } from "./email.service";
 
 const INCLUDE = {
@@ -51,6 +52,7 @@ export async function listDocuments(filters?: ListDocumentsOptions): Promise<Pag
     ...(filters?.search ? { OR: [{ title: { contains: filters.search, mode: "insensitive" } }, { documentCode: { contains: filters.search, mode: "insensitive" } }, { department: { contains: filters.search, mode: "insensitive" } }, { decisionSummary: { contains: filters.search, mode: "insensitive" } }] } : {}) };
 
   await checkAndUpdateSlaBreaches();
+  try { await sendDeadlineReminders(); } catch (e) { console.error("[DocService] sendDeadlineReminders failed:", e); }
   const [data, total] = await Promise.all([
     prisma.rapidDocument.findMany({ where, include: INCLUDE, orderBy: { createdAt: "desc" }, take: limit, skip }),
     prisma.rapidDocument.count({ where }),
@@ -443,4 +445,78 @@ export async function checkAndUpdateSlaBreaches() {
     data: { slaBreached: true },
   });
   return result.count;
+}
+
+// Reminds users of pending tasks whose document deadline is within 24h or
+// already overdue. Respects stage-gating: for sequential/hybrid documents,
+// only the currently-unlocked stage gets reminded (matches /tasks/pending
+// visibility). Idempotent via a lookback on AuditLog — same assignment
+// won't be reminded twice within a 20h window, piggybacks on listDocuments
+// like checkAndUpdateSlaBreaches rather than a separate scheduler.
+export async function sendDeadlineReminders() {
+  const now = new Date();
+  const reminderWindow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+
+  const candidates = await prisma.roleAssignment.findMany({
+    where: {
+      status: "pending",
+      document: {
+        deadline: { not: null, lte: reminderWindow },
+        status: { notIn: ["finalized", "execution_complete", "rejected"] },
+      },
+    },
+    include: {
+      user: { select: { name: true, email: true } },
+      document: { select: { id: true, title: true, documentCode: true, deadline: true, workflowMode: true } },
+    },
+  });
+  if (candidates.length === 0) return 0;
+
+  const byDoc = new Map<string, typeof candidates>();
+  for (const c of candidates) {
+    if (!byDoc.has(c.documentId)) byDoc.set(c.documentId, []);
+    byDoc.get(c.documentId)!.push(c);
+  }
+
+  let sent = 0;
+  for (const [documentId, assignments] of byDoc) {
+    let remindable = assignments;
+    if (assignments[0].document.workflowMode !== "parallel") {
+      const allPending = await prisma.roleAssignment.findMany({
+        where: { documentId, status: "pending" },
+        select: { stageOrder: true },
+      });
+      const trueMinStage = Math.min(...allPending.map((a) => a.stageOrder));
+      remindable = assignments.filter((a) => a.stageOrder === trueMinStage);
+    }
+
+    for (const a of remindable) {
+      const recent = await prisma.auditLog.findFirst({
+        where: {
+          action: "deadline_reminder_sent",
+          entityId: a.id,
+          createdAt: { gt: new Date(now.getTime() - 20 * 60 * 60 * 1000) },
+        },
+      });
+      if (recent) continue;
+
+      const overdue = a.document.deadline! < now;
+      try {
+        await sendDeadlineReminderEmail(
+          a.user.email,
+          a.user.name ?? a.user.email.split("@")[0],
+          a.document.title,
+          a.document.documentCode,
+          a.actionLabel ?? a.roleType,
+          a.document.deadline!.toISOString(),
+          overdue
+        );
+        await createAuditLog(a.userId, "deadline_reminder_sent", "RoleAssignment", a.id, { documentId, overdue });
+        sent++;
+      } catch (e) {
+        console.error("[DocService] Deadline reminder email failed:", e);
+      }
+    }
+  }
+  return sent;
 }

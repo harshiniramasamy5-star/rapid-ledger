@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { getToken, clearAuth } from "@/lib/api";
 import { WorkspaceSwitcher } from "@/components/workspace-switcher";
+import { useMyPendingTasks } from "@/hooks/use-tasks";
 
 const LINKS = [
   { href: "/dashboard", label: "Dashboard" },
@@ -19,9 +20,12 @@ const HIDDEN = ["/login", "/"];
 export function NavBar() {
   const pathname = usePathname();
   const router = useRouter();
+  const isAuthed = typeof window !== "undefined" && !!getToken();
+  const { data: tasks } = useMyPendingTasks(isAuthed);
+  const taskCount = tasks?.length ?? 0;
 
   if (HIDDEN.includes(pathname)) return null;
-  if (typeof window !== "undefined" && !getToken()) return null;
+  if (!isAuthed) return null;
 
   const logout = () => {
     clearAuth();
@@ -39,13 +43,18 @@ export function NavBar() {
             <Link
               key={l.href}
               href={l.href}
-              className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+              className={`relative px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
                 pathname.startsWith(l.href)
                   ? "bg-primary text-primary-foreground"
                   : "text-muted-foreground hover:bg-muted"
               }`}
             >
               {l.label}
+              {l.href === "/tasks" && taskCount > 0 && (
+                <span className="ml-1.5 inline-flex items-center justify-center min-w-[1.1rem] h-[1.1rem] px-1 rounded-full bg-red-500 text-white text-[10px] font-semibold leading-none">
+                  {taskCount > 99 ? "99+" : taskCount}
+                </span>
+              )}
             </Link>
           ))}
         </div>
