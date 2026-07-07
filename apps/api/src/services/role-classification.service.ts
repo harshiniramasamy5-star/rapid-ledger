@@ -1,7 +1,7 @@
 import { prisma } from "../lib/prisma";
 
 const GROQ_API_KEY = process.env.GROQ_API_KEY ?? "";
-const VALID_ROLES = ["recommend", "agree", "perform", "input", "decide"];
+const VALID_ROLES = ["recommend", "agree", "perform", "input", "decide", "review", "acknowledge", "inform"];
 
 interface CandidateProfile {
   userId: string;
@@ -93,6 +93,9 @@ RAPID roles:
 - agree: must sign off / approve before the decision proceeds
 - decide: has final authority and ownership of the outcome
 - perform: will execute or implement the decision once made
+- review: reviews the document/decision for quality or compliance before it proceeds
+- acknowledge: must confirm they've seen and understood the finalized decision
+- inform: is notified of the decision for awareness only, no action required
 
 Document:
 Title: ${doc.title}
@@ -103,7 +106,7 @@ Business context: ${doc.businessContext ?? "none provided"}
 Candidates (workspace members, with their department and history of past RAPID role assignments):
 ${candidateList}
 
-Based on each candidate's department, workspace role, and past assignment history, suggest the single most likely RAPID role for each candidate for THIS document. Favor "input" when evidence is weak. Respond ONLY with a JSON object mapping email to an object {"role": "<one of recommend|input|agree|decide|perform>", "rationale": "<one short sentence>"}. No other text.`;
+Based on each candidate's department, workspace role, and past assignment history, suggest the single most likely RAPID role for each candidate for THIS document. Favor "input" when evidence is weak. Respond ONLY with a JSON object mapping email to an object {"role": "<one of recommend|input|agree|decide|perform|review|acknowledge|inform>", "rationale": "<one short sentence>"}. No other text.`;
 
   try {
     const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {

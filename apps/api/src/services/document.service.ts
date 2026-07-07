@@ -316,11 +316,29 @@ export async function createDocumentVersion(documentId: string, actorId: string)
   return { ok: true as const, document: newDoc };
 }
 
+const ROLE_ACTION_LABELS: Record<string, string> = {
+  recommend: "Recommend",
+  agree: "Approve",
+  perform: "Execute",
+  input: "Provide Input",
+  decide: "Decide",
+  review: "Review",
+  acknowledge: "Acknowledge",
+  inform: "Acknowledge Notice",
+};
+
 export async function assignRole(documentId: string, roleType: string, userId: string, actorId: string) {
   const doc = await prisma.rapidDocument.findUnique({ where: { id: documentId } });
   if (!doc) return { ok: false as const, notFound: true };
   if (!["draft", "needs_changes"].includes(doc.status)) return { ok: false as const, invalidStatus: doc.status };
-  const assignment = await prisma.roleAssignment.create({ data: { documentId, roleType: roleType as "recommend" | "agree" | "perform" | "input" | "decide", userId } });
+  const assignment = await prisma.roleAssignment.create({
+    data: {
+      documentId,
+      roleType: roleType as "recommend" | "agree" | "perform" | "input" | "decide" | "review" | "acknowledge" | "inform",
+      userId,
+      actionLabel: ROLE_ACTION_LABELS[roleType] ?? roleType,
+    },
+  });
   await createAuditLog(actorId, "role_assigned", "RoleAssignment", assignment.id, { documentId, roleType, assignedUserId: userId });
   return { ok: true as const, assignment };
 }

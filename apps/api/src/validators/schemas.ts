@@ -28,7 +28,7 @@ export const approvalSchema = z.object({
 });
 
 export const assignRoleSchema = z.object({
-  roleType: z.enum(["recommend", "agree", "perform", "input", "decide"]),
+  roleType: z.enum(["recommend", "agree", "perform", "input", "decide", "review", "acknowledge", "inform"]),
   userId: z.string().min(1, "User ID is required"),
 });
 

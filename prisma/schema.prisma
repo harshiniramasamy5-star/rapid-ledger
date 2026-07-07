@@ -95,6 +95,7 @@ model RapidDocument {
   status                 DocumentStatus   @default(draft)
   documentType           DocumentType     @default(RAPID)
   visibility             Visibility       @default(PRIVATE)
+  workflowMode           WorkflowMode     @default(parallel)
   parentDocumentId       String?
   complianceImpact       Boolean          @default(false)
   businessContext        String?
@@ -136,13 +137,20 @@ model RapidDocument {
 }
 
 model RoleAssignment {
-  id         String        @id @default(cuid())
-  documentId String
-  roleType   RoleType
-  userId     String
-  createdAt  DateTime      @default(now())
-  document   RapidDocument @relation(fields: [documentId], references: [id])
-  user       User          @relation(fields: [userId], references: [id])
+  id           String               @id @default(cuid())
+  documentId   String
+  roleType     RoleType
+  userId       String
+  status       RoleAssignmentStatus @default(pending)
+  stageOrder   Int                  @default(0)
+  actionLabel  String?
+  completedAt  DateTime?
+  createdAt    DateTime             @default(now())
+  document     RapidDocument        @relation(fields: [documentId], references: [id])
+  user         User                 @relation(fields: [userId], references: [id])
+
+  @@index([userId, status])
+  @@index([documentId])
 }
 
 model Evidence {
@@ -252,6 +260,21 @@ enum RoleType {
   perform
   input
   decide
+  review
+  acknowledge
+  inform
+}
+
+enum RoleAssignmentStatus {
+  pending
+  completed
+  skipped
+}
+
+enum WorkflowMode {
+  sequential
+  parallel
+  hybrid
 }
 
 enum AuditAction {
@@ -292,6 +315,8 @@ enum AuditAction {
   workspace_member_promoted
   workspace_member_demoted
   workspace_member_removed
+  task_completed
+  workflow_stage_advanced
 }
 
 enum DocumentType {
