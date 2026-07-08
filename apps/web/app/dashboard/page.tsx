@@ -8,16 +8,20 @@ import type { ApiDocument, ApiUser } from "@/lib/types";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuGroup, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
-const STATUS_VARIANTS: Record<string, "default"|"secondary"|"destructive"|"outline"> = {
-  draft: "outline", submitted: "secondary", awaiting_agreement: "secondary",
-  approved: "default", finalized: "default", execution_complete: "default", rejected: "destructive",
+const STATUS_STYLES: Record<string, { bg: string; text: string; dot: string }> = {
+  draft:               { bg: "bg-slate-100",  text: "text-slate-600",  dot: "bg-slate-400" },
+  submitted:           { bg: "bg-blue-50",    text: "text-blue-700",   dot: "bg-blue-600" },
+  awaiting_agreement:  { bg: "bg-amber-50",   text: "text-amber-700",  dot: "bg-amber-500" },
+  approved:            { bg: "bg-teal-50",    text: "text-teal-700",   dot: "bg-teal-600" },
+  finalized:           { bg: "bg-emerald-50", text: "text-emerald-700",dot: "bg-emerald-600" },
+  execution_complete:  { bg: "bg-purple-50",  text: "text-purple-700", dot: "bg-purple-600" },
+  rejected:            { bg: "bg-red-50",     text: "text-red-700",    dot: "bg-red-600" },
 };
 
 const RISK_COLORS: Record<string, string> = {
@@ -114,10 +118,10 @@ export default function DashboardPage() {
   }
 
   const stats = [
-    { label: "Total Documents",  value: statsData.total,    color: "text-primary",     bg: "bg-primary/5"  },
-    { label: "Drafts",           value: statsData.drafts,   color: "text-slate-600",   bg: "bg-slate-100"  },
-    { label: "Pending Approval", value: statsData.pending,  color: "text-amber-600",   bg: "bg-amber-50"   },
-    { label: "Finalized",        value: statsData.finalized,color: "text-emerald-600", bg: "bg-emerald-50" },
+    { label: "Total Documents",  value: statsData.total,    color: "text-slate-900" },
+    { label: "Drafts",           value: statsData.drafts,   color: "text-slate-600" },
+    { label: "Pending Approval", value: statsData.pending,  color: "text-amber-600" },
+    { label: "Finalized",        value: statsData.finalized,color: "text-emerald-600" },
   ];
 
   const navItems = [
@@ -143,10 +147,10 @@ export default function DashboardPage() {
 
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {stats.map(s => (
-            <Card key={s.label} className="border-slate-200 shadow-sm overflow-hidden">
-              <CardContent className={`pt-5 pb-5 ${s.bg}`}>
-                <div className={`text-3xl font-bold ${s.color}`}>{s.value}</div>
-                <div className="text-sm text-slate-500 mt-1 font-medium">{s.label}</div>
+            <Card key={s.label} className="border-0 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_2px_8px_rgba(15,23,42,0.04)]">
+              <CardContent className="pt-1 pb-1">
+                <div className="text-xs text-slate-500 font-medium">{s.label}</div>
+                <div className={`text-2xl font-semibold mt-1.5 ${s.color}`}>{s.value}</div>
               </CardContent>
             </Card>
           ))}
@@ -154,7 +158,7 @@ export default function DashboardPage() {
 
         <AnalyticsCharts />
 
-        <Card className="border-slate-200 shadow-sm">
+        <Card className="border-0 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_2px_8px_rgba(15,23,42,0.04)]">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
               <CardTitle className="text-lg text-slate-900">RAPID Documents</CardTitle>
@@ -221,15 +225,22 @@ export default function DashboardPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {docs.map(doc => (
+                    {docs.map(doc => {
+                      const st = STATUS_STYLES[doc.status] ?? STATUS_STYLES.draft;
+                      return (
                       <TableRow key={doc.id} className="border-slate-100 cursor-pointer hover:bg-slate-50 transition-colors"
                         onClick={() => router.push(`/documents/${doc.id}`)}>
                         <TableCell className="font-mono text-xs text-slate-400">{doc.documentCode}</TableCell>
-                        <TableCell className="font-semibold text-slate-800">{doc.title}</TableCell>
                         <TableCell>
-                          <Badge variant={STATUS_VARIANTS[doc.status] ?? "outline"} className="capitalize text-xs">
+                          <div className="flex items-center gap-2">
+                            <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${st.dot}`} />
+                            <span className="font-semibold text-slate-800">{doc.title}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <span className={`inline-block text-xs font-semibold px-2.5 py-1 rounded-md capitalize ${st.bg} ${st.text}`}>
                             {doc.status.replace(/_/g, " ")}
-                          </Badge>
+                          </span>
                         </TableCell>
                         <TableCell className={`font-semibold capitalize text-sm ${RISK_COLORS[doc.riskLevel] ?? "text-slate-600"}`}>
                           {doc.riskLevel}
@@ -250,7 +261,8 @@ export default function DashboardPage() {
                           ) : "—"}
                         </TableCell>
                       </TableRow>
-                    ))}
+                      );
+                    })}
                   </TableBody>
                 </Table>
 
