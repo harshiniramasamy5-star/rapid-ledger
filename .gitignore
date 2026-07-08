@@ -40,3 +40,4 @@ CLAUDE.md
 # Lockfile discipline: npm workspaces use the single root package-lock.json only
 bun.lock
 apps/web/package-lock.json
+*.dump
