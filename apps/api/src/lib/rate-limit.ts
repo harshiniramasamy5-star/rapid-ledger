@@ -1,5 +1,5 @@
 /**
- * In-memory rate limiter for /auth/login brute-force protection.
+ * In-memory rate limiter for auth brute-force protection (login, TOTP, etc).
  *
  * Limitation: state is process-local and resets on server restart.
  * This is intentional for the current single-instance Railway deployment.
@@ -8,21 +8,30 @@
  */
 
 const attempts = new Map<string, { count: number; windowStart: number }>();
-const MAX = 100;
-const WINDOW_MS = 15 * 60 * 1000; // 15 min
+const DEFAULT_MAX = 100;
+const DEFAULT_WINDOW_MS = 15 * 60 * 1000; // 15 min
 
-export function checkRateLimit(ip: string): { allowed: boolean } {
+/**
+ * @param key identifier to rate-limit on (e.g. IP for login, `totp:${userId}` for TOTP)
+ * @param max max attempts allowed within the window (default 100, matches existing /auth/login behavior)
+ * @param windowMs window size in ms (default 15 min)
+ */
+export function checkRateLimit(
+  key: string,
+  max: number = DEFAULT_MAX,
+  windowMs: number = DEFAULT_WINDOW_MS
+): { allowed: boolean } {
   const now = Date.now();
-  const rec = attempts.get(ip);
-  if (!rec || now - rec.windowStart > WINDOW_MS) {
-    attempts.set(ip, { count: 1, windowStart: now });
+  const rec = attempts.get(key);
+  if (!rec || now - rec.windowStart > windowMs) {
+    attempts.set(key, { count: 1, windowStart: now });
     return { allowed: true };
   }
-  if (rec.count >= MAX) return { allowed: false };
+  if (rec.count >= max) return { allowed: false };
   rec.count++;
   return { allowed: true };
 }
 
-export function resetRateLimit(ip: string): void {
-  attempts.delete(ip);
+export function resetRateLimit(key: string): void {
+  attempts.delete(key);
 }
