@@ -7,6 +7,7 @@ import { createAuditLog } from "../services/audit.service";
 import { signToken } from "../lib/auth";
 import { toPublicUser } from "../services/auth.service";
 import { checkRateLimit } from "../lib/rate-limit";
+import { encryptSecret, decryptSecret } from "../lib/crypto";
 
 // TOTP codes are 6 digits (1M combinations) — must be throttled much tighter
 // than the general login limiter or brute force becomes trivial.
@@ -31,7 +32,7 @@ export const totpPublicRoutes = new Elysia({ prefix: "/auth/totp" })
       return { error: "TOTP not enabled for this user" };
     }
 
-    const _res = await verifyTOTP({ token: code, secret: dbUser.totpSecret });
+    const _res = await verifyTOTP({ token: code, secret: decryptSecret(dbUser.totpSecret) });
     const valid = typeof _res === "object" && _res !== null ? (_res as Record<string, unknown>).valid : _res;
     if (!valid) { set.status = 401; return { error: "invalid TOTP code" }; }
 
@@ -51,7 +52,7 @@ export const totpRoutes = new Elysia({ prefix: "/auth/totp" })
     const secret = generateSecret();
     const otpauth = generateURI({ label: user.email, issuer: "RAPID Ledger", secret, strategy: "totp" });
     const qrCode = await QRCode.toDataURL(otpauth);
-    await prisma.user.update({ where: { id: user.id }, data: { totpSecret: secret } });
+    await prisma.user.update({ where: { id: user.id }, data: { totpSecret: encryptSecret(secret) } });
     return { secret, qrCode, otpauth };
   })
 
@@ -65,7 +66,7 @@ export const totpRoutes = new Elysia({ prefix: "/auth/totp" })
     }
     const dbUser = await prisma.user.findUnique({ where: { id: user.id } });
     if (!dbUser?.totpSecret) { set.status = 400; return { error: "run /setup first" }; }
-    const _res = await verifyTOTP({ token: code, secret: dbUser.totpSecret });
+    const _res = await verifyTOTP({ token: code, secret: decryptSecret(dbUser.totpSecret) });
     const valid = typeof _res === "object" && _res !== null ? (_res as Record<string, unknown>).valid : _res;
     if (!valid) { set.status = 401; return { error: "invalid TOTP code" }; }
     await prisma.user.update({ where: { id: user.id }, data: { totpEnabled: true } });
@@ -83,7 +84,7 @@ export const totpRoutes = new Elysia({ prefix: "/auth/totp" })
     }
     const dbUser = await prisma.user.findUnique({ where: { id: user.id } });
     if (!dbUser?.totpSecret || !dbUser.totpEnabled) { set.status = 400; return { error: "TOTP not enabled" }; }
-    const _res = await verifyTOTP({ token: code, secret: dbUser.totpSecret });
+    const _res = await verifyTOTP({ token: code, secret: decryptSecret(dbUser.totpSecret) });
     const valid = typeof _res === "object" && _res !== null ? (_res as Record<string, unknown>).valid : _res;
     if (!valid) { set.status = 401; return { error: "invalid TOTP code" }; }
     await prisma.user.update({ where: { id: user.id }, data: { totpEnabled: false, totpSecret: null } });
