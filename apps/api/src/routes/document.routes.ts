@@ -54,6 +54,7 @@ export const documentRoutes = new Elysia({ prefix: "/documents" })
       department: query.department,
       riskLevel: query.riskLevel,
       search: query.search,
+      documentType: query.documentType as string | undefined,
       page: query.page ? Number(query.page) : 1,
       limit: query.limit ? Number(query.limit) : 20 });
   })

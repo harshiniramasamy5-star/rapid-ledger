@@ -28,6 +28,7 @@ export interface ListDocumentsOptions {
   department?: string;
   riskLevel?: string;
   search?: string;
+  documentType?: string;
   page?: number;
   limit?: number;
 }
@@ -49,6 +50,7 @@ export async function listDocuments(filters?: ListDocumentsOptions): Promise<Pag
     ...(filters?.status ? { status: filters.status as DocumentStatus } : {}),
     ...(filters?.department ? { department: filters.department } : {}),
     ...(filters?.riskLevel ? { riskLevel: filters.riskLevel as "low" | "medium" | "high" | "critical" } : {}),
+    ...(filters?.documentType ? { documentType: filters.documentType as "RAPID" | "PORTAL" | "TRANSCRIPT" } : {}),
     ...(filters?.search ? { OR: [{ title: { contains: filters.search, mode: "insensitive" } }, { documentCode: { contains: filters.search, mode: "insensitive" } }, { department: { contains: filters.search, mode: "insensitive" } }, { decisionSummary: { contains: filters.search, mode: "insensitive" } }] } : {}) };
 
   await checkAndUpdateSlaBreaches();
