@@ -9,11 +9,9 @@ import { toast } from "sonner";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
 
-const ROLE_ROUTES: Record<string, string> = {
-  admin: "/dashboard", creator: "/dashboard", recommender: "/dashboard",
-  approver: "/approvals", decision_owner: "/dashboard", decider: "/dashboard",
-  performer: "/dashboard", viewer: "/dashboard",
-};
+// Dashboard is the single primary landing page after authentication for every role.
+// (Previously "approver" bypassed the dashboard and landed on /approvals directly.)
+const POST_AUTH_ROUTE = "/dashboard";
 
 type UserData = { id: string; name: string; email: string; role: string; totpEnabled?: boolean; orgId?: string | null };
 
@@ -72,6 +70,7 @@ export default function LoginPage() {
   const [pendingToken, setPendingToken] = useState("");
   const [pendingUser, setPendingUser]   = useState<UserData | null>(null);
   const [pendingUserId, setPendingUserId] = useState("");
+  const [redirecting, setRedirecting] = useState(false);
 
   function applySession(token: string, user: UserData) {
     const secure = window.location.protocol === "https:" ? "; Secure" : "";
@@ -80,9 +79,10 @@ export default function LoginPage() {
     document.cookie = `rapid_role=${user.role}; path=/; max-age=${age}; SameSite=Lax${secure}`;
     document.cookie = `rapid_mfa=${user.totpEnabled ? "1" : "0"}; path=/; max-age=${age}; SameSite=Lax${secure}`;
     toast.success("Welcome back, " + user.name + "!");
+    setRedirecting(true);
     if (!user.totpEnabled) { router.push("/settings/totp?required=1"); }
     else if (!user.orgId) { router.push("/onboarding"); }
-    else { router.push(ROLE_ROUTES[user.role] ?? "/dashboard"); }
+    else { router.push(POST_AUTH_ROUTE); }
   }
 
   async function handleLogin(e: React.FormEvent) {
@@ -131,6 +131,17 @@ export default function LoginPage() {
       toast.error((err as Error).message ?? "Invalid code.");
       setTotpCode("");
     } finally { setLoading(false); }
+  }
+
+  if (redirecting) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#f8fafc] font-sans">
+        <div className="flex flex-col items-center gap-3">
+          <span className="w-8 h-8 border-2 border-slate-200 border-t-blue-600 rounded-full animate-spin" />
+          <p className="text-slate-500 text-sm font-medium">Signing you in…</p>
+        </div>
+      </div>
+    );
   }
 
   return (

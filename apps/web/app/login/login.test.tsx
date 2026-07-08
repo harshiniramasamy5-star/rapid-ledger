@@ -52,13 +52,13 @@ describe("LoginPage", () => {
     await waitFor(() => expect(mockPush).toHaveBeenCalledWith("/dashboard"));
   });
 
-  it("redirects approver to /approvals", async () => {
+  it("redirects approver to /dashboard", async () => {
     mockFetch({ token: "tok", user: { name: "Sarah", role: "approver", orgId: "test-org-id", totpEnabled: true } });
     render(<LoginPage />);
     await userEvent.type(screen.getByLabelText(/work email/i), "approver@rapid.com");
     await userEvent.type(screen.getByLabelText(/password/i), "password123");
     fireEvent.click(screen.getByRole("button", { name: /continue/i }));
-    await waitFor(() => expect(mockPush).toHaveBeenCalledWith("/approvals"));
+    await waitFor(() => expect(mockPush).toHaveBeenCalledWith("/dashboard"));
   });
 
   it("redirects viewer to /dashboard", async () => {
