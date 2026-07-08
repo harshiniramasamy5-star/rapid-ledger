@@ -2,6 +2,7 @@ import bcrypt from "bcryptjs";
 import { prisma } from "../lib/prisma";
 import { signToken } from "../lib/auth";
 import { createAuditLog } from "./audit.service";
+import { decryptSecret } from "../lib/crypto";
 import type { LoginResponse, PublicUser } from "../types";
 
 const MAX_FAILED_ATTEMPTS = 5;
@@ -73,7 +74,7 @@ export async function loginUser(email: string, password: string, totpCode?: stri
   if ((user as { totpEnabled?: boolean }).totpEnabled && totpCode) {
     try {
       const { verify } = await import("otplib");
-      const _res = await verify({ token: totpCode, secret: user.totpSecret! });
+      const _res = await verify({ token: totpCode, secret: decryptSecret(user.totpSecret!) });
       const valid = typeof _res === "object" && _res !== null ? (_res as Record<string, unknown>).valid : _res;
       if (!valid) {
         return { success: false, reason: "invalid_credentials" };
