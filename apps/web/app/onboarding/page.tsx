@@ -13,6 +13,8 @@ export default function OnboardingPage() {
   const [step, setStep]         = useState<"check"|"choose"|"create"|"waiting"|"done">("check");
   const [orgName, setOrgName]   = useState("");
   const [orgDomain, setOrgDomain] = useState("");
+  const [orgLogoUrl, setOrgLogoUrl] = useState("");
+  const [orgDescription, setOrgDescription] = useState("");
   const [creating, setCreating] = useState(false);
   const [checkingAgain, setCheckingAgain] = useState(false);
 
@@ -34,7 +36,12 @@ export default function OnboardingPage() {
     const res = await fetch(`${API}/orgs`, {
       method: "POST",
       headers: { Authorization: `Bearer ${t}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ name: orgName.trim(), domain: orgDomain.trim() || undefined }),
+      body: JSON.stringify({
+        name: orgName.trim(),
+        domain: orgDomain.trim() || undefined,
+        logoUrl: orgLogoUrl.trim() || undefined,
+        description: orgDescription.trim() || undefined,
+      }),
     });
     const data = await res.json();
     if (res.ok) {
@@ -166,6 +173,38 @@ export default function OnboardingPage() {
                 placeholder="e.g. acme.com"
                 value={orgDomain}
                 onChange={e => setOrgDomain(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide block mb-1.5">Logo URL <span className="text-slate-400 font-normal">(optional)</span></label>
+              <div className="flex items-center gap-3">
+                {orgLogoUrl.trim() ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={orgLogoUrl.trim()}
+                    alt=""
+                    className="w-9 h-9 rounded-lg object-cover border border-slate-200 shrink-0"
+                    onError={e => { (e.target as HTMLImageElement).style.visibility = "hidden"; }}
+                  />
+                ) : (
+                  <div className="w-9 h-9 rounded-lg border border-dashed border-slate-200 shrink-0" />
+                )}
+                <input
+                  className="flex-1 border border-slate-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                  placeholder="https://example.com/logo.png"
+                  value={orgLogoUrl}
+                  onChange={e => setOrgLogoUrl(e.target.value)}
+                />
+              </div>
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide block mb-1.5">Description <span className="text-slate-400 font-normal">(optional)</span></label>
+              <textarea
+                className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary resize-none"
+                placeholder="What does your team do?"
+                rows={2}
+                value={orgDescription}
+                onChange={e => setOrgDescription(e.target.value)}
               />
             </div>
             <Button className="w-full h-11 font-semibold" disabled={creating || !orgName.trim()} onClick={createOrg}>

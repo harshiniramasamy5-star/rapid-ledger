@@ -9,13 +9,29 @@ export const orgRoutes = new Elysia({ prefix: "/orgs" })
 
   // POST /orgs — create org (admin only), creator becomes workspace admin
   .post("/", async ({ user, body, set }) => {
-    const { name, domain } = body as { name: string; domain?: string };
+    const { name, domain, logoUrl, description } = body as {
+      name: string; domain?: string; logoUrl?: string; description?: string;
+    };
     if (!name) { set.status = 400; return { error: "name required" }; }
     if (domain) {
       const existing = await prisma.organization.findUnique({ where: { domain } });
       if (existing) { set.status = 409; return { error: "domain already registered" }; }
     }
-    const org = await prisma.organization.create({ data: { name, domain } });
+    let cleanLogoUrl: string | undefined;
+    if (logoUrl) {
+      try {
+        const parsed = new URL(logoUrl);
+        if (parsed.protocol !== "http:" && parsed.protocol !== "https:") throw new Error("bad protocol");
+        if (logoUrl.length > 2048) throw new Error("too long");
+        cleanLogoUrl = logoUrl;
+      } catch {
+        set.status = 400;
+        return { error: "logoUrl must be a valid http(s) URL" };
+      }
+    }
+    const org = await prisma.organization.create({
+      data: { name, domain, logoUrl: cleanLogoUrl, description: description?.trim() || undefined },
+    });
     await prisma.workspaceMember.create({
       data: { userId: user.id, orgId: org.id, accessType: "admin" },
     });
@@ -30,7 +46,7 @@ export const orgRoutes = new Elysia({ prefix: "/orgs" })
         entityType: "Organization",
         entityId: org.id,
         orgId: org.id,
-        details: JSON.stringify({ name, domain }),
+        details: JSON.stringify({ name, domain, hasLogo: !!cleanLogoUrl }),
       },
     });
     set.status = 201;
