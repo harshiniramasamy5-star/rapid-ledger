@@ -65,6 +65,7 @@ export interface ApiUser {
   department?: string | null;
   isActive: boolean;
   createdAt: string;
+  orgId?: string | null;
 }
 
 // API-layer ApiDocument — full shape returned by backend

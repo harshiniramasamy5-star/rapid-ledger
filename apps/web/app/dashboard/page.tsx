@@ -96,9 +96,14 @@ export default function DashboardPage() {
   useEffect(() => {
     const token = getToken();
     if (!token) { router.replace("/login"); return; }
-    fetch(`${API}/auth/me`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()).then(setMe);
-    fetchStats(token);
-    fetchDocs(token, 1, "", "all", "all");
+    fetch(`${API}/auth/me`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.json())
+      .then((user: ApiUser) => {
+        if (!user?.orgId) { router.replace("/onboarding"); return; }
+        setMe(user);
+        fetchStats(token);
+        fetchDocs(token, 1, "", "all", "all");
+      });
   }, [router, fetchDocs, fetchStats]);
 
   useEffect(() => {
