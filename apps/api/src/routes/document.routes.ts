@@ -117,6 +117,7 @@ export const documentRoutes = new Elysia({ prefix: "/documents" })
     if (!result.ok) {
       if ("notFound" in result) { set.status = 404; return Errors.notFound("Document"); }
       if ("invalidStatus" in result) { set.status = 409; return Errors.invalidStatus(result.invalidStatus ?? "unknown", ["awaiting_agreement"]); }
+      if ("notAuthorized" in result) { set.status = 403; return { error: { code: "FORBIDDEN", message: "You are not an assigned approver for this document" } }; }
     }
     return result.document;
   })

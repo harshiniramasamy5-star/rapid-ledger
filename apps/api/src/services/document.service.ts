@@ -158,6 +158,8 @@ export async function approveDocument(documentId: string, approverId: string, co
   const doc = await prisma.rapidDocument.findUnique({ where: { id: documentId } });
   if (!doc) return { ok: false as const, notFound: true };
   if (doc.status !== "awaiting_agreement") return { ok: false as const, invalidStatus: doc.status };
+  const existingApproval = await prisma.approval.findFirst({ where: { documentId, approverId } });
+  if (!existingApproval) return { ok: false as const, notAuthorized: true };
   // Atomic: approval update + optional status change + audit log
   const updated = await prisma.$transaction(async (tx) => {
     await tx.approval.updateMany({ where: { documentId, approverId }, data: { decision: "approved", comment } });
