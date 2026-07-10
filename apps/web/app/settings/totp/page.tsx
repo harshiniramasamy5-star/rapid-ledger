@@ -13,6 +13,7 @@ function TOTPSetupContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const required = searchParams.get("required") === "1";
+  const nextUrl = searchParams.get("next");
   const [step, setStep]       = useState<"idle"|"setup"|"done">("idle");
   const [qrCode, setQrCode]   = useState("");
   const [secret, setSecret]   = useState("");
@@ -51,7 +52,7 @@ function TOTPSetupContent() {
       toast.success("Two-factor authentication enabled!");
       setEnabled(true); setStep("done"); setCode("");
       document.cookie = `rapid_mfa=1; path=/; max-age=${60*60*24*7}; SameSite=Lax`;
-      if (required) { setTimeout(() => router.push("/dashboard"), 1500); }
+      if (required) { setTimeout(() => router.push(nextUrl && nextUrl.startsWith("/") ? nextUrl : "/dashboard"), 1500); }
     } catch (e: unknown) { toast.error((e as Error).message); setCode(""); }
     finally { setLoading(false); }
   }

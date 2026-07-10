@@ -425,6 +425,9 @@ export async function completeRoleTask(documentId: string, userId: string, roleT
 export async function addEvidence(documentId: string, data: { type: string; title: string; urlOrPath?: string; description?: string }, actorId: string) {
   const doc = await prisma.rapidDocument.findUnique({ where: { id: documentId } });
   if (!doc) return { ok: false as const, notFound: true };
+  if (doc.status === "finalized" || doc.status === "execution_complete") {
+    return { ok: false as const, immutable: true };
+  }
   const evidence = await prisma.evidence.create({ data: { documentId, type: data.type, title: data.title, urlOrPath: data.urlOrPath ?? "", description: data.description, uploadedBy: actorId } });
   await createAuditLog(actorId, "evidence_added", "Evidence", evidence.id, { documentId });
   return { ok: true as const, evidence };

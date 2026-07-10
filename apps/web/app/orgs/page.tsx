@@ -11,7 +11,7 @@ function getToken(){ const m=document.cookie.match(/(?:^|;\s*)rapid_token=([^;]*
 
 export default function OrgsPage() {
   const router = useRouter();
-  const [org, setOrg]           = useState<{id:string;name:string;domain?:string;memberCount?:number}|null>(null);
+  const [org, setOrg]           = useState<{id:string;name:string;domain?:string;logoUrl?:string;description?:string;memberCount?:number}|null>(null);
   const [myAccessType, setMyAccessType] = useState<"admin"|"member"|null>(null);
   const [members, setMembers]   = useState<{id:string;name:string;email:string;role:string;accessType:string}[]>([]);
   const [me, setMe]             = useState<{id:string;role:string;orgId?:string}|null>(null);
@@ -23,6 +23,12 @@ export default function OrgsPage() {
   const [inviting, setInviting] = useState(false);
   const [invites, setInvites] = useState<Array<{id:string;email:string;role:string;expiresAt:string}>>([]);
   const [loadingInvites, setLoadingInvites] = useState(false);
+  const [logoUrl, setLogoUrl]   = useState("");
+  const [description, setDescription] = useState("");
+  const [savingBranding, setSavingBranding] = useState(false);
+  const [activity, setActivity] = useState<Array<{id:string;action:string;entityType:string;createdAt:string;user?:{name:string;email:string}}>>([]);
+  const [loadingActivity, setLoadingActivity] = useState(false);
+  const [showActivity, setShowActivity] = useState(false);
 
   const token = () => getToken() ?? "";
 
@@ -37,12 +43,15 @@ export default function OrgsPage() {
     const mineData = await mineRes.json();
     setMe(meData);
     const activeWs = (mineData?.workspaces ?? []).find((w: {isActive: boolean}) => w.isActive) ?? null;
-    setOrg(activeWs ? { id: activeWs.id, name: activeWs.name, domain: activeWs.domain, memberCount: activeWs.memberCount } : null);
+    setOrg(activeWs ? { id: activeWs.id, name: activeWs.name, domain: activeWs.domain, logoUrl: activeWs.logoUrl, description: activeWs.description, memberCount: activeWs.memberCount } : null);
     setMyAccessType(activeWs?.accessType ?? null);
     if (activeWs) {
+      setLogoUrl(activeWs.logoUrl ?? "");
+      setDescription(activeWs.description ?? "");
       const mRes = await fetch(`${API}/orgs/${activeWs.id}/members`, { headers: { Authorization: `Bearer ${t}` } });
       const mData = await mRes.json();
       setMembers(mData?.members ?? []);
+      if (activeWs.accessType === "admin") void loadInvites(activeWs.id);
     }
     setLoading(false);
   }, [router]);
@@ -92,6 +101,30 @@ export default function OrgsPage() {
     });
     if (res.ok) toast.success("Invite resent!");
     else toast.error("Failed to resend");
+  }
+
+  async function saveBranding() {
+    if (!org) return;
+    setSavingBranding(true);
+    try {
+      const res = await fetch(`${API}/orgs/${org.id}`, {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${token()}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ logoUrl: logoUrl.trim(), description: description.trim() }),
+      });
+      const data = await res.json();
+      if (res.ok) { toast.success("Branding updated"); await load(); }
+      else toast.error(data?.error ?? "Failed to update branding");
+    } finally { setSavingBranding(false); }
+  }
+
+  async function loadActivity() {
+    setLoadingActivity(true);
+    try {
+      const res = await fetch(`${API}/audit-logs`, { headers: { Authorization: `Bearer ${getToken() ?? ""}` } });
+      const data = await res.json();
+      if (res.ok) setActivity(Array.isArray(data) ? data : []);
+    } finally { setLoadingActivity(false); }
   }
 
   async function sendInvite() {
@@ -165,6 +198,66 @@ export default function OrgsPage() {
               </Card>
             )}
 
+            {isAdmin && (
+              <Card className="border-slate-200 shadow-sm">
+                <CardHeader className="pb-3"><CardTitle className="text-base">Pending invites</CardTitle></CardHeader>
+                <CardContent>
+                  {loadingInvites ? (
+                    <p className="text-sm text-slate-400">Loading…</p>
+                  ) : invites.length === 0 ? (
+                    <p className="text-sm text-slate-400">No pending invites.</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {invites.map(inv => (
+                        <div key={inv.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-100">
+                          <div>
+                            <p className="text-sm font-semibold text-slate-800">{inv.email}</p>
+                            <p className="text-xs text-slate-400 capitalize">{inv.role} · expires {new Date(inv.expiresAt).toLocaleDateString()}</p>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <button className="text-xs text-primary hover:underline font-medium" onClick={() => resendInvite(inv.id)}>Resend</button>
+                            <button className="text-xs text-red-500 hover:text-red-700 font-medium" onClick={async () => { await revokeInvite(inv.id); }}>Revoke</button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
+            {isAdmin && (
+              <Card className="border-slate-200 shadow-sm">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base">Branding</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div>
+                    <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide block mb-1.5">Logo URL</label>
+                    <div className="flex items-center gap-3">
+                      {logoUrl.trim() ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={logoUrl.trim()} alt="" className="w-9 h-9 rounded-lg object-cover border border-slate-200 shrink-0"
+                          onError={e => { (e.target as HTMLImageElement).style.visibility = "hidden"; }} />
+                      ) : (
+                        <div className="w-9 h-9 rounded-lg border border-dashed border-slate-200 shrink-0" />
+                      )}
+                      <input className="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm" placeholder="https://example.com/logo.png"
+                        value={logoUrl} onChange={e => setLogoUrl(e.target.value)} />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide block mb-1.5">Description</label>
+                    <textarea rows={2} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm resize-none"
+                      placeholder="What does your team do?" value={description} onChange={e => setDescription(e.target.value)} />
+                  </div>
+                  <Button className="w-full" disabled={savingBranding} onClick={saveBranding}>
+                    {savingBranding ? "Saving…" : "Save Branding"}
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
+
             <Card className="border-slate-200 shadow-sm">
               <CardHeader className="pb-3"><CardTitle className="text-base">Members</CardTitle></CardHeader>
               <CardContent>
@@ -202,6 +295,41 @@ export default function OrgsPage() {
                 )}
               </CardContent>
             </Card>
+
+            {isAdmin && (
+              <Card className="border-slate-200 shadow-sm">
+                <CardHeader className="pb-3 flex flex-row items-center justify-between">
+                  <CardTitle className="text-base">Activity log</CardTitle>
+                  <Button
+                    variant="outline" size="sm" className="text-xs"
+                    onClick={() => { const next = !showActivity; setShowActivity(next); if (next && activity.length === 0) void loadActivity(); }}
+                  >
+                    {showActivity ? "Hide" : "View activity"}
+                  </Button>
+                </CardHeader>
+                {showActivity && (
+                  <CardContent>
+                    {loadingActivity ? (
+                      <p className="text-sm text-slate-400">Loading…</p>
+                    ) : activity.length === 0 ? (
+                      <p className="text-sm text-slate-400">No activity recorded yet.</p>
+                    ) : (
+                      <div className="space-y-2 max-h-96 overflow-y-auto">
+                        {activity.map(a => (
+                          <div key={a.id} className="flex items-center justify-between p-2.5 bg-slate-50 rounded-lg border border-slate-100 text-sm">
+                            <div>
+                              <span className="font-medium text-slate-800">{a.user?.name ?? "System"}</span>
+                              <span className="text-slate-400"> · {a.action.replace(/_/g, " ")} · {a.entityType}</span>
+                            </div>
+                            <span className="text-xs text-slate-400 shrink-0">{new Date(a.createdAt).toLocaleString()}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                )}
+              </Card>
+            )}
           </>
         )}
       </main>

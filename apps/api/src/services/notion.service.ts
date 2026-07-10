@@ -18,9 +18,11 @@ export class NotionSyncService implements WebhookHandler {
       include: {
         createdBy: { select: { name: true, email: true } },
         org: { select: { name: true } },
-        approvals: { include: { approver: { select: { name: true, email: true } } } },
+        approvals: { include: { approver: { select: { name: true, email: true } } }, orderBy: { createdAt: "asc" } },
         evidence: true,
         parentDocument: { select: { id: true, documentCode: true, title: true } },
+        comments: { include: { author: { select: { name: true, email: true } } }, orderBy: { createdAt: "asc" } },
+        roleAssignments: { include: { user: { select: { name: true } } } },
       },
     });
 
@@ -60,6 +62,22 @@ export class NotionSyncService implements WebhookHandler {
       if (parentRef) properties["Parent Document"] = { rich_text: [{ text: { content: safe(parentRef) } }] };
       if (evidenceLinks) properties["Evidence Links"] = { rich_text: [{ text: { content: safe(evidenceLinks) } }] };
 
+      // RAPID participant names per role, matching the documented Notion property mapping
+      const namesByRole = (role: string) =>
+        doc.roleAssignments
+          .filter((r: { roleType: string }) => r.roleType === role)
+          .map((r: { user: { name: string | null } }) => r.user?.name)
+          .filter(Boolean)
+          .join(", ");
+      const recommenders = namesByRole("recommend");
+      const agreers = namesByRole("agree");
+      const performers = namesByRole("perform");
+      const decider = namesByRole("decide");
+      if (recommenders) properties["Recommender"] = { rich_text: [{ text: { content: safe(recommenders) } }] };
+      if (agreers) properties["Agreers"] = { rich_text: [{ text: { content: safe(agreers) } }] };
+      if (performers) properties["Performers"] = { rich_text: [{ text: { content: safe(performers) } }] };
+      if (decider) properties["Approved By"] = { rich_text: [{ text: { content: safe(decider) } }] };
+
       const children: unknown[] = [
         { object: "block", type: "heading_2", heading_2: { rich_text: [{ text: { content: "Decision Summary" } }] } },
         { object: "block", type: "paragraph", paragraph: { rich_text: [{ text: { content: safe(doc.decisionSummary) } }] } },
@@ -75,6 +93,23 @@ export class NotionSyncService implements WebhookHandler {
           { object: "block", type: "heading_2", heading_2: { rich_text: [{ text: { content: "Transcript" } }] } },
           { object: "block", type: "paragraph", paragraph: { rich_text: [{ text: { content: safe((doc as any).transcriptContent) } }] } }
         );
+      }
+      if (doc.approvals.length > 0) {
+        children.push({ object: "block", type: "heading_2", heading_2: { rich_text: [{ text: { content: "Approvals (Signature of Record)" } }] } });
+        for (const a of doc.approvals as Array<{ approver: { name: string | null; email: string }; decision: string; comment: string | null; createdAt: Date }>) {
+          const who = a.approver?.name ?? a.approver?.email ?? "Unknown";
+          const when = a.createdAt.toISOString();
+          const line = `${who} — ${a.decision} — ${when}` + (a.comment ? ` — "${a.comment}"` : "");
+          children.push({ object: "block", type: "paragraph", paragraph: { rich_text: [{ text: { content: safe(line) } }] } });
+        }
+      }
+      if (doc.comments.length > 0) {
+        children.push({ object: "block", type: "heading_2", heading_2: { rich_text: [{ text: { content: "Comments" } }] } });
+        for (const c of doc.comments as Array<{ author: { name: string | null; email: string }; content: string; createdAt: Date }>) {
+          const who = c.author?.name ?? c.author?.email ?? "Unknown";
+          const when = c.createdAt.toISOString();
+          children.push({ object: "block", type: "paragraph", paragraph: { rich_text: [{ text: { content: safe(`${who} (${when}): ${c.content}`) } }] } });
+        }
       }
 
       const response = await fetch("https://api.notion.com/v1/pages", {

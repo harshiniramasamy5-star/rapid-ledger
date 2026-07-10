@@ -315,7 +315,10 @@ export const documentRoutes = new Elysia({ prefix: "/documents" })
     const parsed = parseBody(addEvidenceSchema, _body);
     if (!parsed.ok) { set.status = 400; return Errors.badRequest("Invalid evidence data", parsed.errors); }
     const result = await addEvidence(params.id, parsed.data, user.id);
-    if (!result.ok && "notFound" in result) { set.status = 404; return Errors.notFound("Document"); }
+    if (!result.ok) {
+      if ("notFound" in result) { set.status = 404; return Errors.notFound("Document"); }
+      if ("immutable" in result) { set.status = 403; return Errors.forbidden("Finalized documents are immutable and cannot receive new evidence"); }
+    }
     set.status = 201;
     return result.evidence;
   });

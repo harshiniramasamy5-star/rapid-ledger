@@ -3,6 +3,7 @@ import { sendInviteEmail } from "../services/email.service";
 import { prisma } from "../lib/prisma";
 import { authMiddleware } from "../middleware/auth";
 import { requirePermission } from "../middleware/permissions";
+import { createAuditLog } from "../services/audit.service";
 
 export const orgRoutes = new Elysia({ prefix: "/orgs" })
   .use(authMiddleware)
@@ -104,6 +105,41 @@ export const orgRoutes = new Elysia({ prefix: "/orgs" })
     });
     if (!org) { set.status = 404; return { error: "org not found" }; }
     return { org };
+  })
+
+  // PATCH /orgs/:id — update workspace branding (admin only): name, domain, logoUrl, description
+  .patch("/:id", async ({ user, params, body, set }) => {
+    requirePermission(user, "user:create", set);
+    if (user.orgId !== params.id) { set.status = 403; return { error: "not your workspace" }; }
+    const { name, domain, logoUrl, description } = body as {
+      name?: string; domain?: string; logoUrl?: string; description?: string;
+    };
+    const org = await prisma.organization.findUnique({ where: { id: params.id } });
+    if (!org) { set.status = 404; return { error: "org not found" }; }
+    if (domain && domain !== org.domain) {
+      const existing = await prisma.organization.findUnique({ where: { domain } });
+      if (existing) { set.status = 409; return { error: "domain already registered" }; }
+    }
+    if (logoUrl) {
+      try {
+        const parsed = new URL(logoUrl);
+        if (parsed.protocol !== "http:" && parsed.protocol !== "https:") throw new Error("bad protocol");
+      } catch {
+        set.status = 400;
+        return { error: "logoUrl must be a valid http(s) URL" };
+      }
+    }
+    const updated = await prisma.organization.update({
+      where: { id: params.id },
+      data: {
+        ...(name !== undefined ? { name: name.trim() } : {}),
+        ...(domain !== undefined ? { domain: domain.trim() || null } : {}),
+        ...(logoUrl !== undefined ? { logoUrl: logoUrl.trim() || null } : {}),
+        ...(description !== undefined ? { description: description.trim() || null } : {}),
+      },
+    });
+    await createAuditLog(user.id, "user_updated", "Organization", params.id, { event: "branding_updated", changes: { name, domain, hasLogo: !!logoUrl, description } });
+    return { org: updated };
   })
 
   // GET /orgs/:id/members — list members with workspace accessType

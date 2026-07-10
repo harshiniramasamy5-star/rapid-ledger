@@ -40,6 +40,10 @@ export default function NewDocumentPage() {
   const [evidence, setEvidence] = useState({
     title: "", type: "link", urlOrPath: "", description: "",
   });
+  const [suggestions, setSuggestions] = useState<Record<string, { userId: string; name: string; rationale: string }>>({});
+  const [suggestLoading, setSuggestLoading] = useState(false);
+  const [suggestFetched, setSuggestFetched] = useState(false);
+  const [appliedFromAi, setAppliedFromAi] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     const token = getToken();
@@ -71,8 +75,49 @@ export default function NewDocumentPage() {
       setDocId(data.id as string);
       toast.success("Document created! Now assign roles.");
       setStep(2);
+      void fetchSuggestions(data.id as string);
     } catch (e: unknown) { toast.error(e instanceof Error ? e.message : "Failed"); }
     setLoading(false);
+  }
+
+  // AI-suggests a RAPID role per workspace member (never persisted server-side).
+  // Pre-fills the recommend/agree/perform/input/decide dropdowns below with the
+  // top suggested candidate for each — admins can freely override before
+  // clicking "Assign Roles", which is the only step that actually commits anything.
+  async function fetchSuggestions(id: string) {
+    setSuggestLoading(true);
+    try {
+      const res = await fetch(`${API}/documents/${id}/suggest-roles`, {
+        headers: { Authorization: `Bearer ${token()}` },
+      });
+      if (!res.ok) throw new Error("Suggestion request failed");
+      const data = await res.json();
+      const list = Array.isArray(data.suggestions) ? data.suggestions : [];
+      const byRole: Record<string, { userId: string; name: string; rationale: string }> = {};
+      for (const s of list) {
+        if (!(s.suggestedRole in ROLE_CONFIG)) continue; // review/acknowledge/inform not shown in this form
+        if (!byRole[s.suggestedRole]) byRole[s.suggestedRole] = { userId: s.userId, name: s.name, rationale: s.rationale };
+      }
+      setSuggestions(byRole);
+      const applied: Record<string, boolean> = {};
+      setRoles(r => {
+        const next = { ...r };
+        for (const roleType of Object.keys(ROLE_CONFIG)) {
+          if (!next[roleType] && byRole[roleType]) {
+            next[roleType] = byRole[roleType].userId;
+            applied[roleType] = true;
+          }
+        }
+        return next;
+      });
+      setAppliedFromAi(applied);
+      setSuggestFetched(true);
+      if (list.length > 0) toast.success("AI suggested roles — review and edit before assigning.");
+    } catch {
+      toast.error("Couldn't load AI suggestions — assign roles manually.");
+      setSuggestFetched(true);
+    }
+    setSuggestLoading(false);
   }
 
   async function assignRoles() {
@@ -279,14 +324,26 @@ export default function NewDocumentPage() {
         {/* Step 2 — Assign Roles */}
         {step === 2 && (
           <Card className="border-slate-200 shadow-sm">
-            <CardHeader>
-              <CardTitle className="text-lg">Assign RAPID Roles</CardTitle>
-              <CardDescription>
-                Assign team members to each role. Decide, Perform and Recommend are required.
-              </CardDescription>
+            <CardHeader className="flex flex-row items-start justify-between gap-3">
+              <div>
+                <CardTitle className="text-lg">Assign RAPID Roles</CardTitle>
+                <CardDescription>
+                  Assign team members to each role. Decide, Perform and Recommend are required.
+                </CardDescription>
+              </div>
+              <Button
+                variant="outline" size="sm" className="shrink-0 border-slate-200 text-xs"
+                disabled={suggestLoading || !docId}
+                onClick={() => docId && fetchSuggestions(docId)}
+              >
+                {suggestLoading ? "Thinking…" : suggestFetched ? "Re-run AI Suggestions" : "Get AI Suggestions"}
+              </Button>
             </CardHeader>
             <CardContent className="space-y-3">
-              {Object.entries(ROLE_CONFIG).map(([roleType, cfg]) => (
+              {Object.entries(ROLE_CONFIG).map(([roleType, cfg]) => {
+                const suggestion = suggestions[roleType];
+                const isAiApplied = appliedFromAi[roleType] && roles[roleType] === suggestion?.userId;
+                return (
                 <div key={roleType} className={`p-3 rounded-lg border ${cfg.bg}`}>
                   <div className="flex items-center justify-between mb-2">
                     <span className={`text-xs font-bold ${cfg.color}`}>{cfg.label}</span>
@@ -295,7 +352,16 @@ export default function NewDocumentPage() {
                       <Badge variant="outline" className="text-[10px] border-slate-300 text-slate-500">Required</Badge>
                     )}
                   </div>
-                  <Select value={roles[roleType]} onValueChange={v => v && setRoles(r => ({ ...r, [roleType]: v }))}>
+                  <Select
+                    value={roles[roleType]}
+                    onValueChange={v => {
+                      if (!v) return;
+                      setRoles(r => ({ ...r, [roleType]: v }));
+                      // Manual edit overrides the AI pick — stop treating this slot as AI-applied
+                      // unless the admin picks the exact same person the AI suggested.
+                      setAppliedFromAi(a => ({ ...a, [roleType]: v === suggestion?.userId }));
+                    }}
+                  >
                     <SelectTrigger className="bg-white border-slate-200 text-sm h-9">
                       <SelectValue placeholder="-- Not assigned --" />
                     </SelectTrigger>
@@ -304,12 +370,19 @@ export default function NewDocumentPage() {
                       {users.map(u => (
                         <SelectItem key={u.id} value={u.id}>
                           {u.name} <span className="text-slate-400 capitalize">({u.role})</span>
+                          {suggestion?.userId === u.id ? " · AI suggested" : ""}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
+                  {suggestion && (
+                    <p className={`text-[11px] mt-1.5 ${isAiApplied ? "text-slate-600" : "text-slate-400"}`}>
+                      {isAiApplied ? "✓ " : ""}
+                      <span className="font-medium">AI suggested {suggestion.name}:</span> {suggestion.rationale}
+                    </p>
+                  )}
                 </div>
-              ))}
+              );})}
               <Separator />
               <Button className="w-full h-11 font-semibold" onClick={assignRoles} disabled={loading}>
                 {loading ? "Assigning..." : "Assign Roles →"}
