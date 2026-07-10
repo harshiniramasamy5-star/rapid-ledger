@@ -143,10 +143,26 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen bg-slate-50">
       <main className="max-w-7xl mx-auto px-6 py-8 space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">Welcome back, {me?.name?.split(" ")[0]} 👋</h1>
-          <p className="text-slate-500 text-sm mt-1">Here is what is happening in your decision governance workspace.</p>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-slate-900">Welcome back, {me?.name?.split(" ")[0]} 👋</h1>
+            <p className="text-slate-500 text-sm mt-1">Here is what is happening in your decision governance workspace.</p>
+          </div>
+          {me?.role === "admin" && me?.totpEnabled && (
+            <Button size="sm" onClick={() => router.push("/orgs")} className="flex-shrink-0">
+              + Invite to Dashboard
+            </Button>
+          )}
         </div>
+
+        {me?.role === "admin" && !me?.totpEnabled && (
+          <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 text-sm text-amber-800 flex items-center justify-between gap-4">
+            <span>Set up two-factor authentication to unlock inviting teammates.</span>
+            <Button size="sm" variant="outline" onClick={() => router.push("/settings/totp")} className="flex-shrink-0 border-amber-300 text-amber-800 hover:bg-amber-100">
+              Set up 2FA
+            </Button>
+          </div>
+        )}
 
         <PendingInvites onAccepted={() => window.location.reload()} />
 
