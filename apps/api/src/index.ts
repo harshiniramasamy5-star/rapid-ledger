@@ -139,6 +139,6 @@ if (process.env.NODE_ENV !== "test") {
     res.end(Buffer.from(await response.arrayBuffer()));
   }).listen(port, () => {
     console.log(`\n🚀 API running on http://localhost:${port}`);
-    console.log(`✅ Routes: /auth /users /admin/users /documents /ledger /approvals /audit /ai/chat /orgs /auth/totp /documents/:id/transcript /webhooks\n`);
+    console.log(`✅ Routes: /auth /users /admin/users /documents /ledger /approvals /audit /ai/chat /orgs /auth/totp /documents/:id/transcript /webhooks /notifications\n`);
   });
 }

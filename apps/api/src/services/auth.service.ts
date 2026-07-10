@@ -19,18 +19,14 @@ export type LoginResult =
 export async function loginUser(email: string, password: string, totpCode?: string): Promise<LoginResult> {
   const user = await prisma.user.findUnique({ where: { email } });
 
-  // Unknown email — don't reveal whether account exists
-  // emailVerified checked after password validation
   if (!user) {
     return { success: false, reason: "invalid_credentials" };
   }
 
-  // Inactive account
   if (!user.isActive) {
     return { success: false, reason: "account_inactive" };
   }
 
-  // Account locked
   if (user.lockedUntil && user.lockedUntil > new Date()) {
     void createAuditLog(user.id, "login_failed", "User", user.id, {
       email: user.email,
@@ -39,7 +35,6 @@ export async function loginUser(email: string, password: string, totpCode?: stri
     return { success: false, reason: "account_locked", lockedUntil: user.lockedUntil };
   }
 
-  // Block login until email is verified
   if (!(user as { emailVerified?: boolean }).emailVerified) {
     return { success: false, reason: "email_not_verified" };
   }
@@ -65,12 +60,10 @@ export async function loginUser(email: string, password: string, totpCode?: stri
     return { success: false, reason: "invalid_credentials" };
   }
 
-  // TOTP server-side gate — password verified above; now require code or signal challenge
   if ((user as { totpEnabled?: boolean }).totpEnabled && !totpCode) {
     return { success: false, reason: "totp_required" as any, userId: user.id };
   }
 
-  // Validate TOTP if enabled
   if ((user as { totpEnabled?: boolean }).totpEnabled && totpCode) {
     try {
       const { verify } = await import("otplib");
@@ -84,7 +77,6 @@ export async function loginUser(email: string, password: string, totpCode?: stri
     }
   }
 
-  // Successful login — reset failed attempts
   await prisma.user.update({
     where: { id: user.id },
     data: { failedLogins: 0, lockedUntil: null } });
@@ -122,6 +114,7 @@ export async function registerUser(
 
   const hashed = await bcrypt.hash(password, 10);
   const token  = generateVerificationToken();
+  const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
   await prisma.user.create({
     data: {
@@ -131,6 +124,7 @@ export async function registerUser(
       role: "viewer",
       emailVerified: false,
       verificationToken: token,
+      verificationTokenExpiresAt: expiresAt,
     },
   });
 
@@ -166,7 +160,6 @@ export async function registerUser(
   return { success: true, token };
 }
 
-
 export async function resendVerificationEmail(
   email: string
 ): Promise<{ success: boolean; message?: string }> {
@@ -174,7 +167,8 @@ export async function resendVerificationEmail(
   if (!user) return { success: true, message: "If this email is registered, a verification link will be sent." };
   if (user.emailVerified) return { success: false, message: "Email is already verified." };
   const token = generateVerificationToken();
-  await prisma.user.update({ where: { id: user.id }, data: { verificationToken: token } });
+  const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+  await prisma.user.update({ where: { id: user.id }, data: { verificationToken: token, verificationTokenExpiresAt: expiresAt } });
   try {
     const emailSvc = await import("./email.service");
     await emailSvc.sendVerificationEmail(email, user.name, token);
@@ -186,20 +180,25 @@ export async function resendVerificationEmail(
 
 export async function verifyEmail(
   token: string
-): Promise<{ success: boolean; message?: string; email?: string; name?: string }> {
+): Promise<{ success: boolean; message?: string; email?: string; name?: string; alreadyUsed?: boolean; expired?: boolean }> {
   const user = await prisma.user.findFirst({ where: { verificationToken: token } });
   if (!user) {
-    // Token not found — either never valid, or already consumed (e.g. Outlook Safe Links
-    // pre-fetch hit the single-use link first). Treat as already-verified so the user isn't
-    // shown a scary error after the account is in fact verified.
-    return { success: false, alreadyUsed: true, message: "This link has already been used. Your email is likely verified — please sign in." } as any;
+    return { success: false, alreadyUsed: true, message: "This link has already been used. Your email is likely verified — please sign in." };
+  }
+
+  const expiresAt = (user as { verificationTokenExpiresAt?: Date | null }).verificationTokenExpiresAt;
+  if (expiresAt && expiresAt < new Date()) {
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { verificationToken: null, verificationTokenExpiresAt: null },
+    });
+    return { success: false, expired: true, message: "This verification link has expired. Please request a new one." };
   }
 
   await prisma.user.update({
     where: { id: user.id },
-    data: { emailVerified: true, verificationToken: null },
+    data: { emailVerified: true, verificationToken: null, verificationTokenExpiresAt: null },
   });
 
   return { success: true, email: user.email, name: user.name };
 }
-

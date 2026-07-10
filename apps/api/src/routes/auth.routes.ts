@@ -37,7 +37,6 @@ export const authRoutes = new Elysia({ prefix: "/auth" })
           return Errors.custom("ACCOUNT_INACTIVE", "This account has been deactivated. Contact your administrator.");
         }
         if ((result.reason as string) === "totp_required") {
-          // Signal to client that TOTP is required; do NOT send a token yet
           ctx.set.status = 200;
           return { requiresMfa: true, userId: (result as { userId?: string }).userId };
         }
@@ -58,6 +57,13 @@ export const authRoutes = new Elysia({ prefix: "/auth" })
   .post(
     "/register",
     async (ctx) => {
+      const ip = ctx.request.headers.get("x-forwarded-for") ?? "unknown";
+      const rateCheck = checkRateLimit(`register:${ip}`, 5, 15 * 60 * 1000);
+      if (!rateCheck.allowed) {
+        ctx.set.status = 429;
+        return Errors.custom("RATE_LIMITED", "Too many registration attempts. Try again in 15 minutes.");
+      }
+
       const { name, email, password } = ctx.body as { name: string; email: string; password: string };
       const result = await registerUser(name, email, password);
       if (!result.success) {
@@ -85,7 +91,7 @@ export const authRoutes = new Elysia({ prefix: "/auth" })
     const result = await verifyEmail(token);
     if (!result.success) {
       ctx.set.status = 400;
-      const code = (result as { alreadyUsed?: boolean }).alreadyUsed ? "ALREADY_USED" : "INVALID_TOKEN";
+      const code = result.expired ? "EXPIRED_TOKEN" : result.alreadyUsed ? "ALREADY_USED" : "INVALID_TOKEN";
       return { error: { code, message: result.message } };
     }
     try {
@@ -98,9 +104,15 @@ export const authRoutes = new Elysia({ prefix: "/auth" })
   .post(
     "/resend-verification",
     async (ctx) => {
+      const ip = ctx.request.headers.get("x-forwarded-for") ?? "unknown";
+      const rateCheck = checkRateLimit(`resend-verification:${ip}`, 5, 15 * 60 * 1000);
+      if (!rateCheck.allowed) {
+        ctx.set.status = 429;
+        return Errors.custom("RATE_LIMITED", "Too many attempts. Try again in 15 minutes.");
+      }
+
       const { email } = ctx.body as { email: string };
       const result = await resendVerificationEmail(email);
-      // Always 200 to avoid email enumeration
       ctx.set.status = 200;
       return { message: result.message ?? "If this email is registered and unverified, a link has been sent." };
     },
