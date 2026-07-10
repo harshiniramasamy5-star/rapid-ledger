@@ -166,6 +166,10 @@ export const orgRoutes = new Elysia({ prefix: "/orgs" })
 
   .post("/:id/invite", async ({ user, params, body, set }) => {
     requirePermission(user, "user:create", set);
+    if (!user.totpEnabled) {
+      set.status = 403;
+      return { error: "two-factor authentication must be enabled before inviting members" };
+    }
     const { email, role } = body as { email: string; role?: string };
     if (!email) { set.status = 400; return { error: "email required" }; }
     const org = await prisma.organization.findUnique({ where: { id: params.id } });

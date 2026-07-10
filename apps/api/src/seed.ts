@@ -28,12 +28,15 @@ async function main() {
   ];
 
   for (const u of users) {
+    // Admin fixture needs totpEnabled=true: inviting members now requires
+    // 2FA to be set up (server-side gate on POST /orgs/:id/invite).
+    const isAdmin = u.role === "admin";
     await prisma.user.upsert({
       where: { email: u.email },
       update: {
         password: hash,
         emailVerified: true,
-        totpEnabled: false,
+        totpEnabled: isAdmin,
         totpSecret: null,
       },
       create: {
@@ -42,7 +45,7 @@ async function main() {
         password: hash,
         role: u.role,
         emailVerified: true,
-        totpEnabled: false,
+        totpEnabled: isAdmin,
         orgId: "cmq2vwnsj0008j8lfjqanx4dz",
       },
     });
