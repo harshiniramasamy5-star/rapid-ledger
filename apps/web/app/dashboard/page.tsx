@@ -132,7 +132,7 @@ export default function DashboardPage() {
   const navItems = [
     { label: "Approvals", path: "/approvals",  roles: ["admin","approver"] },
     { label: "Ledger",    path: "/ledger",      roles: ["admin","viewer","decider","creator","approver","performer"] },
-    { label: "Audit Log", path: "/audit-log",   roles: ["admin","viewer"] },
+    { label: "Audit Log", path: "/audit-log",   roles: ["admin","creator","approver"] },
     { label: "Admin",     path: "/admin",       roles: ["admin"] },
     { label: "Meetings",  path: "/admin/meetings", roles: ["admin"] },
     { label: "Fathom Meetings", path: "/admin/fathom-meetings", roles: ["admin"] },
