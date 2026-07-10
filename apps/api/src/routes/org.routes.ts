@@ -8,7 +8,6 @@ import { createAuditLog } from "../services/audit.service";
 export const orgRoutes = new Elysia({ prefix: "/orgs" })
   .use(authMiddleware)
 
-  // POST /orgs — create org (admin only), creator becomes workspace admin
   .post("/", async ({ user, body, set }) => {
     const { name, domain, logoUrl, description } = body as {
       name: string; domain?: string; logoUrl?: string; description?: string;
@@ -20,14 +19,24 @@ export const orgRoutes = new Elysia({ prefix: "/orgs" })
     }
     let cleanLogoUrl: string | undefined;
     if (logoUrl) {
-      try {
-        const parsed = new URL(logoUrl);
-        if (parsed.protocol !== "http:" && parsed.protocol !== "https:") throw new Error("bad protocol");
-        if (logoUrl.length > 2048) throw new Error("too long");
+      const MAX_DATA_URI_LENGTH = 300_000;
+      const isDataUri = logoUrl.startsWith("data:image/");
+      if (isDataUri) {
+        if (logoUrl.length > MAX_DATA_URI_LENGTH) {
+          set.status = 400;
+          return { error: "Logo image is too large." };
+        }
         cleanLogoUrl = logoUrl;
-      } catch {
-        set.status = 400;
-        return { error: "logoUrl must be a valid http(s) URL" };
+      } else {
+        try {
+          const parsed = new URL(logoUrl);
+          if (parsed.protocol !== "http:" && parsed.protocol !== "https:") throw new Error("bad protocol");
+          if (logoUrl.length > 2048) throw new Error("too long");
+          cleanLogoUrl = logoUrl;
+        } catch {
+          set.status = 400;
+          return { error: "logoUrl must be a valid http(s) URL or an uploaded image" };
+        }
       }
     }
     const org = await prisma.organization.create({
@@ -36,7 +45,6 @@ export const orgRoutes = new Elysia({ prefix: "/orgs" })
     await prisma.workspaceMember.create({
       data: { userId: user.id, orgId: org.id, accessType: "admin" },
     });
-    // If the creator has no active workspace yet, make this one active
     if (!user.orgId) {
       await prisma.user.update({ where: { id: user.id }, data: { orgId: org.id, role: "admin" } });
     }
@@ -54,7 +62,6 @@ export const orgRoutes = new Elysia({ prefix: "/orgs" })
     return { org };
   })
 
-  // GET /orgs/mine — list ALL workspaces the current user belongs to
   .get("/mine", async ({ user, set }) => {
     requirePermission(user, "user:read", set);
     const memberships = await prisma.workspaceMember.findMany({
@@ -75,7 +82,6 @@ export const orgRoutes = new Elysia({ prefix: "/orgs" })
     return { workspaces };
   })
 
-  // POST /orgs/:id/switch — switch active workspace (must already be a member)
   .post("/:id/switch", async ({ user, params, set }) => {
     requirePermission(user, "user:read", set);
     const membership = await prisma.workspaceMember.findUnique({
@@ -86,7 +92,7 @@ export const orgRoutes = new Elysia({ prefix: "/orgs" })
     await prisma.auditLog.create({
       data: {
         userId: user.id,
-        action: "workspace_created" as any, // no dedicated switch action yet; tracked via details
+        action: "workspace_created" as any,
         entityType: "Organization",
         entityId: params.id,
         orgId: params.id,
@@ -96,7 +102,6 @@ export const orgRoutes = new Elysia({ prefix: "/orgs" })
     return { message: "workspace switched", orgId: params.id, accessType: membership.accessType };
   })
 
-  // GET /orgs/:id — get org info
   .get("/:id", async ({ user, params, set }) => {
     requirePermission(user, "user:read", set);
     const org = await prisma.organization.findUnique({
@@ -107,7 +112,6 @@ export const orgRoutes = new Elysia({ prefix: "/orgs" })
     return { org };
   })
 
-  // PATCH /orgs/:id — update workspace branding (admin only): name, domain, logoUrl, description
   .patch("/:id", async ({ user, params, body, set }) => {
     requirePermission(user, "user:create", set);
     if (user.orgId !== params.id) { set.status = 403; return { error: "not your workspace" }; }
@@ -121,12 +125,21 @@ export const orgRoutes = new Elysia({ prefix: "/orgs" })
       if (existing) { set.status = 409; return { error: "domain already registered" }; }
     }
     if (logoUrl) {
-      try {
-        const parsed = new URL(logoUrl);
-        if (parsed.protocol !== "http:" && parsed.protocol !== "https:") throw new Error("bad protocol");
-      } catch {
-        set.status = 400;
-        return { error: "logoUrl must be a valid http(s) URL" };
+      const MAX_DATA_URI_LENGTH = 300_000;
+      const isDataUri = logoUrl.startsWith("data:image/");
+      if (isDataUri) {
+        if (logoUrl.length > MAX_DATA_URI_LENGTH) {
+          set.status = 400;
+          return { error: "Logo image is too large." };
+        }
+      } else {
+        try {
+          const parsed = new URL(logoUrl);
+          if (parsed.protocol !== "http:" && parsed.protocol !== "https:") throw new Error("bad protocol");
+        } catch {
+          set.status = 400;
+          return { error: "logoUrl must be a valid http(s) URL or an uploaded image" };
+        }
       }
     }
     const updated = await prisma.organization.update({
@@ -142,7 +155,6 @@ export const orgRoutes = new Elysia({ prefix: "/orgs" })
     return { org: updated };
   })
 
-  // GET /orgs/:id/members — list members with workspace accessType
   .get("/:id/members", async ({ user, params, set }) => {
     requirePermission(user, "user:read", set);
     const members = await prisma.workspaceMember.findMany({
@@ -152,7 +164,6 @@ export const orgRoutes = new Elysia({ prefix: "/orgs" })
     return { members: members.map(m => ({ ...m.user, accessType: m.accessType })) };
   })
 
-  // POST /orgs/:id/invite — send invite (admin only)
   .post("/:id/invite", async ({ user, params, body, set }) => {
     requirePermission(user, "user:create", set);
     const { email, role } = body as { email: string; role?: string };
@@ -178,7 +189,6 @@ export const orgRoutes = new Elysia({ prefix: "/orgs" })
     return { invite: { id: invite.id, token: invite.token, email, expiresAt } };
   })
 
-  // GET /orgs/my — DEPRECATED, kept for backward compat with existing frontend calls
   .get("/my", async ({ user, set }) => {
     requirePermission(user, "user:read", set);
     if (!user.orgId) return { org: null };
@@ -189,7 +199,6 @@ export const orgRoutes = new Elysia({ prefix: "/orgs" })
     return { org };
   })
 
-  // POST /orgs/join/:token — accept invite, joins workspace + becomes active
   .post("/join/:token", async ({ user, params, set }) => {
     const invite = await prisma.invite.findUnique({ where: { token: params.token } });
     if (!invite) { set.status = 404; return { error: "invalid invite token" }; }
@@ -225,7 +234,6 @@ export const orgRoutes = new Elysia({ prefix: "/orgs" })
     return { message: "joined org successfully", orgId: invite.orgId };
   })
 
-  // GET /orgs/invites/me — list my pending invitations (across all orgs, by email)
   .get("/invites/me", async ({ user }) => {
     const invites = await prisma.invite.findMany({
       where: { email: user.email, usedAt: null, expiresAt: { gt: new Date() } },
@@ -247,7 +255,6 @@ export const orgRoutes = new Elysia({ prefix: "/orgs" })
     };
   })
 
-  // POST /orgs/invites/:inviteId/decline — decline my own invite
   .post("/invites/:inviteId/decline", async ({ user, params, set }) => {
     const invite = await prisma.invite.findUnique({ where: { id: params.inviteId } });
     if (!invite) { set.status = 404; return { error: "invite not found" }; }
@@ -267,7 +274,6 @@ export const orgRoutes = new Elysia({ prefix: "/orgs" })
     return { message: "invite declined" };
   })
 
-  // GET /orgs/:id/invites — list pending invites
   .get("/:id/invites", async ({ user, params, set }) => {
     requirePermission(user, "user:read", set);
     const invites = await prisma.invite.findMany({
@@ -277,7 +283,6 @@ export const orgRoutes = new Elysia({ prefix: "/orgs" })
     return { invites };
   })
 
-  // DELETE /orgs/:id/invites/:inviteId — revoke invite
   .delete("/:id/invites/:inviteId", async ({ user, params, set }) => {
     requirePermission(user, "user:create", set);
     const invite = await prisma.invite.findUnique({ where: { id: params.inviteId } });
@@ -297,7 +302,6 @@ export const orgRoutes = new Elysia({ prefix: "/orgs" })
     return { message: "invite revoked" };
   })
 
-  // POST /orgs/:id/invites/:inviteId/resend — resend invite email
   .post("/:id/invites/:inviteId/resend", async ({ user, params, set }) => {
     requirePermission(user, "user:create", set);
     const invite = await prisma.invite.findUnique({ where: { id: params.inviteId } });
@@ -311,7 +315,6 @@ export const orgRoutes = new Elysia({ prefix: "/orgs" })
     return { message: "invite resent" };
   })
 
-  // PATCH /orgs/:id/members/:userId — promote/demote member (dual-writes WorkspaceMember.accessType)
   .patch("/:id/members/:userId", async ({ user, params, body, set }) => {
     requirePermission(user, "user:create", set);
     const { role } = body as { role: string };
@@ -346,7 +349,6 @@ export const orgRoutes = new Elysia({ prefix: "/orgs" })
     return { user: updated };
   })
 
-  // DELETE /orgs/:id/members/:userId — remove member (dual-deletes WorkspaceMember)
   .delete("/:id/members/:userId", async ({ user, params, set }) => {
     requirePermission(user, "user:create", set);
     const target = await prisma.user.findUnique({ where: { id: params.userId } });

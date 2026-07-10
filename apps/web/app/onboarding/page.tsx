@@ -14,6 +14,8 @@ export default function OnboardingPage() {
   const [orgName, setOrgName]   = useState("");
   const [orgDomain, setOrgDomain] = useState("");
   const [orgLogoUrl, setOrgLogoUrl] = useState("");
+  const [logoUploading, setLogoUploading] = useState(false);
+  const [logoError, setLogoError] = useState("");
   const [orgDescription, setOrgDescription] = useState("");
   const [creating, setCreating] = useState(false);
   const [checkingAgain, setCheckingAgain] = useState(false);
@@ -45,7 +47,6 @@ export default function OnboardingPage() {
     });
     const data = await res.json();
     if (res.ok) {
-      // Server now creates the WorkspaceMember + sets orgId/role atomically — no follow-up call needed
       toast.success("Workspace created! Welcome to RAPID Ledger.");
       setStep("done");
       setTimeout(() => router.push("/dashboard"), 1500);
@@ -53,6 +54,44 @@ export default function OnboardingPage() {
       toast.error(data?.error?.message ?? data?.error ?? "Failed to create workspace");
     }
     setCreating(false);
+  }
+
+  const MAX_LOGO_SOURCE_BYTES = 5 * 1024 * 1024;
+  const LOGO_TARGET_PX = 128;
+
+  function handleLogoFile(file: File) {
+    setLogoError("");
+    if (!file.type.startsWith("image/")) {
+      setLogoError("Please choose an image file.");
+      return;
+    }
+    if (file.size > MAX_LOGO_SOURCE_BYTES) {
+      setLogoError("Image is too large. Please choose one under 5MB.");
+      return;
+    }
+    setLogoUploading(true);
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        canvas.width = LOGO_TARGET_PX;
+        canvas.height = LOGO_TARGET_PX;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) { setLogoError("Could not process image."); setLogoUploading(false); return; }
+        const side = Math.min(img.width, img.height);
+        const sx = (img.width - side) / 2;
+        const sy = (img.height - side) / 2;
+        ctx.drawImage(img, sx, sy, side, side, 0, 0, LOGO_TARGET_PX, LOGO_TARGET_PX);
+        const dataUrl = canvas.toDataURL("image/png");
+        setOrgLogoUrl(dataUrl);
+        setLogoUploading(false);
+      };
+      img.onerror = () => { setLogoError("Could not read image."); setLogoUploading(false); };
+      img.src = reader.result as string;
+    };
+    reader.onerror = () => { setLogoError("Could not read file."); setLogoUploading(false); };
+    reader.readAsDataURL(file);
   }
 
   async function checkAgain() {
@@ -139,7 +178,6 @@ export default function OnboardingPage() {
     </div>
   );
 
-  // step === "create"
   return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center px-4">
       <div className="w-full max-w-md space-y-6">
@@ -176,26 +214,34 @@ export default function OnboardingPage() {
               />
             </div>
             <div>
-              <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide block mb-1.5">Logo URL <span className="text-slate-400 font-normal">(optional)</span></label>
+              <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide block mb-1.5">Logo <span className="text-slate-400 font-normal">(optional)</span></label>
               <div className="flex items-center gap-3">
-                {orgLogoUrl.trim() ? (
+                {orgLogoUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
-                    src={orgLogoUrl.trim()}
+                    src={orgLogoUrl}
                     alt=""
-                    className="w-9 h-9 rounded-lg object-cover border border-slate-200 shrink-0"
-                    onError={e => { (e.target as HTMLImageElement).style.visibility = "hidden"; }}
+                    className="w-12 h-12 rounded-lg object-cover border border-slate-200 shrink-0"
                   />
                 ) : (
-                  <div className="w-9 h-9 rounded-lg border border-dashed border-slate-200 shrink-0" />
+                  <div className="w-12 h-12 rounded-lg border border-dashed border-slate-200 shrink-0 flex items-center justify-center text-slate-300 text-xs">
+                    {logoUploading ? "…" : "Logo"}
+                  </div>
                 )}
-                <input
-                  className="flex-1 border border-slate-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
-                  placeholder="https://example.com/logo.png"
-                  value={orgLogoUrl}
-                  onChange={e => setOrgLogoUrl(e.target.value)}
-                />
+                <label className="flex-1 cursor-pointer">
+                  <div className="border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-500 hover:border-slate-300 transition-colors text-center">
+                    {logoUploading ? "Processing…" : orgLogoUrl ? "Change image" : "Upload image"}
+                  </div>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    disabled={logoUploading}
+                    onChange={e => { const f = e.target.files?.[0]; if (f) handleLogoFile(f); e.target.value = ""; }}
+                  />
+                </label>
               </div>
+              {logoError && <p className="text-xs text-red-500 mt-1.5">{logoError}</p>}
             </div>
             <div>
               <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide block mb-1.5">Description <span className="text-slate-400 font-normal">(optional)</span></label>
