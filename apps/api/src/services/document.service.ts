@@ -14,6 +14,7 @@ import {
   sendTaskUnlockedEmail,
   sendDeadlineReminderEmail,
 } from "./email.service";
+import { pushToUser, pushToUsers } from "./sse.service";
 
 const INCLUDE = {
   createdBy: { select: { id: true, name: true, email: true, role: true } },
@@ -114,19 +115,25 @@ export async function submitDocument(documentId: string, actorId: string) {
         where: { id: documentId },
         include: {
           createdBy: { select: { name: true } },
-          roleAssignments: { include: { user: { select: { name: true, email: true } } } },
+          roleAssignments: { include: { user: { select: { id: true, name: true, email: true } } } },
         },
       });
       if (submittedDoc) {
         const submitterName = submittedDoc.createdBy.name ?? "Someone";
         const agreeRecipients = submittedDoc.roleAssignments
           .filter((ra: { roleType: string }) => ra.roleType === "agree")
-          .map((ra: { user: { name: string; email: string } }) => ra.user);
+          .map((ra: { user: { id: string; name: string; email: string } }) => ra.user);
         await Promise.allSettled(
           agreeRecipients.map(({ email, name }: { email: string; name: string }) =>
             sendSubmissionEmail(email, name, submittedDoc.title, submittedDoc.documentCode, submitterName)
           )
         );
+        pushToUsers(agreeRecipients.map((r: { id: string }) => r.id), {
+          type: "document_submitted",
+          documentId, documentTitle: submittedDoc.title, documentCode: submittedDoc.documentCode,
+          message: `${submitterName} submitted "${submittedDoc.title}" for your review`,
+          createdAt: new Date().toISOString(),
+        });
       }
     } catch (e) { console.error("[DocService] Submission email failed:", e); }
   }
@@ -179,20 +186,30 @@ export async function approveDocument(documentId: string, approverId: string, co
       const doc = await prisma.rapidDocument.findUnique({
         where: { id: documentId },
         include: {
-          createdBy: { select: { name: true, email: true } },
-          roleAssignments: { include: { user: { select: { name: true, email: true } } } },
+          createdBy: { select: { id: true, name: true, email: true } },
+          roleAssignments: { include: { user: { select: { id: true, name: true, email: true } } } },
           approvals: { include: { approver: { select: { name: true } } } },
         },
       });
       if (doc) {
         const approverName = doc.approvals.find((a: { approverId: string; approver: { name: string } }) => a.approverId === approverId)?.approver.name ?? "An approver";
-        const recipientMap = new Map<string, string>([[doc.createdBy.email, doc.createdBy.name ?? doc.createdBy.email.split("@")[0]]]);
-        doc.roleAssignments.forEach((ra: { user: { name: string; email: string } }) => recipientMap.set(ra.user.email, ra.user.name ?? ra.user.email.split("@")[0]));
+        const recipientMap = new Map<string, { email: string; name: string }>([
+          [doc.createdBy.id, { email: doc.createdBy.email, name: doc.createdBy.name ?? doc.createdBy.email.split("@")[0] }],
+        ]);
+        doc.roleAssignments.forEach((ra: { user: { id: string; name: string; email: string } }) =>
+          recipientMap.set(ra.user.id, { email: ra.user.email, name: ra.user.name ?? ra.user.email.split("@")[0] })
+        );
         await Promise.allSettled(
-          [...recipientMap.entries()].map(([email, name]) =>
+          [...recipientMap.values()].map(({ email, name }) =>
             sendApprovalNotificationEmail(email, name, doc.title, doc.documentCode, approverName)
           )
         );
+        pushToUsers([...recipientMap.keys()], {
+          type: "document_approved",
+          documentId, documentTitle: doc.title, documentCode: doc.documentCode,
+          message: `"${doc.title}" was approved by ${approverName}`,
+          createdAt: new Date().toISOString(),
+        });
       }
     } catch (e) { console.error("[DocService] Approval email failed:", e); }
   }
@@ -217,20 +234,30 @@ export async function rejectDocument(documentId: string, approverId: string, com
       const rejectDoc = await prisma.rapidDocument.findUnique({
         where: { id: documentId },
         include: {
-          createdBy: { select: { name: true, email: true } },
-          roleAssignments: { include: { user: { select: { name: true, email: true } } } },
+          createdBy: { select: { id: true, name: true, email: true } },
+          roleAssignments: { include: { user: { select: { id: true, name: true, email: true } } } },
           approvals: { include: { approver: { select: { name: true } } } },
         },
       });
       if (rejectDoc) {
         const approverName = rejectDoc.approvals.find((a: { approverId: string; approver: { name: string } }) => a.approverId === approverId)?.approver.name ?? "An approver";
-        const recipientMap = new Map<string, string>([[rejectDoc.createdBy.email, rejectDoc.createdBy.name ?? rejectDoc.createdBy.email.split("@")[0]]]);
-        rejectDoc.roleAssignments.forEach((ra: { user: { name: string; email: string } }) => recipientMap.set(ra.user.email, ra.user.name ?? ra.user.email.split("@")[0]));
+        const recipientMap = new Map<string, { email: string; name: string }>([
+          [rejectDoc.createdBy.id, { email: rejectDoc.createdBy.email, name: rejectDoc.createdBy.name ?? rejectDoc.createdBy.email.split("@")[0] }],
+        ]);
+        rejectDoc.roleAssignments.forEach((ra: { user: { id: string; name: string; email: string } }) =>
+          recipientMap.set(ra.user.id, { email: ra.user.email, name: ra.user.name ?? ra.user.email.split("@")[0] })
+        );
         await Promise.allSettled(
-          [...recipientMap.entries()].map(([email, name]) =>
+          [...recipientMap.values()].map(({ email, name }) =>
             sendRejectionNotificationEmail(email, name, rejectDoc.title, rejectDoc.documentCode, approverName, comment)
           )
         );
+        pushToUsers([...recipientMap.keys()], {
+          type: "document_rejected",
+          documentId, documentTitle: rejectDoc.title, documentCode: rejectDoc.documentCode,
+          message: `"${rejectDoc.title}" was rejected by ${approverName}`,
+          createdAt: new Date().toISOString(),
+        });
       }
     } catch (e) { console.error("[DocService] Rejection email failed:", e); }
   }
@@ -253,20 +280,30 @@ export async function requestChanges(documentId: string, approverId: string, com
       const changesDoc = await prisma.rapidDocument.findUnique({
         where: { id: documentId },
         include: {
-          createdBy: { select: { name: true, email: true } },
-          roleAssignments: { include: { user: { select: { name: true, email: true } } } },
+          createdBy: { select: { id: true, name: true, email: true } },
+          roleAssignments: { include: { user: { select: { id: true, name: true, email: true } } } },
           approvals: { include: { approver: { select: { name: true } } } },
         },
       });
       if (changesDoc) {
         const reviewerName = changesDoc.approvals.find((a: { approverId: string; approver: { name: string } }) => a.approverId === approverId)?.approver.name ?? "A reviewer";
-        const recipientMap = new Map<string, string>([[changesDoc.createdBy.email, changesDoc.createdBy.name ?? changesDoc.createdBy.email.split("@")[0]]]);
-        changesDoc.roleAssignments.forEach((ra: { user: { name: string; email: string } }) => recipientMap.set(ra.user.email, ra.user.name ?? ra.user.email.split("@")[0]));
+        const recipientMap = new Map<string, { email: string; name: string }>([
+          [changesDoc.createdBy.id, { email: changesDoc.createdBy.email, name: changesDoc.createdBy.name ?? changesDoc.createdBy.email.split("@")[0] }],
+        ]);
+        changesDoc.roleAssignments.forEach((ra: { user: { id: string; name: string; email: string } }) =>
+          recipientMap.set(ra.user.id, { email: ra.user.email, name: ra.user.name ?? ra.user.email.split("@")[0] })
+        );
         await Promise.allSettled(
-          [...recipientMap.entries()].map(([email, name]) =>
+          [...recipientMap.values()].map(({ email, name }) =>
             sendChangesRequestedEmail(email, name, changesDoc.title, changesDoc.documentCode, reviewerName, comment)
           )
         );
+        pushToUsers([...recipientMap.keys()], {
+          type: "document_needs_changes",
+          documentId, documentTitle: changesDoc.title, documentCode: changesDoc.documentCode,
+          message: `${reviewerName} requested changes on "${changesDoc.title}"`,
+          createdAt: new Date().toISOString(),
+        });
       }
     } catch (e) { console.error("[DocService] Changes-requested email failed:", e); }
   }
@@ -369,7 +406,7 @@ export async function notifyNextStageIfUnlocked(documentId: string, completedSta
 
   const nextAssignments = await prisma.roleAssignment.findMany({
     where: { documentId, status: "pending", stageOrder: { gt: completedStageOrder } },
-    include: { user: { select: { name: true, email: true } } },
+    include: { user: { select: { id: true, name: true, email: true } } },
     orderBy: { stageOrder: "asc" },
   });
   if (nextAssignments.length === 0) return;
@@ -383,6 +420,12 @@ export async function notifyNextStageIfUnlocked(documentId: string, completedSta
         sendTaskUnlockedEmail(a.user.email, a.user.name ?? a.user.email.split("@")[0], doc.title, doc.documentCode, a.actionLabel ?? a.roleType)
       )
     );
+    pushToUsers(toNotify.map((a) => a.user.id), {
+      type: "task_unlocked",
+      documentId, documentTitle: doc.title, documentCode: doc.documentCode,
+      message: `It's now your turn to act on "${doc.title}"`,
+      createdAt: new Date().toISOString(),
+    });
   } catch (e) {
     console.error("[DocService] Stage-unlock email failed:", e);
   }
@@ -516,6 +559,14 @@ export async function sendDeadlineReminders() {
           a.document.deadline!.toISOString(),
           overdue
         );
+        pushToUser(a.userId, {
+          type: "deadline_reminder",
+          documentId, documentTitle: a.document.title, documentCode: a.document.documentCode,
+          message: overdue
+            ? `"${a.document.title}" is now overdue — your ${a.actionLabel ?? a.roleType} action is pending`
+            : `"${a.document.title}" is due soon — your ${a.actionLabel ?? a.roleType} action is pending`,
+          createdAt: new Date().toISOString(),
+        });
         await createAuditLog(a.userId, "deadline_reminder_sent", "RoleAssignment", a.id, { documentId, overdue });
         sent++;
       } catch (e) {

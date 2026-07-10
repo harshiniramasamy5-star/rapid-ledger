@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
 function getToken(){const m=document.cookie.match(/(?:^|;\s*)rapid_token=([^;]*)/);return m?decodeURIComponent(m[1]):null;}
@@ -12,6 +13,15 @@ interface Notification {
   documentId?: string;
   createdAt: string;
   details?: string;
+}
+
+interface LiveNotification {
+  type: string;
+  documentId?: string;
+  documentTitle?: string;
+  documentCode?: string;
+  message: string;
+  createdAt: string;
 }
 
 const ACTION_LABELS: Record<string, string> = {
@@ -27,20 +37,46 @@ const ACTION_LABELS: Record<string, string> = {
 export function NotificationBell() {
   const router = useRouter();
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [live, setLive] = useState<(LiveNotification & { id: string })[]>([]);
   const [unread, setUnread] = useState(0);
   const [open, setOpen] = useState(false);
+  const [connected, setConnected] = useState(false);
   const [lastSeen, setLastSeen] = useState<string>(() => {
     if (typeof window !== "undefined") return localStorage.getItem("rapid_last_seen") ?? new Date().toISOString();
     return new Date().toISOString();
   });
   const ref = useRef<HTMLDivElement>(null);
 
+  // Poll stays as a resync safety net (covers missed events across page loads
+  // or brief SSE drops) — real-time delivery now comes from the stream below.
   useEffect(() => {
   // eslint-disable-next-line
     fetchNotifications();
-    const interval = setInterval(fetchNotifications, 30000);
+    const interval = setInterval(fetchNotifications, 60000);
     return () => clearInterval(interval);
   }, [lastSeen]);
+
+  // Live push via SSE. The browser's EventSource auto-reconnects on drop,
+  // so no manual retry loop is needed here.
+  useEffect(() => {
+    const token = getToken();
+    if (!token) return;
+    const es = new EventSource(`${API}/notifications/stream?token=${encodeURIComponent(token)}`);
+    es.onopen = () => setConnected(true);
+    es.onerror = () => setConnected(false);
+    es.addEventListener("notification", (evt: MessageEvent) => {
+      try {
+        const data = JSON.parse(evt.data) as LiveNotification;
+        const withId = { ...data, id: `live-${data.createdAt}-${Math.random().toString(36).slice(2, 8)}` };
+        setLive(prev => [withId, ...prev].slice(0, 20));
+        setUnread(u => u + 1);
+        toast(data.message, {
+          action: data.documentId ? { label: "View", onClick: () => router.push(`/documents/${data.documentId}`) } : undefined,
+        });
+      } catch { /* ignore malformed frame */ }
+    });
+    return () => es.close();
+  }, [router]);
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
@@ -90,6 +126,15 @@ export function NotificationBell() {
     return `${Math.floor(hrs/24)}d ago`;
   }
 
+  // Live (SSE) events carry their own human-readable message; polled audit-log
+  // entries are labelled from ACTION_LABELS. Merge both into one feed, newest first.
+  const feed = [
+    ...live.map(l => ({ id: l.id, label: l.message, documentId: l.documentId, createdAt: l.createdAt })),
+    ...notifications.map(n => ({ id: n.id, label: ACTION_LABELS[n.action] ?? n.action, documentId: n.documentId, createdAt: n.createdAt })),
+  ]
+    .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
+    .slice(0, 25);
+
   return (
     <div ref={ref} className="relative">
       <button onClick={handleOpen}
@@ -108,20 +153,23 @@ export function NotificationBell() {
       {open && (
         <div className="absolute right-0 top-10 w-80 bg-white border border-slate-200 rounded-xl shadow-lg z-50 overflow-hidden">
           <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
-            <span className="text-sm font-semibold text-slate-800">Notifications</span>
+            <span className="text-sm font-semibold text-slate-800 flex items-center gap-1.5">
+              Notifications
+              <span title={connected ? "Live" : "Reconnecting…"} className={`w-1.5 h-1.5 rounded-full ${connected ? "bg-green-500" : "bg-slate-300"}`} />
+            </span>
             <button onClick={markAllRead} className="text-xs text-indigo-600 hover:underline">
               Mark all read
             </button>
           </div>
           <div className="max-h-80 overflow-y-auto divide-y divide-slate-50">
-            {notifications.length === 0 && (
+            {feed.length === 0 && (
               <div className="px-4 py-8 text-center text-sm text-slate-400">No notifications yet</div>
             )}
-            {notifications.map(n => (
+            {feed.map(n => (
               <div key={n.id}
                 onClick={() => { if (n.documentId) { router.push(`/documents/${n.documentId}`); setOpen(false); } }}
                 className={`px-4 py-3 hover:bg-slate-50 cursor-pointer transition-colors ${n.createdAt > lastSeen ? "bg-indigo-50/50" : ""}`}>
-                <p className="text-sm text-slate-700">{ACTION_LABELS[n.action] ?? n.action}</p>
+                <p className="text-sm text-slate-700">{n.label}</p>
                 <p className="text-xs text-slate-400 mt-0.5">{formatTime(n.createdAt)}</p>
               </div>
             ))}

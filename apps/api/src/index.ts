@@ -16,6 +16,7 @@ import { auditRoutes } from "./routes/audit.routes";
 import { commentsRoutes } from "./routes/comments.routes";
 import { integrationsRoutes } from "./routes/integrations.routes";
 import { tasksRoutes } from "./routes/tasks.routes";
+import { notificationRoutes } from "./routes/notifications.routes";
 import { webhookDispatcher } from "./services/webhookDispatcher";
 import { swagger } from "@elysiajs/swagger";
 import { linearWebhookHandler } from "./services/linear.handler";
@@ -81,6 +82,7 @@ export const app = new Elysia()
   .use(auditRoutes)
   .use(commentsRoutes)
   .use(tasksRoutes)
+  .use(notificationRoutes)
   .use(new Elysia({ prefix: "/admin" })
     .use(userRoutes)
     .use(documentRoutes)
