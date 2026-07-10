@@ -49,6 +49,34 @@ async function main() {
     console.log("✓ User ensured:", u.email);
   }
 
+  // Dedicated fixture user for the invite-flow E2E suite. Always reset to
+  // org-less on every seed run so the suite is idempotent and re-runnable
+  // against prod/staging without manual cleanup between runs.
+  const inviteeEmail = "invitee@rapid.com";
+  const invitee = await prisma.user.upsert({
+    where: { email: inviteeEmail },
+    update: {
+      password: hash,
+      emailVerified: true,
+      totpEnabled: false,
+      totpSecret: null,
+      orgId: null,
+      role: "viewer",
+    },
+    create: {
+      email: inviteeEmail,
+      name: "Demo Invitee",
+      password: hash,
+      role: "viewer",
+      emailVerified: true,
+      totpEnabled: false,
+      orgId: null,
+    },
+  });
+  await prisma.workspaceMember.deleteMany({ where: { userId: invitee.id } });
+  await prisma.invite.deleteMany({ where: { email: inviteeEmail } });
+  console.log("✓ Invitee fixture reset (org-less):", inviteeEmail);
+
   console.log("Seed complete.");
 }
 

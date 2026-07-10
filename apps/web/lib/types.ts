@@ -66,6 +66,7 @@ export interface ApiUser {
   isActive: boolean;
   createdAt: string;
   orgId?: string | null;
+  totpEnabled?: boolean;
 }
 
 // API-layer ApiDocument — full shape returned by backend
