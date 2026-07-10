@@ -94,7 +94,7 @@ test.describe('RAPID Ledger — Adversarial E2E', () => {
 
   test('unauthenticated API request to finalize is rejected with 401', async ({ request }) => {
     const response = await request.post(
-      `${process.env.NEXT_PUBLIC_API_URL || 'https://rapid-ledger-production.up.railway.app'}/documents/fake-id/finalize`,
+      `${process.env.NEXT_PUBLIC_API_URL || 'https://rapid-ledgerapi-production.up.railway.app'}/documents/fake-id/finalize`,
       { headers: {} }
     );
     expect(response.status()).toBe(401);
